@@ -8,6 +8,9 @@ describe("formatCents", () => {
   it("formats negative amounts", () => {
     expect(formatCents(-249, "EUR")).toMatch(/2[.,]49/);
   });
+  it("does not throw on an invalid currency code", () => {
+    expect(formatCents(5430, "BADCODE")).toContain("54.30");
+  });
 });
 
 describe("parseToCents", () => {
@@ -19,4 +22,7 @@ describe("parseToCents", () => {
   it("rejects garbage", () => expect(parseToCents("abc")).toBeNull());
   it("rejects >2 decimals", () => expect(parseToCents("1.234")).toBeNull());
   it("rejects empty", () => expect(parseToCents("")).toBeNull());
+  it("rejects interior whitespace", () => expect(parseToCents("1 234,56")).toBeNull());
+  it("rejects space-separated digits", () => expect(parseToCents("12 50")).toBeNull());
+  it("normalizes negative zero", () => expect(parseToCents("-0")).toBe(0));
 });

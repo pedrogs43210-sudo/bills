@@ -1,12 +1,15 @@
 export function formatCents(cents: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-  }).format(cents / 100);
+  const value = cents / 100;
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
+  } catch {
+    return `${value.toFixed(2)} ${currency}`.trim();
+  }
 }
 
 export function parseToCents(input: string): number | null {
-  const cleaned = input.trim().replace(/\s/g, "").replace(",", ".");
+  const cleaned = input.trim().replace(",", ".");
   if (!/^-?\d+(\.\d{1,2})?$/.test(cleaned)) return null;
-  return Math.round(parseFloat(cleaned) * 100);
+  const result = Math.round(parseFloat(cleaned) * 100);
+  return result === 0 ? 0 : result;
 }
