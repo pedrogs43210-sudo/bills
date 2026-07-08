@@ -18,8 +18,12 @@ export function isFullyAssigned(receipt: Receipt): boolean {
 /** Exact (possibly fractional) cent shares of a receipt's assigned items. */
 function exactShares(receipt: Receipt, people: Person[]): Map<string, number> {
   const shares = new Map<string, number>();
+  const memberIds = new Set(people.map((p) => p.id));
   for (const p of people) shares.set(p.id, 0);
-  const add = (id: string, amount: number) => shares.set(id, (shares.get(id) ?? 0) + amount);
+  const add = (id: string, amount: number) => {
+    if (!memberIds.has(id)) return; // unknown ids (corrupt/imported data) — payer absorbs via printedTotal step
+    shares.set(id, (shares.get(id) ?? 0) + amount);
+  };
 
   for (const item of receipt.items) {
     const a = item.assignment;

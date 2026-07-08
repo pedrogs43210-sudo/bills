@@ -61,6 +61,15 @@ describe("receiptShares", () => {
     expect(receiptShares(r, people)).toEqual({ pedro: 0, ana: 400, bruno: 0 });
   });
 
+  it("ignores assignment ids that are not trip members (cents fall to the payer)", () => {
+    const r = receipt([item(300, { kind: "units", shares: { ghost: 2, ana: 1 } }, 3)], 300);
+    const s = receiptShares(r, people);
+    expect(Object.keys(s).sort()).toEqual(["ana", "bruno", "pedro"]);
+    expect(s.ana).toBe(100);
+    expect(s.pedro).toBe(200); // payer absorbs the ghost's 200
+    expect(s.pedro + s.ana + s.bruno).toBe(300);
+  });
+
   it("shares always sum to printedTotal (random receipts)", () => {
     for (let run = 0; run < 200; run++) {
       const items: Item[] = [];
