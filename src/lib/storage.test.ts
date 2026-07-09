@@ -30,6 +30,28 @@ describe("loadData / saveData", () => {
     localStorage.setItem("bills.data.v1", JSON.stringify({ hello: "world" }));
     expect(loadData()).toEqual(emptyData());
   });
+
+  it("treats data without schemaVersion as corrupt", () => {
+    localStorage.setItem("bills.data.v1", JSON.stringify({ trips: [] }));
+    expect(loadData()).toEqual(emptyData());
+  });
+});
+
+describe("saveData quota guard", () => {
+  it("returns false instead of throwing when storage is full", () => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => {
+      throw new DOMException("QuotaExceededError");
+    };
+    try {
+      expect(saveData({ schemaVersion: 1, trips: [] })).toBe(false);
+    } finally {
+      Storage.prototype.setItem = original;
+    }
+  });
+  it("returns true on success", () => {
+    expect(saveData({ schemaVersion: 1, trips: [] })).toBe(true);
+  });
 });
 
 describe("api key", () => {
@@ -52,5 +74,12 @@ describe("export / import", () => {
   });
   it("rejects invalid JSON", () => {
     expect(() => importTrip("nope")).toThrow();
+  });
+  it("rejects a trip without an id", () => {
+    expect(() => importTrip(JSON.stringify({ app: "bills", trip: { name: "x", people: [], receipts: [] } }))).toThrow();
+  });
+  it("round-trips emoji and accents", () => {
+    const t = { ...trip, name: "Férias 👨‍👩‍👧‍👦 🇵🇹" };
+    expect(importTrip(exportTrip(t)).name).toBe("Férias 👨‍👩‍👧‍👦 🇵🇹");
   });
 });

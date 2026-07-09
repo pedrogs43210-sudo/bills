@@ -14,7 +14,7 @@ export function loadData(): AppData {
   if (raw === null) return emptyData();
   try {
     const parsed = JSON.parse(raw) as AppData;
-    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.trips)) {
+    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.trips) || typeof parsed.schemaVersion !== "number") {
       throw new Error("bad shape");
     }
     return parsed;
@@ -25,8 +25,13 @@ export function loadData(): AppData {
   }
 }
 
-export function saveData(data: AppData): void {
-  localStorage.setItem(DATA_KEY, JSON.stringify(data));
+export function saveData(data: AppData): boolean {
+  try {
+    localStorage.setItem(DATA_KEY, JSON.stringify(data));
+    return true;
+  } catch {
+    return false; // quota exceeded or storage unavailable — caller shows a warning
+  }
 }
 
 export function loadApiKey(): string {
@@ -46,6 +51,7 @@ export function importTrip(json: string): Trip {
   const trip = parsed?.trip;
   if (
     !trip ||
+    typeof trip.id !== "string" ||
     typeof trip.name !== "string" ||
     !Array.isArray(trip.people) ||
     !Array.isArray(trip.receipts)
