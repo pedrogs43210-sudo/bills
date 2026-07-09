@@ -6,13 +6,20 @@ const createMock = vi.fn();
 vi.mock("@anthropic-ai/sdk", () => {
   class APIError extends Error {}
   class AuthenticationError extends APIError {}
+  class APIConnectionError extends APIError {}
   // NOTE: a `function` expression (not an arrow function) is required here so the mock
   // remains constructable with `new` under Vitest 4's stricter mockImplementation checks.
   const Anthropic = vi.fn().mockImplementation(function () {
     return { messages: { parse: parseMock, create: createMock } };
-  }) as unknown as { new (...args: unknown[]): unknown; APIError: unknown; AuthenticationError: unknown };
+  }) as unknown as {
+    new (...args: unknown[]): unknown;
+    APIError: unknown;
+    AuthenticationError: unknown;
+    APIConnectionError: unknown;
+  };
   Anthropic.APIError = APIError;
   Anthropic.AuthenticationError = AuthenticationError;
+  Anthropic.APIConnectionError = APIConnectionError;
   return { default: Anthropic };
 });
 
@@ -66,6 +73,14 @@ describe("scanReceipt", () => {
   it("maps other API errors to network", async () => {
     parseMock.mockRejectedValue(new (Anthropic as any).APIError("529"));
     await expect(scanReceipt("sk", "img")).rejects.toMatchObject({ reason: "network" });
+  });
+
+  it("maps connection errors to network with an offline message", async () => {
+    parseMock.mockRejectedValue(new (Anthropic as any).APIConnectionError("offline"));
+    await expect(scanReceipt("sk", "img")).rejects.toMatchObject({
+      reason: "network",
+      message: expect.stringContaining("online"),
+    });
   });
 });
 

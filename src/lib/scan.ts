@@ -9,11 +9,11 @@ export const ScanResultSchema = z.object({
   items: z.array(
     z.object({
       name: z.string(),
-      quantity: z.number(),
-      lineTotal: z.number(),
+      quantity: z.number().int(),
+      lineTotal: z.number().int(),
     })
   ),
-  printedTotal: z.number(),
+  printedTotal: z.number().int(),
 });
 export type ScanResult = z.infer<typeof ScanResultSchema>;
 
@@ -59,9 +59,11 @@ export async function scanReceipt(apiKey: string, imageBase64: string): Promise<
         },
       ],
       output_config: { format: zodOutputFormat(ScanResultSchema) },
-    });
+    }, { timeout: 60_000 });
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) throw new ScanError("bad-key", "The API key was rejected");
+    // Check connection errors BEFORE APIError — APIConnectionError is a subclass of APIError.
+    if (err instanceof Anthropic.APIConnectionError) throw new ScanError("network", "Could not reach the scanning service — are you online?");
     if (err instanceof Anthropic.APIError) throw new ScanError("network", "The scanning service had a problem — try again");
     throw new ScanError("network", "Could not reach the scanning service — are you online?");
   }
@@ -79,7 +81,7 @@ export async function verifyApiKey(apiKey: string): Promise<boolean> {
       model: "claude-opus-4-8",
       max_tokens: 1,
       messages: [{ role: "user", content: "ping" }],
-    });
+    }, { timeout: 15_000 });
     return true;
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) return false;
