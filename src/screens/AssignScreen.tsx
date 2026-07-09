@@ -28,14 +28,20 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
   const setAssignment = (itemId: string, assignment: Assignment) =>
     dispatch({ type: "setAssignment", tripId, receiptId, itemId, assignment });
 
-  /** Assign an item; a directly-following unassigned discount line inherits the same assignment (spec §7). */
+  /**
+   * Assign an item. A directly-following discount line (negative total) follows along:
+   * it inherits when unassigned or still mirroring the parent's previous assignment,
+   * and stops following once the user manually diverges it (spec §7).
+   */
   function assign(item: Item, assignment: Assignment) {
     setAssignment(item.id, assignment);
     const idx = receipt!.items.findIndex((i) => i.id === item.id);
     const next = receipt!.items[idx + 1];
-    if (next && next.lineTotal < 0 && next.assignment.kind === "unassigned") {
-      setAssignment(next.id, assignment);
-    }
+    if (!next || next.lineTotal >= 0) return;
+    const follows =
+      next.assignment.kind === "unassigned" ||
+      JSON.stringify(next.assignment) === JSON.stringify(item.assignment);
+    if (follows) setAssignment(next.id, assignment);
   }
 
   function togglePerson(item: Item, personId: string) {
@@ -120,6 +126,11 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
 
             {open && unitsMode && (
               <div style={{ marginTop: 8 }}>
+                {a.kind !== "units" && a.kind !== "unassigned" && (
+                  <span className="muted" style={{ display: "block", marginBottom: 4 }}>
+                    Splitting by units replaces the current assignment.
+                  </span>
+                )}
                 {trip.people.map((p) => {
                   const units = a.kind === "units" ? a.shares[p.id] ?? 0 : 0;
                   return (

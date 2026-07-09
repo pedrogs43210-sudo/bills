@@ -118,4 +118,39 @@ describe("assign screen", () => {
     // both the item and its discount are now assigned
     expect(screen.getByText(/all assigned/i)).toBeInTheDocument();
   });
+
+  it("clears the inherited discount when the item is un-assigned", async () => {
+    const t = seedTrip();
+    t.receipts[0].items = [
+      { id: "i1", name: "Fries", quantity: 1, lineTotal: 249, assignment: { kind: "unassigned" } },
+      { id: "d1", name: "Desconto Fries", quantity: 1, lineTotal: -50, assignment: { kind: "unassigned" } },
+    ];
+    t.receipts[0].printedTotal = 199;
+    saveData({ schemaVersion: 1, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openAssign(user);
+    await user.click(screen.getByText("Fries"));
+    await user.click(screen.getByRole("button", { name: "Pedro" }));
+    expect(screen.getByText(/all assigned/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Pedro" })); // un-assign; panel still open
+    expect(screen.getByText(/2 of 2 items unassigned/i)).toBeInTheDocument();
+  });
+
+  it("moves the discount when the item is re-assigned", async () => {
+    const t = seedTrip();
+    t.receipts[0].items = [
+      { id: "i1", name: "Fries", quantity: 1, lineTotal: 249, assignment: { kind: "unassigned" } },
+      { id: "d1", name: "Desconto Fries", quantity: 1, lineTotal: -50, assignment: { kind: "unassigned" } },
+    ];
+    t.receipts[0].printedTotal = 199;
+    saveData({ schemaVersion: 1, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openAssign(user);
+    await user.click(screen.getByText("Fries"));
+    await user.click(screen.getByRole("button", { name: "Pedro" }));
+    await user.click(screen.getByRole("button", { name: /everyone/i })); // re-assign to everyone
+    expect(screen.getAllByText(/👥 Everyone/)).toHaveLength(2); // both summaries follow
+  });
 });
