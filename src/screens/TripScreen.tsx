@@ -14,6 +14,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const { data, dispatch } = useStore();
   const trip = data.trips.find((t) => t.id === tripId);
   const [personName, setPersonName] = useState("");
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
   const lastPhoto = useRef<File | null>(null);
@@ -84,6 +86,15 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     setPersonName("");
   }
 
+  function commitRename(personId: string) {
+    const name = editName.trim();
+    const current = trip!.people.find((p) => p.id === personId)?.name;
+    if (name && name !== current) {
+      dispatch({ type: "renamePerson", tripId, personId, name });
+    }
+    setEditingPersonId(null);
+  }
+
   function addManualReceipt() {
     const receipt: Receipt = {
       id: newId(),
@@ -112,20 +123,45 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       <div className="card">
         <h3>Friends</h3>
         <div>
-          {trip.people.map((p) => (
-            <span key={p.id} className="chip" style={{ background: p.color, cursor: "default" }}>
-              {p.name}
-              {!personHasEntries(trip, p.id) && (
+          {trip.people.map((p) =>
+            p.id === editingPersonId ? (
+              <input
+                key={p.id}
+                aria-label={`Rename ${p.name}`}
+                autoFocus
+                style={{ width: 120, display: "inline-block", margin: "3px 6px 3px 0" }}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commitRename(p.id);
+                  if (e.key === "Escape") setEditingPersonId(null);
+                }}
+                onBlur={() => commitRename(p.id)}
+              />
+            ) : (
+              <span key={p.id} className="chip" style={{ background: p.color, cursor: "default" }}>
                 <button
-                  aria-label={`Remove ${p.name}`}
-                  style={{ border: "none", background: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -6px -8px 4px", fontSize: 16 }}
-                  onClick={() => dispatch({ type: "removePerson", tripId, personId: p.id })}
+                  style={{ all: "unset", cursor: "pointer" }}
+                  aria-label={`Rename ${p.name}`}
+                  onClick={() => {
+                    setEditingPersonId(p.id);
+                    setEditName(p.name);
+                  }}
                 >
-                  ×
+                  {p.name}
                 </button>
-              )}
-            </span>
-          ))}
+                {!personHasEntries(trip, p.id) && (
+                  <button
+                    aria-label={`Remove ${p.name}`}
+                    style={{ border: "none", background: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -6px -8px 4px", fontSize: 16 }}
+                    onClick={() => dispatch({ type: "removePerson", tripId, personId: p.id })}
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
+            )
+          )}
         </div>
         <div className="row" style={{ marginTop: 8 }}>
           <input
@@ -161,6 +197,19 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           </button>
         </div>
       )}
+
+      <button
+        className="btn btn-ghost"
+        style={{ width: "100%", color: "var(--warn)" }}
+        onClick={() => {
+          if (window.confirm(`Delete trip "${trip.name}" and all its receipts? This can't be undone.`)) {
+            dispatch({ type: "deleteTrip", tripId });
+            go({ screen: "trips" });
+          }
+        }}
+      >
+        🗑 Delete trip
+      </button>
 
       <div className="footerbar">
         <label className="btn btn-primary" style={{ display: "block", textAlign: "center", opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>

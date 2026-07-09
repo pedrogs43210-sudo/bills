@@ -68,6 +68,18 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trip", tripId })}>←</button>
         <h1 className="screen-title">Check the receipt</h1>
+        <button
+          className="btn btn-ghost"
+          aria-label="Delete receipt"
+          onClick={() => {
+            if (window.confirm("Delete this receipt? This can't be undone.")) {
+              dispatch({ type: "deleteReceipt", tripId, receiptId });
+              go({ screen: "trip", tripId });
+            }
+          }}
+        >
+          🗑
+        </button>
       </div>
 
       <div className="card">

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
@@ -81,5 +81,15 @@ describe("review screen", () => {
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /looks right/i }));
     expect(screen.getByText(/who got what/i)).toBeInTheDocument(); // AssignScreen placeholder heading (Task 9)
+  });
+
+  it("deletes the receipt after confirmation", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /delete receipt/i }));
+    expect(screen.queryByText(/lidl/i)).toBeNull(); // back on trip screen, receipt gone
+    vi.mocked(window.confirm).mockRestore();
   });
 });

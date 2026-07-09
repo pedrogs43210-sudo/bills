@@ -23,6 +23,11 @@ Settings → Export for backups.
 
 ## Deploy
 
-Any static host works. Easiest: `npm run build`, then drag the `dist/`
-folder onto https://app.netlify.com/drop — you get a URL to bookmark on
-your phone ("Add to Home Screen" makes it feel like a native app).
+**GitHub Pages (automatic):** push this repo to GitHub, then in the repo go to
+Settings → Pages → Source: "GitHub Actions". Every push to `main` builds, tests,
+and deploys. Your app URL will be `https://<username>.github.io/<repo>/`.
+
+**Netlify (manual alternative):** `npm run build`, then drag the `dist/` folder
+onto https://app.netlify.com/drop.
+
+After deploying, open the URL on your phone and "Add to Home Screen".
