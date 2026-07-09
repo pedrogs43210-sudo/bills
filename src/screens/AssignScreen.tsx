@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { formatCents } from "../lib/money";
 import { isFullyAssigned, isItemAssigned } from "../lib/split";
+import { receiptSummaryText } from "../lib/summary";
 import type { View } from "../App";
 import type { Assignment, Item, Person } from "../types";
 
@@ -76,6 +77,19 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
           }}
         >
           ✏️ Edit items
+        </button>
+        <button
+          className="btn btn-ghost"
+          aria-label="Share receipt"
+          onClick={async () => {
+            const text = receiptSummaryText(trip, receipt);
+            if (navigator.share) {
+              try { await navigator.share({ text }); return; } catch { /* fall through */ }
+            }
+            await navigator.clipboard.writeText(text);
+          }}
+        >
+          📤
         </button>
       </div>
 
