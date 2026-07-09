@@ -3,6 +3,7 @@ import { useStore } from "../state/StoreProvider";
 import { formatCents } from "../lib/money";
 import { isFullyAssigned, isItemAssigned } from "../lib/split";
 import { receiptSummaryText } from "../lib/summary";
+import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
 import type { Assignment, Item, Person } from "../types";
 
@@ -22,6 +23,7 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
   const { data, dispatch } = useStore();
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const [unitsMode, setUnitsMode] = useState(false);
+  const [receiptShared, setReceiptShared] = useState(false);
   const trip = data.trips.find((t) => t.id === tripId);
   const receipt = trip?.receipts.find((r) => r.id === receiptId);
   if (!trip || !receipt) return null;
@@ -82,14 +84,14 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
           className="btn btn-ghost"
           aria-label="Share receipt"
           onClick={async () => {
-            const text = receiptSummaryText(trip, receipt);
-            if (navigator.share) {
-              try { await navigator.share({ text }); return; } catch { /* fall through */ }
+            const outcome = await shareOrCopy(receiptSummaryText(trip, receipt));
+            if (outcome === "copied") {
+              setReceiptShared(true);
+              setTimeout(() => setReceiptShared(false), 2000);
             }
-            await navigator.clipboard.writeText(text);
           }}
         >
-          📤
+          {receiptShared ? "✅" : "📤"}
         </button>
       </div>
 

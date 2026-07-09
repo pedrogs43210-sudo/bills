@@ -4,11 +4,12 @@ import { balances, paidTotals, settle, shareTotals } from "../lib/settle";
 import { isFullyAssigned } from "../lib/split";
 import { formatCents } from "../lib/money";
 import { summaryText } from "../lib/summary";
+import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
 
 export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => void }) {
   const { data } = useStore();
-  const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<"" | "copied" | "failed">("");
   const trip = data.trips.find((t) => t.id === tripId);
   if (!trip) return null;
 
@@ -19,18 +20,10 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
   const hasUnassigned = trip.receipts.some((r) => !isFullyAssigned(r));
 
   async function share() {
-    const text = summaryText(trip!);
-    if (navigator.share) {
-      try {
-        await navigator.share({ text });
-        return;
-      } catch {
-        // user cancelled or share failed — fall through to clipboard
-      }
-    }
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const outcome = await shareOrCopy(summaryText(trip!));
+    if (outcome === "shared") return;
+    setFeedback(outcome);
+    setTimeout(() => setFeedback(""), 2000);
   }
 
   return (
@@ -71,7 +64,8 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
         )}
       </div>
 
-      {copied && <div className="banner-good">Copied to clipboard ✓</div>}
+      {feedback === "copied" && <div className="banner-good">Copied to clipboard ✓</div>}
+      {feedback === "failed" && <div className="banner-warn">Couldn't share on this device.</div>}
       <div className="footerbar">
         <button className="btn btn-primary" onClick={share}>📤 Share summary</button>
       </div>
