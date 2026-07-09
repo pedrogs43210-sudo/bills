@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { personHasEntries } from "../state/reducer";
 import { newId } from "../lib/ids";
@@ -17,6 +17,13 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
   const lastPhoto = useRef<File | null>(null);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
   if (!trip) return null;
 
   async function handlePhoto(file: File) {
@@ -28,7 +35,12 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     }
     setScanState("busy");
     try {
-      const base64 = await downscaleToBase64Jpeg(file);
+      const base64 = await downscaleToBase64Jpeg(file).catch(() => {
+        throw new ScanError(
+          "unparseable",
+          "Couldn't read that photo format — try a JPEG (on iPhone: Settings → Camera → Formats → 'Most Compatible'), or pick a different photo."
+        );
+      });
       const result = await scanReceipt(apiKey, base64);
       const receipt: Receipt = {
         id: newId(),
@@ -50,9 +62,11 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         dispatch({ type: "setCurrency", tripId, currency });
       }
       dispatch({ type: "addReceipt", tripId, receipt });
+      if (!alive.current) return; // user left this screen — keep the data, skip the navigation
       setScanState("idle");
       go({ screen: "receipt", tripId, receiptId: receipt.id });
     } catch (err) {
+      if (!alive.current) return;
       setScanState("error");
       setScanMessage(
         err instanceof ScanError ? err.message : "Something went wrong reading the photo."
@@ -155,7 +169,6 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             hidden
             type="file"
             accept="image/*"
-            capture="environment"
             aria-label="Scan receipt"
             disabled={trip.people.length === 0 || scanState === "busy"}
             onChange={(e) => {

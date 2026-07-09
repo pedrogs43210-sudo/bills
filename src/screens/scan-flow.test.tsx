@@ -66,6 +66,24 @@ describe("scan flow", () => {
     expect(await screen.findByDisplayValue("Pão")).toBeInTheDocument();
   });
 
+  it("keeps the scanned receipt but does not navigate when the scan finishes after leaving", async () => {
+    let resolveScan!: (r: unknown) => void;
+    vi.mocked(scanReceipt).mockImplementation(() => new Promise((res) => { resolveScan = res; }) as never);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByText(/algarve/i));
+    await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+    await user.click(screen.getByRole("button", { name: /back/i })); // leave mid-scan
+    resolveScan({
+      storeName: "Lidl", date: null, currency: "EUR",
+      items: [{ name: "Pão", quantity: 1, lineTotal: 119 }], printedTotal: 119,
+    });
+    expect(await screen.findByPlaceholderText(/trip name/i)).toBeInTheDocument(); // still on trip list
+    expect(screen.queryByText(/check the receipt/i)).toBeNull(); // no surprise navigation
+    await user.click(screen.getByText(/algarve/i));
+    expect(await screen.findByText(/lidl/i)).toBeInTheDocument(); // data was kept
+  });
+
   it("sends you to settings when no key is saved", async () => {
     localStorage.removeItem("bills.apiKey");
     const user = userEvent.setup();
