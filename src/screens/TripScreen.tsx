@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { personHasEntries } from "../state/reducer";
 import { newId } from "../lib/ids";
 import { formatCents } from "../lib/money";
 import { isFullyAssigned } from "../lib/split";
+import { loadApiKey } from "../lib/storage";
+import { downscaleToBase64Jpeg } from "../lib/image";
+import { scanReceipt, ScanError } from "../lib/scan";
 import type { View } from "../App";
 import type { Receipt } from "../types";
 
@@ -11,7 +14,54 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const { data, dispatch } = useStore();
   const trip = data.trips.find((t) => t.id === tripId);
   const [personName, setPersonName] = useState("");
+  const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
+  const [scanMessage, setScanMessage] = useState("");
+  const lastPhoto = useRef<File | null>(null);
   if (!trip) return null;
+
+  async function handlePhoto(file: File) {
+    lastPhoto.current = file;
+    const apiKey = loadApiKey();
+    if (!apiKey) {
+      go({ screen: "settings" });
+      return;
+    }
+    setScanState("busy");
+    try {
+      const base64 = await downscaleToBase64Jpeg(file);
+      const result = await scanReceipt(apiKey, base64);
+      const receipt: Receipt = {
+        id: newId(),
+        storeName: result.storeName,
+        date: result.date ?? new Date().toISOString().slice(0, 10),
+        paidBy: trip!.people[0].id,
+        items: result.items.map((i) => ({
+          id: newId(),
+          name: i.name,
+          quantity: Math.max(1, Math.round(i.quantity)),
+          lineTotal: Math.round(i.lineTotal),
+          assignment: { kind: "unassigned" as const },
+        })),
+        printedTotal: Math.round(result.printedTotal),
+        status: "review",
+      };
+      const currency = /^[A-Za-z]{3}$/.test(result.currency) ? result.currency.toUpperCase() : "";
+      if (trip!.receipts.length === 0 && currency) {
+        dispatch({ type: "setCurrency", tripId, currency });
+      }
+      dispatch({ type: "addReceipt", tripId, receipt });
+      setScanState("idle");
+      go({ screen: "receipt", tripId, receiptId: receipt.id });
+    } catch (err) {
+      setScanState("error");
+      setScanMessage(
+        err instanceof ScanError ? err.message : "Something went wrong reading the photo."
+      );
+      if (err instanceof ScanError && err.reason === "bad-key") {
+        setScanMessage("The API key was rejected — check it in Settings.");
+      }
+    }
+  }
 
   function addPerson() {
     const name = personName.trim();
@@ -54,7 +104,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
               {!personHasEntries(trip, p.id) && (
                 <button
                   aria-label={`Remove ${p.name}`}
-                  style={{ border: "none", background: "none", cursor: "pointer", marginLeft: 4, padding: "8px 10px", margin: "-8px -6px -8px 4px", fontSize: 16 }}
+                  style={{ border: "none", background: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -6px -8px 4px", fontSize: 16 }}
                   onClick={() => dispatch({ type: "removePerson", tripId, personId: p.id })}
                 >
                   ×
@@ -89,13 +139,40 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         </button>
       ))}
 
+      {scanState === "error" && (
+        <div className="banner-warn">
+          ⚠️ {scanMessage}{" "}
+          <button className="btn btn-ghost" onClick={() => lastPhoto.current && handlePhoto(lastPhoto.current)}>
+            Try again
+          </button>
+        </div>
+      )}
+
       <div className="footerbar">
-        <button className="btn" style={{ width: "100%", marginBottom: 8 }} disabled={trip.people.length === 0} onClick={addManualReceipt}>
-          ✍️ Add items by hand
-        </button>
-        <button className="btn btn-primary" disabled={trip.receipts.length === 0} onClick={() => go({ screen: "settle", tripId })}>
-          💸 Settle up
-        </button>
+        <label className="btn btn-primary" style={{ display: "block", textAlign: "center", opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
+          {scanState === "busy" ? "🧾✨ Reading receipt…" : "📸 Scan receipt"}
+          <input
+            hidden
+            type="file"
+            accept="image/*"
+            capture="environment"
+            aria-label="Scan receipt"
+            disabled={trip.people.length === 0 || scanState === "busy"}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handlePhoto(f);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <div className="row">
+          <button className="btn" style={{ flex: 1 }} disabled={trip.people.length === 0} onClick={addManualReceipt}>
+            ✍️ Add items by hand
+          </button>
+          <button className="btn" style={{ flex: 1 }} disabled={trip.receipts.length === 0} onClick={() => go({ screen: "settle", tripId })}>
+            💸 Settle up
+          </button>
+        </div>
       </div>
     </div>
   );

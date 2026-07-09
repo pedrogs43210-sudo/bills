@@ -1,0 +1,10 @@
+{
+  "name": "Bills",
+  "short_name": "Bills",
+  "description": "Split holiday grocery receipts with friends",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFF8F0",
+  "theme_color": "#FF7059",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
