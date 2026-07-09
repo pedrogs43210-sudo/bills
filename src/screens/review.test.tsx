@@ -64,6 +64,17 @@ describe("review screen", () => {
     expect(screen.getAllByPlaceholderText(/item name/i)).toHaveLength(2);
   });
 
+  it("allows clearing the quantity and retyping", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    const qty = screen.getByLabelText("Juice quantity");
+    await user.clear(qty);
+    await user.type(qty, "2");
+    await user.tab();
+    expect(screen.getByLabelText("Juice quantity")).toHaveValue("2");
+  });
+
   it("moves to assigning on confirm", async () => {
     const user = userEvent.setup();
     render(<App />);

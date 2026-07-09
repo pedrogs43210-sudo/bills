@@ -24,6 +24,25 @@ function MoneyInput({ cents, onChange, label }: { cents: number; onChange: (c: n
   );
 }
 
+function QuantityInput({ quantity, onChange, label }: { quantity: number; onChange: (q: number) => void; label: string }) {
+  const [text, setText] = useState(String(quantity));
+  useEffect(() => setText(String(quantity)), [quantity]);
+  return (
+    <input
+      aria-label={label}
+      inputMode="numeric"
+      style={{ width: 52, textAlign: "center" }}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const q = parseInt(text, 10);
+        if (Number.isFinite(q) && q >= 1 && q !== quantity) onChange(q);
+        else setText(String(quantity));
+      }}
+    />
+  );
+}
+
 export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receiptId: string; go: (v: View) => void }) {
   const { data, dispatch } = useStore();
   const trip = data.trips.find((t) => t.id === tripId);
@@ -84,15 +103,10 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
               value={item.name}
               onChange={(e) => updateItem({ ...item, name: e.target.value })}
             />
-            <input
-              aria-label={`${item.name} quantity`}
-              inputMode="numeric"
-              style={{ width: 52, textAlign: "center" }}
-              value={item.quantity}
-              onChange={(e) => {
-                const q = parseInt(e.target.value, 10);
-                if (Number.isFinite(q) && q >= 1) updateItem({ ...item, quantity: q, assignment: { kind: "unassigned" } });
-              }}
+            <QuantityInput
+              label={`${item.name} quantity`}
+              quantity={item.quantity}
+              onChange={(q) => updateItem({ ...item, quantity: q, assignment: { kind: "unassigned" } })}
             />
             <MoneyInput label={`${item.name} price`} cents={item.lineTotal} onChange={(c) => updateItem({ ...item, lineTotal: c })} />
             <button
