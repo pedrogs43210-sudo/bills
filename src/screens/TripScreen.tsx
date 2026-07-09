@@ -54,7 +54,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
               {!personHasEntries(trip, p.id) && (
                 <button
                   aria-label={`Remove ${p.name}`}
-                  style={{ border: "none", background: "none", cursor: "pointer", marginLeft: 4 }}
+                  style={{ border: "none", background: "none", cursor: "pointer", marginLeft: 4, padding: "8px 10px", margin: "-8px -6px -8px 4px", fontSize: 16 }}
                   onClick={() => dispatch({ type: "removePerson", tripId, personId: p.id })}
                 >
                   ×
@@ -83,7 +83,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         >
           <span>
             🧾 <b>{r.storeName || "Receipt"}</b> · {formatCents(r.printedTotal, trip.currency)}
-            <div className="muted">paid by {payerName(r.paidBy)} · {r.date}</div>
+            <span className="muted" style={{ display: "block" }}>paid by {payerName(r.paidBy)} · {r.date}</span>
           </span>
           <span className="muted">{badge(r)}</span>
         </button>

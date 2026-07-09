@@ -46,7 +46,12 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
 
       <div className="card">
         <h3>New trip</h3>
-        <input placeholder="Trip name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input
+          placeholder="Trip name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && create()}
+        />
         <div style={{ margin: "10px 0" }}>
           {EMOJIS.map((e) => (
             <button key={e} className={`chip ${e === emoji ? "selected" : ""}`} onClick={() => setEmoji(e)}>
