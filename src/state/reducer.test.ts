@@ -51,6 +51,28 @@ describe("trips and people", () => {
     ]);
     expect(data.trips).toHaveLength(0);
   });
+
+  it("does not reuse a color after removing and re-adding people", () => {
+    const start = run([
+      { type: "createTrip", id: "t1", name: "Algarve", emoji: "🏖️" },
+      { type: "addPerson", tripId: "t1", personId: "p1", name: "Pedro" },
+      { type: "addPerson", tripId: "t1", personId: "p2", name: "Ana" },
+      { type: "addPerson", tripId: "t1", personId: "p3", name: "Bruno" },
+    ]);
+    const removed = reducer(start, { type: "removePerson", tripId: "t1", personId: "p1" });
+    const after = reducer(removed, { type: "addPerson", tripId: "t1", personId: "p4", name: "Carla" });
+    const colors = after.trips[0].people.map((p) => p.color);
+    expect(new Set(colors).size).toBe(colors.length); // all distinct
+  });
+
+  it("renames a person", () => {
+    const data = run([
+      { type: "createTrip", id: "t1", name: "Algarve", emoji: "🏖️" },
+      { type: "addPerson", tripId: "t1", personId: "p1", name: "Pedro" },
+      { type: "renamePerson", tripId: "t1", personId: "p1", name: "Pedrinho" },
+    ]);
+    expect(data.trips[0].people[0].name).toBe("Pedrinho");
+  });
 });
 
 describe("receipts and assignments", () => {

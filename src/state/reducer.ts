@@ -56,13 +56,16 @@ export function reducer(data: AppData, action: Action): AppData {
     case "deleteTrip":
       return { ...data, trips: data.trips.filter((t) => t.id !== action.tripId) };
     case "addPerson":
-      return mapTrip(data, action.tripId, (t) => ({
-        ...t,
-        people: [
-          ...t.people,
-          { id: action.personId, name: action.name, color: PERSON_COLORS[t.people.length % PERSON_COLORS.length] },
-        ],
-      }));
+      return mapTrip(data, action.tripId, (t) => {
+        const used = new Set(t.people.map((p) => p.color));
+        const color =
+          PERSON_COLORS.find((c) => !used.has(c)) ??
+          PERSON_COLORS[t.people.length % PERSON_COLORS.length];
+        return {
+          ...t,
+          people: [...t.people, { id: action.personId, name: action.name, color }],
+        };
+      });
     case "renamePerson":
       return mapTrip(data, action.tripId, (t) => ({
         ...t,
