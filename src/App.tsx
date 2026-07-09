@@ -1,3 +1,45 @@
+import { useState } from "react";
+import { StoreProvider, useStore } from "./state/StoreProvider";
+import { TripListScreen } from "./screens/TripListScreen";
+import { TripScreen } from "./screens/TripScreen";
+import { ReviewScreen } from "./screens/ReviewScreen";
+import { AssignScreen } from "./screens/AssignScreen";
+import { SettleScreen } from "./screens/SettleScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
+
+export type View =
+  | { screen: "trips" }
+  | { screen: "trip"; tripId: string }
+  | { screen: "receipt"; tripId: string; receiptId: string }
+  | { screen: "settle"; tripId: string }
+  | { screen: "settings" };
+
+function Router() {
+  const [view, setView] = useState<View>({ screen: "trips" });
+  const { data } = useStore();
+
+  if (view.screen === "trips") return <TripListScreen go={setView} />;
+  if (view.screen === "settings") return <SettingsScreen go={setView} />;
+
+  const trip = data.trips.find((t) => t.id === view.tripId);
+  if (!trip) return <TripListScreen go={setView} />; // trip was deleted
+
+  if (view.screen === "trip") return <TripScreen tripId={trip.id} go={setView} />;
+  if (view.screen === "settle") return <SettleScreen tripId={trip.id} go={setView} />;
+
+  const receipt = trip.receipts.find((r) => r.id === view.receiptId);
+  if (!receipt) return <TripScreen tripId={trip.id} go={setView} />;
+  return receipt.status === "review" ? (
+    <ReviewScreen tripId={trip.id} receiptId={receipt.id} go={setView} />
+  ) : (
+    <AssignScreen tripId={trip.id} receiptId={receipt.id} go={setView} />
+  );
+}
+
 export default function App() {
-  return <h1>Bills 🧾</h1>;
+  return (
+    <StoreProvider>
+      <Router />
+    </StoreProvider>
+  );
 }
