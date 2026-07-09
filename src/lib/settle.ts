@@ -3,17 +3,23 @@ import { receiptShares } from "./split";
 
 export type Transfer = { from: string; to: string; amount: number };
 
+/** Receipts whose payer is a trip member; others (corrupt/imported data) are excluded from all math. */
+function countableReceipts(trip: Trip) {
+  const memberIds = new Set(trip.people.map((p) => p.id));
+  return trip.receipts.filter((r) => memberIds.has(r.paidBy));
+}
+
 export function paidTotals(trip: Trip): Record<string, number> {
   const paid: Record<string, number> = {};
   for (const p of trip.people) paid[p.id] = 0;
-  for (const r of trip.receipts) paid[r.paidBy] = (paid[r.paidBy] ?? 0) + r.printedTotal;
+  for (const r of countableReceipts(trip)) paid[r.paidBy] += r.printedTotal;
   return paid;
 }
 
 export function shareTotals(trip: Trip): Record<string, number> {
   const shares: Record<string, number> = {};
   for (const p of trip.people) shares[p.id] = 0;
-  for (const r of trip.receipts) {
+  for (const r of countableReceipts(trip)) {
     for (const [id, share] of Object.entries(receiptShares(r, trip.people))) {
       shares[id] = (shares[id] ?? 0) + share;
     }
@@ -52,6 +58,7 @@ export function settle(bal: Record<string, number>): Transfer[] {
     transfers.push({ from: d.id, to: c.id, amount });
     c.v -= amount;
     d.v -= amount;
+    // balance values are integer cents; exact === 0 termination depends on this
     if (c.v === 0) creditors.shift();
     if (d.v === 0) debtors.shift();
   }

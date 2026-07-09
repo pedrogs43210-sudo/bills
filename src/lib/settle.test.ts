@@ -42,6 +42,14 @@ describe("balances", () => {
     expect(shareTotals(t)).toEqual({ pedro: 100, ana: 100, bruno: 100 });
   });
 
+  it("excludes receipts whose payer is not a trip member (corrupt data)", () => {
+    const t = trip([everyoneReceipt(300, "pedro"), everyoneReceipt(300, "ghost")]);
+    const b = balances(t);
+    expect(Object.keys(b).sort()).toEqual(["ana", "bruno", "pedro"]);
+    expect(Object.values(b).reduce((x, y) => x + y, 0)).toBe(0);
+    expect(b).toEqual({ pedro: 200, ana: -100, bruno: -100 }); // ghost-paid receipt ignored
+  });
+
   it("stays zero-sum even when a receipt contains a non-member assignment id", () => {
     const ghostReceipt: Receipt = {
       id: "rg", storeName: "Lidl", date: "2026-07-08", paidBy: "pedro",
