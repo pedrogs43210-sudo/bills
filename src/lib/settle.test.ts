@@ -79,7 +79,7 @@ describe("settle", () => {
         b[id] = v;
         sum += v;
       }
-      b["e"] = -sum; // force zero-sum
+      b["e"] = sum === 0 ? 0 : -sum; // force zero-sum; avoid -0, which Object.is distinguishes from 0
       const transfers = settle(b);
       const after = { ...b };
       for (const t of transfers) {
