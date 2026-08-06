@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { receiptShares, roundLargestRemainder, isItemAssigned, isFullyAssigned } from "./split";
+import { splitEvenly } from "./payments";
 import type { Item, Person, Receipt, Assignment } from "../types";
 
 const people: Person[] = [
@@ -101,14 +102,15 @@ describe("receiptShares", () => {
         const a = kinds[Math.floor(random() * kinds.length)];
         items.push(item(cents, a, a.kind === "units" ? 3 : 1));
       }
-      // Randomised payments among 1-2 members, deliberately not summing to `sum` —
-      // this exercises the absorber for both shortfalls and overshoots, not just the
-      // single-payer-pays-exactly-the-total case.
+      // Randomised payments among 1-2 members. Every fourth run pays exact coverage
+      // (the everyday case) via splitEvenly; the rest deliberately don't sum to `sum`,
+      // exercising the absorber for both shortfalls and overshoots.
       const memberIds = people.map((p) => p.id);
+      const start = Math.floor(random() * memberIds.length);
       const payerCount = 1 + Math.floor(random() * 2);
-      const shuffled = [...memberIds].sort(() => random() - 0.5);
-      const payerIds = shuffled.slice(0, payerCount);
-      const payments = payerIds.map((id) => ({ personId: id, amount: Math.floor(random() * (sum * 2 + 1)) }));
+      const payerIds = Array.from({ length: payerCount }, (_, k) => memberIds[(start + k) % memberIds.length]);
+      const payments =
+        run % 4 === 0 ? splitEvenly(sum, payerIds) : payerIds.map((id) => ({ personId: id, amount: Math.floor(random() * (sum * 2 + 1)) }));
 
       const r: Receipt = {
         id: "r1", storeName: "Lidl", date: "2026-07-08",
