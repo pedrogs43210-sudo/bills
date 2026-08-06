@@ -3,8 +3,8 @@ import { useStore } from "../state/StoreProvider";
 import { newId } from "../lib/ids";
 import { formatCents, parseToCents } from "../lib/money";
 import type { View } from "../App";
-import type { Item, Receipt } from "../types";
-import { primaryPayerId, withSyncedSinglePayment } from "../lib/payments";
+import type { Item, Payment, Receipt } from "../types";
+import { paymentsTotal, splitEvenly, withSyncedSinglePayment } from "../lib/payments";
 
 function MoneyInput({ cents, onChange, label }: { cents: number; onChange: (c: number) => void; label: string }) {
   const [text, setText] = useState((cents / 100).toFixed(2));
@@ -57,6 +57,25 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
   const itemSum = receipt.items.reduce((s, i) => s + i.lineTotal, 0);
   const diff = receipt.printedTotal - itemSum;
 
+  const payments = receipt.payments;
+  const payTotal = paymentsTotal(receipt);
+  // Empty payments (only reachable from imported/hand-edited data) never count as covered —
+  // the placeholder row below makes that state visible instead of silently showing a name.
+  const covered = payments.length > 0 && payTotal === receipt.printedTotal;
+  const personName = (id: string) => trip!.people.find((p) => p.id === id)?.name ?? "?";
+
+  const setPayments = (next: Payment[]) => update(withSyncedSinglePayment({ ...receipt!, payments: next }));
+
+  /** People selectable in one row: the current payer, plus anyone not already paying. */
+  const selectablePeople = (currentId: string) =>
+    trip!.people.filter((p) => p.id === currentId || !payments.some((pay) => pay.personId === p.id));
+
+  function addPayer() {
+    const next = trip!.people.find((p) => !payments.some((pay) => pay.personId === p.id));
+    if (!next) return;
+    setPayments(splitEvenly(receipt!.printedTotal, [...payments.map((p) => p.personId), next.id]));
+  }
+
   function addItem() {
     update({
       ...receipt!,
@@ -97,19 +116,74 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
             onChange={(e) => update({ ...receipt, date: e.target.value })}
           />
         </div>
-        <label className="muted">
-          Paid by{" "}
-          <select
-            value={primaryPayerId(receipt) ?? ""}
-            onChange={(e) =>
-              update(withSyncedSinglePayment({ ...receipt, payments: [{ personId: e.target.value, amount: receipt.printedTotal }] }))
-            }
-          >
-            {trip.people.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </label>
+        <h3 style={{ marginTop: 8 }}>Paid by</h3>
+        {payments.length === 0 ? (
+          <div className="row" style={{ padding: "4px 0" }}>
+            <select
+              aria-label="Payer 1"
+              value=""
+              onChange={(e) => setPayments([{ personId: e.target.value, amount: receipt.printedTotal }])}
+            >
+              <option value="" disabled>Nobody yet — pick a payer</option>
+              {trip.people.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          payments.map((pay, index) => (
+            <div key={pay.personId} className="row" style={{ padding: "4px 0" }}>
+              <select
+                aria-label={`Payer ${index + 1}`}
+                value={pay.personId}
+                onChange={(e) =>
+                  setPayments(payments.map((p) => (p.personId === pay.personId ? { ...p, personId: e.target.value } : p)))
+                }
+              >
+                {selectablePeople(pay.personId).map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {payments.length > 1 && (
+                <>
+                  <MoneyInput
+                    label={`Payer ${index + 1} amount`}
+                    cents={pay.amount}
+                    onChange={(c) =>
+                      setPayments(payments.map((p) => (p.personId === pay.personId ? { ...p, amount: c } : p)))
+                    }
+                  />
+                  <button
+                    className="btn btn-ghost"
+                    aria-label={`Remove payer ${index + 1}`}
+                    onClick={() => setPayments(payments.filter((p) => p.personId !== pay.personId))}
+                  >
+                    🗑
+                  </button>
+                </>
+              )}
+            </div>
+          ))
+        )}
+        <div className="row" style={{ marginTop: 8 }}>
+          <button className="btn" disabled={payments.length >= trip.people.length} onClick={addPayer}>
+            ＋ Add another payer
+          </button>
+          {payments.length > 1 && (
+            <button
+              className="btn"
+              onClick={() => setPayments(splitEvenly(receipt.printedTotal, payments.map((p) => p.personId)))}
+            >
+              Split evenly
+            </button>
+          )}
+        </div>
+        {payments.length > 1 && (
+          <div className={covered ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
+            Payers cover {formatCents(payTotal, trip.currency)} of {formatCents(receipt.printedTotal, trip.currency)}
+            {covered ? " ✓" : ` — ${payments.map((p) => personName(p.personId)).join(" + ")} must add up before you continue.`}
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -152,14 +226,21 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         <div className="banner-good">✓ Matches the receipt total ({formatCents(itemSum, trip.currency)})</div>
       ) : (
         <div className="banner-warn">
-          ⚠️ Items sum to {formatCents(itemSum, trip.currency)} — off by {formatCents(diff, trip.currency)}. Fix a line or continue and the payer absorbs the difference.
+          ⚠️ Items sum to {formatCents(itemSum, trip.currency)} — off by {formatCents(diff, trip.currency)}.{" "}
+          <button
+            className="btn btn-ghost"
+            onClick={() => update(withSyncedSinglePayment({ ...receipt, printedTotal: itemSum }))}
+          >
+            Use {formatCents(itemSum, trip.currency)}
+          </button>{" "}
+          or fix a line — otherwise the biggest payer absorbs the difference.
         </div>
       )}
 
       <div className="footerbar">
         <button
           className="btn btn-primary"
-          disabled={receipt.items.length === 0}
+          disabled={receipt.items.length === 0 || !covered}
           onClick={() => {
             dispatch({ type: "setReceiptStatus", tripId, receiptId, status: "assigning" });
             go({ screen: "receipt", tripId, receiptId });

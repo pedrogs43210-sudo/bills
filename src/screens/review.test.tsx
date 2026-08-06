@@ -94,4 +94,80 @@ describe("review screen", () => {
     expect(screen.queryByText(/lidl/i)).toBeNull(); // back on trip screen, receipt gone
     vi.mocked(window.confirm).mockRestore();
   });
+
+  it("adopts the items' sum with one tap", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    const total = screen.getByLabelText("Receipt total");
+    await user.clear(total);
+    await user.type(total, "7.99");
+    await user.tab();
+    expect(screen.getByText(/off by/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /use .*6[.,]99/i }));
+    expect(screen.getByText(/matches/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("6.99");
+  });
+
+  it("keeps a lone payer's amount equal to the total", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    // one payer: no amount field is shown at all
+    expect(screen.queryByLabelText("Payer 1 amount")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    // second payer appears and the total is split evenly
+    expect(screen.getByLabelText("Payer 1 amount")).toHaveValue("3.50");
+    expect(screen.getByLabelText("Payer 2 amount")).toHaveValue("3.49");
+    expect(screen.getByText(/payers cover/i)).toBeInTheDocument();
+  });
+
+  it("blocks the confirm button until the payers cover the total", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    const first = screen.getByLabelText("Payer 1 amount");
+    await user.clear(first);
+    await user.type(first, "1.00");
+    await user.tab();
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: /split evenly/i }));
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeEnabled();
+  });
+
+  it("removing the second payer restores the implicit amount", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    await user.click(screen.getByRole("button", { name: /remove payer 2/i }));
+    expect(screen.queryByLabelText("Payer 1 amount")).toBeNull();
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeEnabled();
+  });
+
+  it("does not offer a payer twice", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    // trip has exactly two people, so both are now paying
+    expect(screen.getByRole("button", { name: /add another payer/i })).toBeDisabled();
+    expect(screen.getByLabelText("Payer 1")).toHaveDisplayValue("Pedro");
+    expect(screen.getByLabelText("Payer 2")).toHaveDisplayValue("Ana");
+  });
+
+  it("makes an empty-payments receipt visibly unset rather than silently showing a name", async () => {
+    const trip = seedTrip();
+    trip.receipts[0].payments = [];
+    saveData({ schemaVersion: 2, trips: [trip] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    // no payer is implied — the placeholder is shown, not the first person in the list
+    expect(screen.getByLabelText("Payer 1")).toHaveDisplayValue("Nobody yet — pick a payer");
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText("Payer 1"), "p2");
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeEnabled();
+  });
 });
