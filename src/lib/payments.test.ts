@@ -24,6 +24,11 @@ describe("primaryPayerId", () => {
     expect(primaryPayerId(receipt([{ personId: "b", amount: 500 }, { personId: "a", amount: 500 }]))).toBe("a");
   });
   it("is null when nobody paid", () => expect(primaryPayerId(receipt([]))).toBeNull());
+  it("does not depend on payer order for the primary payer", () => {
+    const forward = receipt([{ personId: "a", amount: 500 }, { personId: "b", amount: 500 }]);
+    const reversed = { ...forward, payments: [...forward.payments].reverse() };
+    expect(primaryPayerId(forward)).toBe(primaryPayerId(reversed));
+  });
 });
 
 describe("withSyncedSinglePayment", () => {
@@ -74,10 +79,5 @@ describe("splitEvenly", () => {
   it("sums exactly for zero and negative totals", () => {
     expect(splitEvenly(0, ["a", "b"]).reduce((s, p) => s + p.amount, 0)).toBe(0);
     expect(splitEvenly(-1000, ["a", "b", "c"]).reduce((s, p) => s + p.amount, 0)).toBe(-1000);
-  });
-  it("does not depend on payer order for the primary payer", () => {
-    const forward = { id: "r", storeName: "", date: "", payments: [{ personId: "a", amount: 300 }, { personId: "b", amount: 700 }], items: [], printedTotal: 1000, status: "review" as const };
-    const reversed = { ...forward, payments: [...forward.payments].reverse() };
-    expect(primaryPayerId(forward)).toBe(primaryPayerId(reversed));
   });
 });

@@ -23,16 +23,16 @@ export function loadData(): AppData {
     // Isolate per trip: one unreadable trip must not cost the user the others.
     const trips: Trip[] = [];
     const rejected: unknown[] = [];
-    for (const raw of parsed.trips) {
+    for (const rawTrip of parsed.trips) {
       try {
-        trips.push(migrateTrip(raw));
+        trips.push(migrateTrip(rawTrip));
       } catch {
-        rejected.push(raw);
+        rejected.push(rawTrip);
       }
     }
     if (rejected.length > 0) {
       try {
-        localStorage.setItem(`${DATA_KEY}.corrupt`, JSON.stringify(rejected));
+        localStorage.setItem(`${DATA_KEY}.rejected`, JSON.stringify(rejected));
       } catch { /* nothing more we can do */ }
     }
     const data: AppData = { schemaVersion: SCHEMA_VERSION, trips };
@@ -78,7 +78,8 @@ export function exportTrip(trip: Trip): string {
 
 export function importTrip(json: string): Trip {
   const parsed = JSON.parse(json) as { trip?: unknown; schemaVersion?: unknown };
-  if (typeof parsed?.schemaVersion === "number" && parsed.schemaVersion > SCHEMA_VERSION) {
+  const claimed = [parsed?.schemaVersion, (parsed?.trip as { schemaVersion?: unknown } | undefined)?.schemaVersion];
+  if (claimed.some((v) => typeof v === "number" && v > SCHEMA_VERSION)) {
     throw new Error("This file was made by a newer version of Bills");
   }
   // migrateTrip validates the shape and upgrades v1 export files.

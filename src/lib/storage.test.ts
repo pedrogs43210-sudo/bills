@@ -142,7 +142,7 @@ describe("migration on load", () => {
     localStorage.setItem("bills.data.v1", JSON.stringify({ schemaVersion: 1, trips: [good, bad] }));
     const loaded = loadData();
     expect(loaded.trips.map((t) => t.name)).toEqual(["Algarve"]);
-    expect(localStorage.getItem("bills.data.v1.corrupt")).toContain("Broken");
+    expect(localStorage.getItem("bills.data.v1.rejected")).toContain("Broken");
   });
 
   it("backs up the pre-migration blob once", () => {
@@ -160,6 +160,11 @@ describe("migration on load", () => {
 
   it("rejects an export from a newer version", () => {
     const future = JSON.stringify({ app: "bills", schemaVersion: 99, trip: { id: "t1", name: "Future", people: [], receipts: [] } });
+    expect(() => importTrip(future)).toThrow(/newer version/i);
+  });
+
+  it("rejects an export whose trip claims a newer version", () => {
+    const future = JSON.stringify({ app: "bills", trip: { id: "t1", name: "Future", people: [], receipts: [], schemaVersion: 99 } });
     expect(() => importTrip(future)).toThrow(/newer version/i);
   });
 });
