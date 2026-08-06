@@ -25,10 +25,11 @@ export function withSyncedSinglePayment(receipt: Receipt): Receipt {
 
 /** Equal split whose amounts sum exactly to `total`; leftover cents go to the earliest payers. */
 export function splitEvenly(total: number, personIds: string[]): Payment[] {
+  const cents = Math.round(total); // amounts are integer cents; guard the invariant
   const ids = [...new Set(personIds)];
   if (ids.length === 0) return [];
-  const base = Math.trunc(total / ids.length);
-  let leftover = total - base * ids.length;
+  const base = Math.trunc(cents / ids.length);
+  let leftover = cents - base * ids.length;
   const step = leftover >= 0 ? 1 : -1;
   return ids.map((id) => {
     let amount = base;

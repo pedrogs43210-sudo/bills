@@ -7,11 +7,23 @@ import { SCHEMA_VERSION, type Group, type Payment, type Receipt, type Trip } fro
 function migrateReceipt(raw: unknown): Receipt {
   if (!raw || typeof raw !== "object") throw new Error("Unrecognisable receipt");
   const source = { ...(raw as Record<string, unknown>) };
-  const printedTotal = typeof source.printedTotal === "number" ? source.printedTotal : 0;
+  if (!Number.isInteger(source.printedTotal)) {
+    throw new Error("Receipt total is not a whole number of cents");
+  }
+  const printedTotal = source.printedTotal as number;
 
   let payments: Payment[];
   if (Array.isArray(source.payments)) {
-    payments = source.payments as Payment[];
+    // Entries are load-bearing for the money maths, so drop anything unusable.
+    // An empty result is allowed: spec §8 keeps such a receipt visible and editable
+    // while settlement excludes it.
+    payments = source.payments.filter(
+      (p): p is Payment =>
+        !!p &&
+        typeof p === "object" &&
+        typeof (p as Payment).personId === "string" &&
+        Number.isInteger((p as Payment).amount)
+    );
   } else if (typeof source.paidBy === "string") {
     payments = [{ personId: source.paidBy, amount: printedTotal }];
   } else {

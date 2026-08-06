@@ -75,4 +75,58 @@ describe("migrateTrip", () => {
     const broken = { ...v1Trip, receipts: [{ id: "r9", printedTotal: 100 }] };
     expect(() => migrateTrip(broken)).toThrow();
   });
+
+  it("is idempotent", () => {
+    const once = migrateTrip(v1Trip);
+    expect(migrateTrip(once)).toEqual(once);
+  });
+
+  it("drops unusable payment entries but keeps the receipt", () => {
+    const junk = {
+      ...v1Trip,
+      receipts: [{
+        id: "r1", storeName: "Lidl", date: "2026-07-09", printedTotal: 119, status: "review", items: [],
+        payments: [null, {}, { personId: 5, amount: "x" }, { personId: "p1", amount: 119 }],
+      }],
+    };
+    expect(migrateTrip(junk).receipts[0].payments).toEqual([{ personId: "p1", amount: 119 }]);
+  });
+
+  it("keeps a receipt whose payments are all unusable, with an empty list", () => {
+    const junk = {
+      ...v1Trip,
+      receipts: [{ id: "r1", storeName: "Lidl", date: "2026-07-09", printedTotal: 119, status: "review", items: [], payments: [null] }],
+    };
+    expect(migrateTrip(junk).receipts[0].payments).toEqual([]);
+  });
+
+  it("rejects a receipt whose total is not whole cents", () => {
+    const bad = { ...v1Trip, receipts: [{ ...v1Trip.receipts[0], printedTotal: 1.19 }] };
+    expect(() => migrateTrip(bad)).toThrow();
+  });
+
+  it("keeps the settle maths intact through migration", async () => {
+    const { balances } = await import("./settle");
+    const { receiptShares } = await import("./split");
+    const t = migrateTrip({
+      ...v1Trip,
+      people: [
+        { id: "p1", name: "Pedro", color: "#FFD9A0" },
+        { id: "p2", name: "Ana", color: "#FFC4B8" },
+      ],
+      receipts: [
+        { id: "r1", storeName: "Lidl", date: "2026-07-09", paidBy: "p1", printedTotal: 1000, status: "done",
+          items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 1000, assignment: { kind: "everyone" } }] },
+        { id: "r2", storeName: "Pingo", date: "2026-07-10", paidBy: "p2", printedTotal: 500, status: "done",
+          items: [{ id: "i2", name: "juice", quantity: 2, lineTotal: 500, assignment: { kind: "units", shares: { p1: 1, p2: 1 } } }] },
+      ],
+    });
+    for (const r of t.receipts) {
+      const shares = receiptShares(r, t.people);
+      expect(Object.values(shares).reduce((x, y) => x + y, 0)).toBe(r.printedTotal);
+    }
+    const b = balances(t);
+    expect(Object.values(b).reduce((x, y) => x + y, 0)).toBe(0);
+    expect(b).toEqual({ p1: 250, p2: -250 });
+  });
 });

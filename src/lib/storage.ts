@@ -20,12 +20,37 @@ export function loadData(): AppData {
     }
     // Data written by a newer version of the app: don't guess at its shape.
     if (parsed.schemaVersion > SCHEMA_VERSION) throw new Error("data from a newer version");
-    const data: AppData = { schemaVersion: SCHEMA_VERSION, trips: parsed.trips.map(migrateTrip) };
-    if (parsed.schemaVersion < SCHEMA_VERSION) saveData(data); // upgrade on disk once
+    // Isolate per trip: one unreadable trip must not cost the user the others.
+    const trips: Trip[] = [];
+    const rejected: unknown[] = [];
+    for (const raw of parsed.trips) {
+      try {
+        trips.push(migrateTrip(raw));
+      } catch {
+        rejected.push(raw);
+      }
+    }
+    if (rejected.length > 0) {
+      try {
+        localStorage.setItem(`${DATA_KEY}.corrupt`, JSON.stringify(rejected));
+      } catch { /* nothing more we can do */ }
+    }
+    const data: AppData = { schemaVersion: SCHEMA_VERSION, trips };
+    if (parsed.schemaVersion < SCHEMA_VERSION) {
+      // One-time insurance: keep the pre-migration blob in case a bug surfaces later.
+      if (localStorage.getItem(`${DATA_KEY}.pre-v${SCHEMA_VERSION}`) === null) {
+        try {
+          localStorage.setItem(`${DATA_KEY}.pre-v${SCHEMA_VERSION}`, raw);
+        } catch { /* backup is best-effort */ }
+      }
+      saveData(data); // StoreProvider also persists on mount and surfaces quota failures
+    }
     return data;
   } catch {
     // Never lose user data: keep the raw string for manual recovery.
-    localStorage.setItem(`${DATA_KEY}.corrupt`, raw);
+    try {
+      localStorage.setItem(`${DATA_KEY}.corrupt`, raw);
+    } catch { /* storage unavailable — nothing left to do */ }
     return emptyData();
   }
 }
@@ -52,7 +77,10 @@ export function exportTrip(trip: Trip): string {
 }
 
 export function importTrip(json: string): Trip {
-  const parsed = JSON.parse(json) as { trip?: unknown };
+  const parsed = JSON.parse(json) as { trip?: unknown; schemaVersion?: unknown };
+  if (typeof parsed?.schemaVersion === "number" && parsed.schemaVersion > SCHEMA_VERSION) {
+    throw new Error("This file was made by a newer version of Bills");
+  }
   // migrateTrip validates the shape and upgrades v1 export files.
   return migrateTrip(parsed?.trip);
 }

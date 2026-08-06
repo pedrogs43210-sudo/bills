@@ -130,4 +130,36 @@ describe("migration on load", () => {
     expect(trip.receipts[0].payments).toEqual([{ personId: "p1", amount: 250 }]);
     expect(trip.groups).toEqual([]);
   });
+
+  it("keeps the good trips when one is unreadable", () => {
+    const good = {
+      id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
+      people: [{ id: "p1", name: "Pedro", color: "#FFD9A0" }],
+      receipts: [{ id: "r1", storeName: "Lidl", date: "2026-07-09", paidBy: "p1", items: [], printedTotal: 500, status: "done" }],
+      createdAt: "2026-07-09T00:00:00Z", schemaVersion: 1,
+    };
+    const bad = { ...good, id: "t2", name: "Broken", receipts: [null] };
+    localStorage.setItem("bills.data.v1", JSON.stringify({ schemaVersion: 1, trips: [good, bad] }));
+    const loaded = loadData();
+    expect(loaded.trips.map((t) => t.name)).toEqual(["Algarve"]);
+    expect(localStorage.getItem("bills.data.v1.corrupt")).toContain("Broken");
+  });
+
+  it("backs up the pre-migration blob once", () => {
+    const v1 = JSON.stringify({
+      schemaVersion: 1,
+      trips: [{
+        id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
+        people: [], receipts: [], createdAt: "2026-07-09T00:00:00Z", schemaVersion: 1,
+      }],
+    });
+    localStorage.setItem("bills.data.v1", v1);
+    loadData();
+    expect(localStorage.getItem("bills.data.v1.pre-v2")).toBe(v1);
+  });
+
+  it("rejects an export from a newer version", () => {
+    const future = JSON.stringify({ app: "bills", schemaVersion: 99, trip: { id: "t1", name: "Future", people: [], receipts: [] } });
+    expect(() => importTrip(future)).toThrow(/newer version/i);
+  });
 });
