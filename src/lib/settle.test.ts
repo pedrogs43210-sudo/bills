@@ -15,6 +15,15 @@ function trip(receipts: Receipt[]): Trip {
   };
 }
 
+/** Deterministic RNG so a rare failure is reproducible. */
+function makeRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+}
+
 function everyoneReceipt(total: number, paidBy: string): Receipt {
   return {
     id: `r-${paidBy}-${total}`, storeName: "Lidl", date: "2026-07-08",
@@ -81,11 +90,12 @@ describe("settle", () => {
   });
 
   it("zeroes out any balance set (random)", () => {
+    const random = makeRandom(20260806);
     for (let run = 0; run < 100; run++) {
       const b: Record<string, number> = {};
       let sum = 0;
       for (const id of ["a", "b", "c", "d"]) {
-        const v = Math.floor(Math.random() * 4000) - 2000;
+        const v = Math.floor(random() * 4000) - 2000;
         b[id] = v;
         sum += v;
       }
@@ -159,7 +169,7 @@ describe("multiple payers", () => {
     expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
   });
 
-  it("keeps the total right when payers overpay", () => {
+  it("keeps the books balanced when payers overpay (primary payer's credit goes negative)", () => {
     // 200 + 200 on a 300 receipt: the shortfall is negative, so the primary payer's
     // credit is reduced. Equal amounts also exercise the tie-break on this path.
     const over: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 200 }, { personId: "ana", amount: 200 }] };
@@ -167,6 +177,15 @@ describe("multiple payers", () => {
     const paid = paidTotals(t);
     expect(Object.values(paid).reduce((x, y) => x + y, 0)).toBe(300); // contributes exactly printedTotal
     expect(paid).toEqual({ pedro: 200, ana: 100, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("counts the good receipts in a trip that also has excluded ones", () => {
+    const good: Receipt = { ...twoPayerReceipt(), id: "r-good" };                                  // pedro 200 + ana 100
+    const empty: Receipt = { ...twoPayerReceipt(), id: "r-empty", payments: [] };
+    const ghost: Receipt = { ...twoPayerReceipt(), id: "r-ghost", payments: [{ personId: "ghost", amount: 300 }] };
+    const t = trip([good, empty, ghost]);
+    expect(paidTotals(t)).toEqual({ pedro: 200, ana: 100, bruno: 0 });                             // only the good one counts
     expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
   });
 });

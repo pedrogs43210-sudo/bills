@@ -13,6 +13,15 @@ function item(lineTotal: number, assignment: Assignment, quantity = 1): Item {
   return { id: `i${n++}`, name: `item${n}`, quantity, lineTotal, assignment };
 }
 
+/** Deterministic RNG so a rare failure is reproducible. */
+function makeRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+}
+
 function receipt(items: Item[], printedTotal: number, paidBy = "pedro"): Receipt {
   return {
     id: "r1", storeName: "Lidl", date: "2026-07-08",
@@ -75,12 +84,13 @@ describe("receiptShares", () => {
   });
 
   it("shares always sum to printedTotal (random receipts)", () => {
+    const random = makeRandom(20260806);
     for (let run = 0; run < 200; run++) {
       const items: Item[] = [];
       let sum = 0;
-      const count = 1 + Math.floor(Math.random() * 8);
+      const count = 1 + Math.floor(random() * 8);
       for (let k = 0; k < count; k++) {
-        const cents = Math.floor(Math.random() * 2000) + 1;
+        const cents = Math.floor(random() * 2000) + 1;
         sum += cents;
         const kinds: Assignment[] = [
           { kind: "everyone" },
@@ -88,10 +98,22 @@ describe("receiptShares", () => {
           { kind: "people", personIds: ["bruno"] },
           { kind: "units", shares: { pedro: 1, ana: 2 } },
         ];
-        const a = kinds[Math.floor(Math.random() * kinds.length)];
+        const a = kinds[Math.floor(random() * kinds.length)];
         items.push(item(cents, a, a.kind === "units" ? 3 : 1));
       }
-      const r = receipt(items, sum);
+      // Randomised payments among 1-2 members, deliberately not summing to `sum` —
+      // this exercises the absorber for both shortfalls and overshoots, not just the
+      // single-payer-pays-exactly-the-total case.
+      const memberIds = people.map((p) => p.id);
+      const payerCount = 1 + Math.floor(random() * 2);
+      const shuffled = [...memberIds].sort(() => random() - 0.5);
+      const payerIds = shuffled.slice(0, payerCount);
+      const payments = payerIds.map((id) => ({ personId: id, amount: Math.floor(random() * (sum * 2 + 1)) }));
+
+      const r: Receipt = {
+        id: "r1", storeName: "Lidl", date: "2026-07-08",
+        payments, items, printedTotal: sum, status: "assigning",
+      };
       const shares = receiptShares(r, people);
       const total = Object.values(shares).reduce((x, y) => x + y, 0);
       expect(total).toBe(sum);

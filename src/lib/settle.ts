@@ -5,10 +5,12 @@ import { paymentsTotal, primaryPayerId } from "./payments";
 export type Transfer = { from: string; to: string; amount: number };
 
 /**
- * Receipts that count towards trip maths. A receipt is skipped when it has no
- * payments, when any payment is from someone who is not a trip member, or when
- * any payment is negative (malformed data) — each case would break the
- * "balances sum to zero" invariant once every payment is credited individually.
+ * Receipts that count towards trip maths. A receipt is skipped when:
+ *  - it has no payments, or any payment is from a non-member — either would let
+ *    money escape the people-only balance loop and break the zero-sum invariant;
+ *  - any payment amount is negative — nobody can pay a negative amount, so the
+ *    receipt is corrupt data and its credits would be meaningless (zero-sum would
+ *    actually survive this one; we exclude it because the numbers would be nonsense).
  */
 function countableReceipts(trip: Trip) {
   const memberIds = new Set(trip.people.map((p) => p.id));
@@ -23,11 +25,13 @@ export function paidTotals(trip: Trip): Record<string, number> {
   for (const r of countableReceipts(trip)) {
     const payer = primaryPayerId(r); // countableReceipts guarantees this is a trip member
     for (const pay of r.payments) paid[pay.personId] += pay.amount;
-    // The review screen requires payments to cover the total; imported or hand-edited
-    // data might not, so the biggest payer absorbs any difference. This keeps every
-    // receipt contributing exactly printedTotal, and balances summing to zero.
+    // The review screen requires payments to cover the total exactly, so a mismatch
+    // only arrives via imported or hand-edited data. The biggest payer absorbs it in
+    // either direction, which keeps every receipt contributing exactly printedTotal.
+    // An overshoot can therefore credit that payer a negative amount — accepted:
+    // the numbers stay balanced, and the receipt is still editable so the user can fix it.
     const shortfall = r.printedTotal - paymentsTotal(r);
-    if (shortfall !== 0) paid[payer!] += shortfall;
+    if (shortfall !== 0 && payer !== null) paid[payer] += shortfall;
   }
   return paid;
 }
