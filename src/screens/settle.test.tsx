@@ -66,4 +66,20 @@ describe("settle screen", () => {
     await user.click(screen.getByRole("button", { name: /settle up/i }));
     expect(screen.getByText(/unassigned items/i)).toBeInTheDocument();
   });
+
+  it("warns that a receipt isn't counted", async () => {
+    const t = seedTrip();
+    t.receipts.push({
+      id: "r2", storeName: "Pingo Doce", date: "2026-07-09",
+      payments: [],
+      items: [{ id: "i2", name: "stuff", quantity: 1, lineTotal: 500, assignment: { kind: "everyone" } }],
+      printedTotal: 500, status: "done",
+    });
+    saveData({ schemaVersion: 1, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByText(/algarve/i));
+    await user.click(screen.getByRole("button", { name: /settle up/i }));
+    expect(screen.getByText(/isn't counted/i)).toBeInTheDocument();
+  });
 });

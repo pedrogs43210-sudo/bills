@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../state/StoreProvider";
-import { balances, paidTotals, settle, shareTotals } from "../lib/settle";
+import { balances, excludedReceipts, paidTotals, settle, shareTotals } from "../lib/settle";
 import { isFullyAssigned } from "../lib/split";
 import { formatCents } from "../lib/money";
 import { summaryText } from "../lib/summary";
@@ -18,6 +18,7 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
   const transfers = settle(balances(trip));
   const name = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
   const hasUnassigned = trip.receipts.some((r) => !isFullyAssigned(r));
+  const excluded = excludedReceipts(trip);
 
   async function share() {
     const outcome = await shareOrCopy(summaryText(trip!));
@@ -35,6 +36,12 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
 
       {hasUnassigned && (
         <div className="banner-warn">⚠️ Some receipts have unassigned items — their cost currently falls on the payer.</div>
+      )}
+
+      {excluded.length > 0 && (
+        <div className="banner-warn">
+          ⚠️ {excluded.length} receipt{excluded.length === 1 ? "" : "s"} {excluded.length === 1 ? "isn't" : "aren't"} counted — {excluded.length === 1 ? "it needs" : "they need"} a valid payer. Open {excluded.length === 1 ? "it" : "them"} from the trip screen to fix.
+        </div>
       )}
 
       <div className="card">

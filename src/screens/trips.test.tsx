@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
+import { saveData } from "../lib/storage";
+import type { Trip } from "../types";
 
 beforeEach(() => localStorage.clear());
 
@@ -68,5 +70,33 @@ describe("trip management", () => {
     expect(screen.queryByText(/algarve/i)).toBeNull();
     expect(screen.getByText(/new trip/i)).toBeInTheDocument();
     vi.mocked(window.confirm).mockRestore();
+  });
+
+  it("flags a receipt that isn't counted, and lists every payer for one that is", async () => {
+    const trip: Trip = {
+      id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
+      people: [
+        { id: "p1", name: "Pedro", color: "#ffd9a0" },
+        { id: "p2", name: "Ana", color: "#ffc4b8" },
+      ],
+      groups: [],
+      receipts: [
+        {
+          id: "r1", storeName: "Lidl", date: "2026-07-08",
+          payments: [{ personId: "p1", amount: 600 }, { personId: "p2", amount: 400 }],
+          items: [], printedTotal: 1000, status: "done",
+        },
+        {
+          id: "r2", storeName: "Pingo Doce", date: "2026-07-09",
+          payments: [], items: [], printedTotal: 500, status: "review",
+        },
+      ],
+      createdAt: "", schemaVersion: 2,
+    };
+    saveData({ schemaVersion: 2, trips: [trip] });
+    render(<App />);
+    await userEvent.setup().click(screen.getByText(/algarve/i));
+    expect(screen.getByText(/paid by Pedro \+ Ana/i)).toBeInTheDocument();
+    expect(screen.getByText(/not counted/i)).toBeInTheDocument();
   });
 });

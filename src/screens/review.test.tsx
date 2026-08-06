@@ -203,8 +203,19 @@ describe("review screen", () => {
     await user.clear(first);
     await user.type(first, "-1.00");
     await user.tab();
-    expect(screen.getByText(/can't be negative/i)).toBeInTheDocument();
+    expect(screen.getByText(/payer's amount can't be negative/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
+  });
+
+  it("words a lone negative payer as needing a re-pick, not an amount fix", async () => {
+    const t = seedTrip();
+    t.receipts[0].payments = [{ personId: "p1", amount: -50 }]; // total stays positive at 699
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    expect(screen.getByText(/re-pick who paid/i)).toBeInTheDocument();
+    expect(screen.queryByText(/payer's amount can't be negative/i)).toBeNull();
   });
 
   it("flags a payer who is no longer in the trip instead of showing someone else", async () => {
@@ -228,6 +239,7 @@ describe("review screen", () => {
     await user.type(total, "0.00");
     await user.tab();
     expect(screen.queryByText(/can't be negative/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeEnabled();
   });
 
   it("names Split evenly as the way to fix short coverage", async () => {
@@ -281,6 +293,7 @@ describe("review screen", () => {
     await user.tab();
     expect(screen.getByText(/off by/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^use /i })).toBeNull();
+    expect(screen.getByText(/Or fix a line/)).toBeInTheDocument(); // capitalised: no button precedes it
   });
 
   it("announces coverage changes to screen readers", async () => {

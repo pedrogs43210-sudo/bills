@@ -66,11 +66,8 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
   // settle maths let that payer absorb any difference, so the receipt still contributes
   // exactly printedTotal. Anything that would make settlement silently drop the whole
   // receipt — nobody paying, an unknown payer, a negative amount — must not count as covered.
-  const covered =
-    payments.length > 0 &&
-    !unknownPayer &&
-    !negativeAmount &&
-    (payments.length === 1 || payTotal === receipt.printedTotal);
+  const arithmeticOk = payments.length === 1 || payTotal === receipt.printedTotal;
+  const covered = payments.length > 0 && !unknownPayer && !negativeAmount && arithmeticOk;
   const negativeTotal = receipt.printedTotal < 0;
   const personName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
 
@@ -195,9 +192,9 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
           )}
         </div>
         {payments.length > 1 && (
-          <div role="status" className={covered ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
+          <div role="status" className={arithmeticOk ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
             Payers cover {formatCents(payTotal, trip.currency)} of {formatCents(receipt.printedTotal, trip.currency)}
-            {covered ? " ✓" : ` — tap Split evenly, or edit the amounts, so ${payments.map((p) => personName(p.personId)).join(" + ")} add up.`}
+            {arithmeticOk ? " ✓" : ` — tap Split evenly, or edit the amounts, so ${payments.map((p) => personName(p.personId)).join(" + ")} add up.`}
           </div>
         )}
       </div>
@@ -243,7 +240,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
       ) : (
         <div className="banner-warn">
           ⚠️ Items sum to {formatCents(itemSum, trip.currency)} — off by {formatCents(diff, trip.currency)}.{" "}
-          {itemSum >= 0 && (
+          {itemSum >= 0 ? (
             <>
               <button
                 className="btn btn-ghost"
@@ -251,9 +248,11 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
               >
                 Use {formatCents(itemSum, trip.currency)}
               </button>{" "}
+              or fix a line — otherwise the biggest payer absorbs the difference.
             </>
+          ) : (
+            "Or fix a line — otherwise the biggest payer absorbs the difference."
           )}
-          or fix a line — otherwise the biggest payer absorbs the difference.
         </div>
       )}
 
@@ -265,7 +264,11 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
       {/* For a lone payer the amount always mirrors the total (withSyncedSinglePayment), so
           when the total is already negative this would just repeat the same warning. */}
       {negativeAmount && !(payments.length === 1 && negativeTotal) && (
-        <div className="banner-warn">⚠️ A payer's amount can't be negative — check the amounts.</div>
+        <div className="banner-warn">
+          {payments.length === 1
+            ? "⚠️ This receipt's payment amount is negative — re-pick who paid to reset it."
+            : "⚠️ A payer's amount can't be negative — check the amounts."}
+        </div>
       )}
       {unknownPayer && (
         <div className="banner-warn">⚠️ Someone who paid isn't in this trip any more — pick who paid.</div>

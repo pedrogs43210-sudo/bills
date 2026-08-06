@@ -9,7 +9,7 @@ import { downscaleToBase64Jpeg } from "../lib/image";
 import { scanReceipt, ScanError } from "../lib/scan";
 import type { View } from "../App";
 import type { Receipt } from "../types";
-import { primaryPayerId } from "../lib/payments";
+import { excludedReceipts } from "../lib/settle";
 
 export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => void }) {
   const { data, dispatch } = useStore();
@@ -111,7 +111,10 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   }
 
   const payerName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
+  const payerNames = (r: Receipt) => r.payments.map((pay) => payerName(pay.personId)).join(" + ") || "?";
+  const excludedIds = new Set(excludedReceipts(trip).map((r) => r.id));
   const badge = (r: Receipt) =>
+    excludedIds.has(r.id) ? "⚠️ not counted" :
     r.status === "done" ? "✅ done" : r.status === "review" ? "📝 checking" : isFullyAssigned(r) ? "✅ assigned" : "👉 assigning";
 
   return (
@@ -184,7 +187,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         >
           <span>
             🧾 <b>{r.storeName || "Receipt"}</b> · {formatCents(r.printedTotal, trip.currency)}
-            <span className="muted" style={{ display: "block" }}>paid by {payerName(primaryPayerId(r) ?? "")} · {r.date}</span>
+            <span className="muted" style={{ display: "block" }}>paid by {payerNames(r)} · {r.date}</span>
           </span>
           <span className="muted">{badge(r)}</span>
         </button>

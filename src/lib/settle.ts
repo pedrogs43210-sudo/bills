@@ -1,4 +1,4 @@
-import type { Trip } from "../types";
+import type { Receipt, Trip } from "../types";
 import { receiptShares } from "./split";
 import { paymentsTotal, primaryPayerId } from "./payments";
 
@@ -12,11 +12,17 @@ export type Transfer = { from: string; to: string; amount: number };
  *    receipt is corrupt data and its credits would be meaningless (zero-sum would
  *    actually survive this one; we exclude it because the numbers would be nonsense).
  */
-function countableReceipts(trip: Trip) {
+export function countableReceipts(trip: Trip) {
   const memberIds = new Set(trip.people.map((p) => p.id));
   return trip.receipts.filter(
     (r) => r.payments.length > 0 && r.payments.every((pay) => memberIds.has(pay.personId) && pay.amount >= 0)
   );
+}
+
+/** Receipts left out of the trip maths — malformed payments the user needs to fix. */
+export function excludedReceipts(trip: Trip): Receipt[] {
+  const counted = new Set(countableReceipts(trip).map((r) => r.id));
+  return trip.receipts.filter((r) => !counted.has(r.id));
 }
 
 export function paidTotals(trip: Trip): Record<string, number> {

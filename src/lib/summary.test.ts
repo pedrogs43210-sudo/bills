@@ -41,3 +41,30 @@ describe("receiptSummaryText", () => {
     expect(text).toMatch(/paid by Pedro/i);
   });
 });
+
+describe("receiptSummaryText with several payers", () => {
+  it("lists each payer and what they put in", () => {
+    const receipt = {
+      ...trip.receipts[0],
+      payments: [{ personId: "pedro", amount: 600 }, { personId: "ana", amount: 400 }],
+      printedTotal: 1000,
+    };
+    const text = receiptSummaryText({ ...trip, receipts: [receipt] }, receipt);
+    expect(text).toMatch(/paid by Pedro \(.*6[.,]00.*\) \+ Ana \(.*4[.,]00.*\)/);
+  });
+
+  it("keeps the simple wording for one payer", () => {
+    expect(receiptSummaryText(trip, trip.receipts[0])).toMatch(/paid by Pedro$/m);
+  });
+});
+
+describe("summary text with excluded receipts", () => {
+  it("counts only the receipts that are counted, and says so", () => {
+    const good = { ...trip.receipts[0] };
+    const orphan = { ...trip.receipts[0], id: "r2", payments: [], printedTotal: 500 };
+    const text = summaryText({ ...trip, receipts: [good, orphan] });
+    expect(text).toMatch(/1 receipt ·/);
+    expect(text).toMatch(/1 receipt not counted yet/i);
+    expect(text).not.toMatch(/15[.,]00/); // never claims the excluded receipt's money
+  });
+});
