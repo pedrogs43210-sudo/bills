@@ -158,4 +158,15 @@ describe("multiple payers", () => {
     expect(paidTotals(t)).toEqual({ pedro: 0, ana: 0, bruno: 0 });
     expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
   });
+
+  it("keeps the total right when payers overpay", () => {
+    // 200 + 200 on a 300 receipt: the shortfall is negative, so the primary payer's
+    // credit is reduced. Equal amounts also exercise the tie-break on this path.
+    const over: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 200 }, { personId: "ana", amount: 200 }] };
+    const t = trip([over]);
+    const paid = paidTotals(t);
+    expect(Object.values(paid).reduce((x, y) => x + y, 0)).toBe(300); // contributes exactly printedTotal
+    expect(paid).toEqual({ pedro: 200, ana: 100, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
 });
