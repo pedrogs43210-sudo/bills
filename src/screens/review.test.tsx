@@ -170,4 +170,27 @@ describe("review screen", () => {
     await user.selectOptions(screen.getByLabelText("Payer 1"), "p2");
     expect(screen.getByRole("button", { name: /looks right/i })).toBeEnabled();
   });
+
+  it("does not trap the user when a stored single payment is stale", async () => {
+    const t = seedTrip();
+    t.receipts[0].payments = [{ personId: "p1", amount: 500 }]; // stale: total is 699
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    expect(screen.queryByLabelText("Payer 1 amount")).toBeNull(); // still implicit
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeEnabled();
+  });
+
+  it("refuses a negative receipt total", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    const total = screen.getByLabelText("Receipt total");
+    await user.clear(total);
+    await user.type(total, "-1.50");
+    await user.tab();
+    expect(screen.getByText(/can't be negative/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
+  });
 });

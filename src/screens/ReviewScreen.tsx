@@ -59,9 +59,15 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
 
   const payments = receipt.payments;
   const payTotal = paymentsTotal(receipt);
-  // Empty payments (only reachable from imported/hand-edited data) never count as covered —
-  // the placeholder row below makes that state visible instead of silently showing a name.
-  const covered = payments.length > 0 && payTotal === receipt.printedTotal;
+  // With one payer the amount is implicit — it tracks the total, and storage self-heals
+  // through withSyncedSinglePayment on the next edit. Treating that case as covered also
+  // stops imported data with a stale amount from trapping the user behind a disabled
+  // button with no amount field on screen to fix it. The settle maths stay correct either
+  // way: the lone payer absorbs any difference, so the receipt still contributes exactly
+  // printedTotal.
+  const covered =
+    payments.length === 1 ? true : payments.length > 1 && payTotal === receipt.printedTotal;
+  const negativeTotal = receipt.printedTotal < 0;
   const personName = (id: string) => trip!.people.find((p) => p.id === id)?.name ?? "?";
 
   const setPayments = (next: Payment[]) => update(withSyncedSinglePayment({ ...receipt!, payments: next }));
@@ -181,7 +187,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         {payments.length > 1 && (
           <div className={covered ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
             Payers cover {formatCents(payTotal, trip.currency)} of {formatCents(receipt.printedTotal, trip.currency)}
-            {covered ? " ✓" : ` — ${payments.map((p) => personName(p.personId)).join(" + ")} must add up before you continue.`}
+            {covered ? " ✓" : ` — tap Split evenly, or edit the amounts, so ${payments.map((p) => personName(p.personId)).join(" + ")} add up.`}
           </div>
         )}
       </div>
@@ -237,10 +243,16 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         </div>
       )}
 
+      {negativeTotal && (
+        <div className="banner-warn">
+          ⚠️ A receipt total can't be negative — check the item prices.
+        </div>
+      )}
+
       <div className="footerbar">
         <button
           className="btn btn-primary"
-          disabled={receipt.items.length === 0 || !covered}
+          disabled={receipt.items.length === 0 || !covered || negativeTotal}
           onClick={() => {
             dispatch({ type: "setReceiptStatus", tripId, receiptId, status: "assigning" });
             go({ screen: "receipt", tripId, receiptId });
