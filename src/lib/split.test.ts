@@ -124,3 +124,39 @@ describe("assignment completeness", () => {
     expect(isFullyAssigned(r)).toBe(false);
   });
 });
+
+describe("shares with several payers", () => {
+  it("still sums exactly to the printed total", () => {
+    const r: Receipt = {
+      id: "r1", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "ana", amount: 200 }, { personId: "pedro", amount: 100 }],
+      items: [item(100, { kind: "everyone" })],
+      printedTotal: 300, status: "assigning",
+    };
+    const s = receiptShares(r, people);
+    expect(s.pedro + s.ana + s.bruno).toBe(300);
+  });
+
+  it("the biggest payer absorbs the difference", () => {
+    const r: Receipt = {
+      id: "r1", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "ana", amount: 250 }, { personId: "pedro", amount: 50 }],
+      items: [item(100, { kind: "people", personIds: ["bruno"] })],
+      printedTotal: 300, status: "assigning",
+    };
+    const s = receiptShares(r, people);
+    expect(s.bruno).toBe(100);
+    expect(s.ana).toBe(200); // biggest payer takes the 200 difference
+    expect(s.pedro).toBe(0);
+  });
+
+  it("never invents a key for a non-member payer", () => {
+    const r: Receipt = {
+      id: "r1", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "ghost", amount: 300 }],
+      items: [item(300, { kind: "everyone" })],
+      printedTotal: 300, status: "assigning",
+    };
+    expect(Object.keys(receiptShares(r, people)).sort()).toEqual(["ana", "bruno", "pedro"]);
+  });
+});

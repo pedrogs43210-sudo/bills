@@ -74,14 +74,16 @@ export function roundLargestRemainder(
  * Integer-cent share per person for one receipt. Sums exactly to printedTotal:
  * assigned items are rounded with largest-remainder, and the biggest payer absorbs
  * any difference between the item sum and the printed total (spec §6).
- * A receipt with no payments has no absorber; such receipts are excluded from trip
- * maths by `countableReceipts` in settle.ts.
+ * A receipt with no payments, or whose biggest payer is not a trip member, has no
+ * absorber and so does not sum to printedTotal; such receipts are excluded from
+ * trip maths by `countableReceipts` in settle.ts.
  */
 export function receiptShares(receipt: Receipt, people: Person[]): Record<string, number> {
   const payer = primaryPayerId(receipt);
-  const rounded = roundLargestRemainder(exactShares(receipt, people), payer ?? undefined);
+  const isMember = payer !== null && people.some((p) => p.id === payer);
+  const rounded = roundLargestRemainder(exactShares(receipt, people), isMember ? payer : undefined);
   const assignedSum = [...rounded.values()].reduce((s, v) => s + v, 0);
   const diff = receipt.printedTotal - assignedSum;
-  if (payer !== null) rounded.set(payer, (rounded.get(payer) ?? 0) + diff);
+  if (isMember) rounded.set(payer, (rounded.get(payer) ?? 0) + diff);
   return Object.fromEntries(rounded);
 }

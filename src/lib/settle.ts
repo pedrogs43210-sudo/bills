@@ -1,24 +1,33 @@
 import type { Trip } from "../types";
 import { receiptShares } from "./split";
-import { primaryPayerId } from "./payments";
+import { paymentsTotal, primaryPayerId } from "./payments";
 
 export type Transfer = { from: string; to: string; amount: number };
 
-/** Receipts whose payer is a trip member; others (corrupt/imported data) are excluded from all math. */
+/**
+ * Receipts that count towards trip maths. A receipt is skipped when it has no
+ * payments, when any payment is from someone who is not a trip member, or when
+ * any payment is negative (malformed data) — each case would break the
+ * "balances sum to zero" invariant once every payment is credited individually.
+ */
 function countableReceipts(trip: Trip) {
   const memberIds = new Set(trip.people.map((p) => p.id));
-  return trip.receipts.filter((r) => {
-    const payer = primaryPayerId(r);
-    return payer !== null && memberIds.has(payer);
-  });
+  return trip.receipts.filter(
+    (r) => r.payments.length > 0 && r.payments.every((pay) => memberIds.has(pay.personId) && pay.amount >= 0)
+  );
 }
 
 export function paidTotals(trip: Trip): Record<string, number> {
   const paid: Record<string, number> = {};
   for (const p of trip.people) paid[p.id] = 0;
   for (const r of countableReceipts(trip)) {
-    const payer = primaryPayerId(r);
-    if (payer !== null) paid[payer] += r.printedTotal;
+    const payer = primaryPayerId(r); // countableReceipts guarantees this is a trip member
+    for (const pay of r.payments) paid[pay.personId] += pay.amount;
+    // The review screen requires payments to cover the total; imported or hand-edited
+    // data might not, so the biggest payer absorbs any difference. This keeps every
+    // receipt contributing exactly printedTotal, and balances summing to zero.
+    const shortfall = r.printedTotal - paymentsTotal(r);
+    if (shortfall !== 0) paid[payer!] += shortfall;
   }
   return paid;
 }

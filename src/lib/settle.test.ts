@@ -103,3 +103,59 @@ describe("settle", () => {
     }
   });
 });
+
+describe("multiple payers", () => {
+  function twoPayerReceipt(): Receipt {
+    return {
+      id: "r-multi", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "pedro", amount: 200 }, { personId: "ana", amount: 100 }],
+      items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 300, assignment: { kind: "everyone" } }],
+      printedTotal: 300, status: "done",
+    };
+  }
+
+  it("credits each payer their own amount", () => {
+    const t = trip([twoPayerReceipt()]);
+    expect(paidTotals(t)).toEqual({ pedro: 200, ana: 100, bruno: 0 });
+  });
+
+  it("keeps balances zero-sum with several payers", () => {
+    const b = balances(trip([twoPayerReceipt()]));
+    expect(Object.values(b).reduce((x, y) => x + y, 0)).toBe(0);
+    expect(b).toEqual({ pedro: 100, ana: 0, bruno: -100 });
+  });
+
+  it("settles a two-payer receipt", () => {
+    const transfers = settle(balances(trip([twoPayerReceipt()])));
+    expect(transfers).toEqual([{ from: "bruno", to: "pedro", amount: 100 }]);
+  });
+
+  it("credits the biggest payer when payments fall short of the total", () => {
+    // deliberately unequal so the primary payer is unambiguous (equal amounts tie-break on id)
+    const short: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 150 }, { personId: "ana", amount: 50 }] };
+    const t = trip([short]);
+    expect(paidTotals(t)).toEqual({ pedro: 250, ana: 50, bruno: 0 }); // pedro absorbs the missing 100
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("excludes a receipt when any payment is from a non-member", () => {
+    const ghost: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 200 }, { personId: "ghost", amount: 100 }] };
+    const t = trip([ghost]);
+    expect(paidTotals(t)).toEqual({ pedro: 0, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("excludes a receipt with no payments at all", () => {
+    const orphan: Receipt = { ...twoPayerReceipt(), payments: [] };
+    const t = trip([orphan]);
+    expect(paidTotals(t)).toEqual({ pedro: 0, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("excludes a receipt containing a negative payment amount", () => {
+    const negative: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 400 }, { personId: "ana", amount: -100 }] };
+    const t = trip([negative]);
+    expect(paidTotals(t)).toEqual({ pedro: 0, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+});
