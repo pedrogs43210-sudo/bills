@@ -192,9 +192,15 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
           )}
         </div>
         {payments.length > 1 && (
-          <div role="status" className={arithmeticOk ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
+          <div role="status" className={covered ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
             Payers cover {formatCents(payTotal, trip.currency)} of {formatCents(receipt.printedTotal, trip.currency)}
-            {arithmeticOk ? " ✓" : ` — tap Split evenly, or edit the amounts, so ${payments.map((p) => personName(p.personId)).join(" + ")} add up.`}
+            {/* Arithmetic can pass while `covered` is still false (a negative or unknown payer) —
+                say nothing reassuring here; the banner below names the real blocker. */}
+            {arithmeticOk
+              ? covered
+                ? " ✓"
+                : ""
+              : ` — tap Split evenly, or edit the amounts, so ${payments.map((p) => personName(p.personId)).join(" + ")} add up.`}
           </div>
         )}
       </div>
@@ -251,7 +257,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
               or fix a line — otherwise the biggest payer absorbs the difference.
             </>
           ) : (
-            "Or fix a line — otherwise the biggest payer absorbs the difference."
+            "Fix a line — otherwise the biggest payer absorbs the difference."
           )}
         </div>
       )}

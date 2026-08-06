@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { balances, settle, paidTotals, shareTotals } from "./settle";
+import { balances, excludedReceipts, exclusionReason, settle, paidTotals, shareTotals } from "./settle";
 import type { Person, Receipt, Trip } from "../types";
 
 const people: Person[] = [
@@ -194,5 +194,49 @@ describe("multiple payers", () => {
     const t = trip([stale]);
     expect(paidTotals(t)).toEqual({ pedro: 300, ana: 0, bruno: 0 });
     expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+});
+
+function exclusionFixture(): Receipt {
+  return {
+    id: "r1", storeName: "Lidl", date: "2026-08-06",
+    payments: [{ personId: "pedro", amount: 300 }],
+    items: [], printedTotal: 300, status: "done",
+  };
+}
+
+describe("exclusionReason", () => {
+  const base = exclusionFixture;
+
+  it("is null for a receipt that counts fine", () => {
+    const t = trip([base()]);
+    expect(exclusionReason(t.receipts[0], t)).toBeNull();
+  });
+
+  it("is no-payer for an empty payments list", () => {
+    const r: Receipt = { ...base(), payments: [] };
+    const t = trip([r]);
+    expect(exclusionReason(r, t)).toBe("no-payer");
+  });
+
+  it("is unknown-payer when a payment is from a non-member", () => {
+    const r: Receipt = { ...base(), payments: [{ personId: "ghost", amount: 300 }] };
+    const t = trip([r]);
+    expect(exclusionReason(r, t)).toBe("unknown-payer");
+  });
+
+  it("is negative-amount when a payment amount is negative", () => {
+    const r: Receipt = { ...base(), payments: [{ personId: "pedro", amount: -50 }] };
+    const t = trip([r]);
+    expect(exclusionReason(r, t)).toBe("negative-amount");
+  });
+});
+
+describe("excludedReceipts", () => {
+  it("returns only the receipts that don't count, regardless of id collisions", () => {
+    const good: Receipt = { ...exclusionFixture(), id: "dup" };
+    const orphan: Receipt = { ...exclusionFixture(), id: "dup", payments: [] }; // same id as `good` on purpose
+    const t = trip([good, orphan]);
+    expect(excludedReceipts(t)).toEqual([orphan]);
   });
 });

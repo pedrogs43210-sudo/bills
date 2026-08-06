@@ -189,7 +189,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             🧾 <b>{r.storeName || "Receipt"}</b> · {formatCents(r.printedTotal, trip.currency)}
             <span className="muted" style={{ display: "block" }}>paid by {payerNames(r)} · {r.date}</span>
           </span>
-          <span className="muted">{badge(r)}</span>
+          <span className="muted" style={{ color: excludedIds.has(r.id) ? "var(--warn)" : undefined }}>{badge(r)}</span>
         </button>
       ))}
 

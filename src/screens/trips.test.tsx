@@ -82,13 +82,14 @@ describe("trip management", () => {
       groups: [],
       receipts: [
         {
+          // deliberately not "done" so the ✅ done text below can only come from r2
           id: "r1", storeName: "Lidl", date: "2026-07-08",
           payments: [{ personId: "p1", amount: 600 }, { personId: "p2", amount: 400 }],
-          items: [], printedTotal: 1000, status: "done",
+          items: [], printedTotal: 1000, status: "assigning",
         },
         {
           id: "r2", storeName: "Pingo Doce", date: "2026-07-09",
-          payments: [], items: [], printedTotal: 500, status: "review",
+          payments: [], items: [], printedTotal: 500, status: "done",
         },
       ],
       createdAt: "", schemaVersion: 2,
@@ -98,5 +99,7 @@ describe("trip management", () => {
     await userEvent.setup().click(screen.getByText(/algarve/i));
     expect(screen.getByText(/paid by Pedro \+ Ana/i)).toBeInTheDocument();
     expect(screen.getByText(/not counted/i)).toBeInTheDocument();
+    // r2 is stored as "done", but exclusion outranks the status badge
+    expect(screen.queryByText(/✅ done/)).toBeNull();
   });
 });

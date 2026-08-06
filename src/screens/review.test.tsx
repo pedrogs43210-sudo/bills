@@ -293,7 +293,9 @@ describe("review screen", () => {
     await user.tab();
     expect(screen.getByText(/off by/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^use /i })).toBeNull();
-    expect(screen.getByText(/Or fix a line/)).toBeInTheDocument(); // capitalised: no button precedes it
+    // no button precedes it, so "Or" (an alternative to something absent) would dangle
+    expect(screen.getByText(/Fix a line — otherwise/)).toBeInTheDocument();
+    expect(screen.queryByText(/Or fix a line/)).toBeNull();
   });
 
   it("announces coverage changes to screen readers", async () => {
@@ -302,5 +304,21 @@ describe("review screen", () => {
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     expect(screen.getByRole("status")).toHaveTextContent(/payers cover/i);
+  });
+
+  it("never shows a reassuring checkmark while the confirm button is blocked", async () => {
+    // amounts add up (arithmeticOk) but one is negative, so covered is still false —
+    // the banner must not celebrate an arithmetic pass that isn't a real pass.
+    const t = seedTrip();
+    t.receipts[0].printedTotal = 1000;
+    t.receipts[0].payments = [{ personId: "p1", amount: 1200 }, { personId: "p2", amount: -200 }];
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
+    const status = screen.getByRole("status");
+    expect(status).not.toHaveTextContent("✓");
+    expect(status).not.toHaveClass("banner-good");
   });
 });

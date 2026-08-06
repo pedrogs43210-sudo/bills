@@ -16,20 +16,18 @@ export function summaryText(trip: Trip): string {
   const lines = [
     `${trip.emoji} ${trip.name} — grocery split`,
     `${counted.length} receipt${counted.length === 1 ? "" : "s"} · ${fmt(total)} total`,
-    "",
-    ...trip.people.map((p) => `${p.name}: ${fmt(shares[p.id] ?? 0)} (paid ${fmt(paid[p.id] ?? 0)})`),
-    "",
   ];
+  // Right after the headline, before the numbers below look final — a friend skimming a
+  // group chat reads top to bottom, and must not reach "All square! 🎉" before this caveat.
+  if (excluded.length > 0) {
+    lines.push(`⚠️ Not final — ${excluded.length} receipt${excluded.length === 1 ? " isn't" : "s aren't"} counted yet.`);
+  }
+  lines.push("", ...trip.people.map((p) => `${p.name}: ${fmt(shares[p.id] ?? 0)} (paid ${fmt(paid[p.id] ?? 0)})`), "");
   if (transfers.length > 0) {
     lines.push("To settle:");
     for (const t of transfers) lines.push(`💸 ${name(t.from)} → ${name(t.to)} ${fmt(t.amount)}`);
   } else {
     lines.push("All square! 🎉");
-  }
-  if (excluded.length > 0) {
-    lines.push(
-      `⚠️ ${excluded.length} receipt${excluded.length === 1 ? "" : "s"} not counted yet — open ${excluded.length === 1 ? "it" : "them"} in Bills to fix who paid.`
-    );
   }
   return lines.join("\n");
 }
@@ -42,9 +40,13 @@ export function receiptSummaryText(trip: Trip, receipt: Receipt): string {
     receipt.payments.length === 1
       ? name(receipt.payments[0].personId)
       : receipt.payments.map((p) => `${name(p.personId)} (${fmt(p.amount)})`).join(" + ");
+  // No payments at all means nobody to name — "paid by ?" would just be noise for a
+  // friend reading this in chat, so drop the clause rather than print a placeholder.
+  const totalLine =
+    receipt.payments.length === 0 ? fmt(receipt.printedTotal) : `${fmt(receipt.printedTotal)} paid by ${payerLine}`;
   return [
     `🧾 ${receipt.storeName || "Receipt"} · ${receipt.date}`,
-    `${fmt(receipt.printedTotal)} paid by ${payerLine || "?"}`,
+    totalLine,
     "",
     ...trip.people
       .filter((p) => (shares[p.id] ?? 0) !== 0)

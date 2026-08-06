@@ -67,11 +67,11 @@ describe("settle screen", () => {
     expect(screen.getByText(/unassigned items/i)).toBeInTheDocument();
   });
 
-  it("warns that a receipt isn't counted", async () => {
+  it("warns that a receipt isn't counted, naming the receipt and the real reason", async () => {
     const t = seedTrip();
     t.receipts.push({
       id: "r2", storeName: "Pingo Doce", date: "2026-07-09",
-      payments: [],
+      payments: [{ personId: "p1", amount: -50 }], // the reachable cause: a negative total mirrored onto the lone payment
       items: [{ id: "i2", name: "stuff", quantity: 1, lineTotal: 500, assignment: { kind: "everyone" } }],
       printedTotal: 500, status: "done",
     });
@@ -80,6 +80,8 @@ describe("settle screen", () => {
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
-    expect(screen.getByText(/isn't counted/i)).toBeInTheDocument();
+    expect(screen.getByText(/not counted yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/pingo doce/i)).toBeInTheDocument();
+    expect(screen.getByText(/an amount is negative/i)).toBeInTheDocument();
   });
 });

@@ -40,6 +40,13 @@ describe("receiptSummaryText", () => {
     expect(text).toMatch(/Pedro: .*5[.,]00/);
     expect(text).toMatch(/paid by Pedro/i);
   });
+
+  it("drops the paid-by clause instead of naming an unknown payer", () => {
+    const orphan = { ...trip.receipts[0], payments: [] };
+    const text = receiptSummaryText(trip, orphan);
+    expect(text).not.toMatch(/paid by/i);
+    expect(text).toMatch(/10[.,]00/); // the total is still shown
+  });
 });
 
 describe("receiptSummaryText with several payers", () => {
@@ -59,12 +66,15 @@ describe("receiptSummaryText with several payers", () => {
 });
 
 describe("summary text with excluded receipts", () => {
-  it("counts only the receipts that are counted, and says so", () => {
+  it("counts only the receipts that are counted, and says so before the per-person lines", () => {
     const good = { ...trip.receipts[0] };
     const orphan = { ...trip.receipts[0], id: "r2", payments: [], printedTotal: 500 };
     const text = summaryText({ ...trip, receipts: [good, orphan] });
     expect(text).toMatch(/1 receipt ·/);
-    expect(text).toMatch(/1 receipt not counted yet/i);
+    expect(text).toMatch(/Not final — 1 receipt isn't counted yet/i);
     expect(text).not.toMatch(/15[.,]00/); // never claims the excluded receipt's money
+    // the caveat must land before the headline could be mistaken for "all done"
+    expect(text.indexOf("Not final")).toBeGreaterThan(-1);
+    expect(text.indexOf("Not final")).toBeLessThan(text.indexOf("Pedro:"));
   });
 });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useStore } from "../state/StoreProvider";
-import { balances, excludedReceipts, paidTotals, settle, shareTotals } from "../lib/settle";
+import { balances, excludedReceipts, exclusionReason, paidTotals, settle, shareTotals, type ExclusionReason } from "../lib/settle";
 import { isFullyAssigned } from "../lib/split";
 import { formatCents } from "../lib/money";
 import { summaryText } from "../lib/summary";
@@ -19,6 +19,11 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
   const name = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
   const hasUnassigned = trip.receipts.some((r) => !isFullyAssigned(r));
   const excluded = excludedReceipts(trip);
+  const reasonText: Record<ExclusionReason, string> = {
+    "no-payer": "nobody is marked as paying",
+    "unknown-payer": "a payer isn't in this trip any more",
+    "negative-amount": "an amount is negative",
+  };
 
   async function share() {
     const outcome = await shareOrCopy(summaryText(trip!));
@@ -40,7 +45,16 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
 
       {excluded.length > 0 && (
         <div className="banner-warn">
-          ⚠️ {excluded.length} receipt{excluded.length === 1 ? "" : "s"} {excluded.length === 1 ? "isn't" : "aren't"} counted — {excluded.length === 1 ? "it needs" : "they need"} a valid payer. Open {excluded.length === 1 ? "it" : "them"} from the trip screen to fix.
+          ⚠️ Not counted yet:{" "}
+          {excluded
+            .slice(0, 3)
+            .map((r) => {
+              const reason = exclusionReason(r, trip);
+              return `${r.storeName || "Receipt"} — ${reason ? reasonText[reason] : "needs fixing"}`;
+            })
+            .join("; ")}
+          {excluded.length > 3 ? `; and ${excluded.length - 3} more` : ""}. Open{" "}
+          {excluded.length === 1 ? "it" : "them"} from the trip screen and fix the warning at the bottom.
         </div>
       )}
 

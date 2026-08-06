@@ -4,6 +4,16 @@ import { paymentsTotal, primaryPayerId } from "./payments";
 
 export type Transfer = { from: string; to: string; amount: number };
 
+export type ExclusionReason = "no-payer" | "unknown-payer" | "negative-amount";
+
+/** A receipt counts when someone paid, everyone who paid is a member, and no amount is negative. */
+function isCountable(receipt: Receipt, memberIds: Set<string>): boolean {
+  return (
+    receipt.payments.length > 0 &&
+    receipt.payments.every((p) => memberIds.has(p.personId) && p.amount >= 0)
+  );
+}
+
 /**
  * Receipts that count towards trip maths. A receipt is skipped when:
  *  - it has no payments, or any payment is from a non-member — either would let
@@ -14,15 +24,27 @@ export type Transfer = { from: string; to: string; amount: number };
  */
 export function countableReceipts(trip: Trip) {
   const memberIds = new Set(trip.people.map((p) => p.id));
-  return trip.receipts.filter(
-    (r) => r.payments.length > 0 && r.payments.every((pay) => memberIds.has(pay.personId) && pay.amount >= 0)
-  );
+  return trip.receipts.filter((r) => isCountable(r, memberIds));
 }
 
-/** Receipts left out of the trip maths — malformed payments the user needs to fix. */
+/**
+ * Receipts left out of the trip maths — malformed payments the user needs to fix.
+ * In practice the reachable cause is a negative receipt total: ReviewScreen's
+ * `withSyncedSinglePayment` mirrors it onto the lone payment, which then fails the
+ * amount >= 0 check above.
+ */
 export function excludedReceipts(trip: Trip): Receipt[] {
-  const counted = new Set(countableReceipts(trip).map((r) => r.id));
-  return trip.receipts.filter((r) => !counted.has(r.id));
+  const memberIds = new Set(trip.people.map((p) => p.id));
+  return trip.receipts.filter((r) => !isCountable(r, memberIds));
+}
+
+/** Why a receipt is left out of the maths, or null when it counts. Drives what we tell the user. */
+export function exclusionReason(receipt: Receipt, trip: Trip): ExclusionReason | null {
+  const memberIds = new Set(trip.people.map((p) => p.id));
+  if (isCountable(receipt, memberIds)) return null;
+  if (receipt.payments.length === 0) return "no-payer";
+  if (receipt.payments.some((p) => !memberIds.has(p.personId))) return "unknown-payer";
+  return "negative-amount";
 }
 
 export function paidTotals(trip: Trip): Record<string, number> {
