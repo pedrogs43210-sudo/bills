@@ -4,6 +4,7 @@ import { newId } from "../lib/ids";
 import { formatCents, parseToCents } from "../lib/money";
 import type { View } from "../App";
 import type { Item, Receipt } from "../types";
+import { primaryPayerId, withSyncedSinglePayment } from "../lib/payments";
 
 function MoneyInput({ cents, onChange, label }: { cents: number; onChange: (c: number) => void; label: string }) {
   const [text, setText] = useState((cents / 100).toFixed(2));
@@ -98,7 +99,12 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         </div>
         <label className="muted">
           Paid by{" "}
-          <select value={receipt.paidBy} onChange={(e) => update({ ...receipt, paidBy: e.target.value })}>
+          <select
+            value={primaryPayerId(receipt) ?? ""}
+            onChange={(e) =>
+              update(withSyncedSinglePayment({ ...receipt, payments: [{ personId: e.target.value, amount: receipt.printedTotal }] }))
+            }
+          >
             {trip.people.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
@@ -135,7 +141,11 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
 
       <div className="card row">
         <b>Receipt total</b>
-        <MoneyInput label="Receipt total" cents={receipt.printedTotal} onChange={(c) => update({ ...receipt, printedTotal: c })} />
+        <MoneyInput
+          label="Receipt total"
+          cents={receipt.printedTotal}
+          onChange={(c) => update(withSyncedSinglePayment({ ...receipt, printedTotal: c }))}
+        />
       </div>
 
       {diff === 0 ? (

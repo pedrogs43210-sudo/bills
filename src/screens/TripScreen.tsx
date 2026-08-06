@@ -9,6 +9,7 @@ import { downscaleToBase64Jpeg } from "../lib/image";
 import { scanReceipt, ScanError } from "../lib/scan";
 import type { View } from "../App";
 import type { Receipt } from "../types";
+import { primaryPayerId } from "../lib/payments";
 
 export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => void }) {
   const { data, dispatch } = useStore();
@@ -48,7 +49,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         id: newId(),
         storeName: result.storeName,
         date: result.date ?? new Date().toISOString().slice(0, 10),
-        paidBy: trip!.people[0].id,
+        payments: [{ personId: trip!.people[0].id, amount: Math.round(result.printedTotal) }],
         items: result.items.map((i) => ({
           id: newId(),
           name: i.name,
@@ -100,7 +101,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       id: newId(),
       storeName: "",
       date: new Date().toISOString().slice(0, 10),
-      paidBy: trip!.people[0].id,
+      payments: [{ personId: trip!.people[0].id, amount: 0 }],
       items: [],
       printedTotal: 0,
       status: "review",
@@ -183,7 +184,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         >
           <span>
             🧾 <b>{r.storeName || "Receipt"}</b> · {formatCents(r.printedTotal, trip.currency)}
-            <span className="muted" style={{ display: "block" }}>paid by {payerName(r.paidBy)} · {r.date}</span>
+            <span className="muted" style={{ display: "block" }}>paid by {payerName(primaryPayerId(r) ?? "")} · {r.date}</span>
           </span>
           <span className="muted">{badge(r)}</span>
         </button>

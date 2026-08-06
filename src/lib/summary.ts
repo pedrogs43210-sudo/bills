@@ -2,6 +2,7 @@ import type { Receipt, Trip } from "../types";
 import { balances, paidTotals, settle, shareTotals } from "./settle";
 import { receiptShares } from "./split";
 import { formatCents } from "./money";
+import { primaryPayerId } from "./payments";
 
 export function summaryText(trip: Trip): string {
   const paid = paidTotals(trip);
@@ -30,7 +31,7 @@ export function summaryText(trip: Trip): string {
 export function receiptSummaryText(trip: Trip, receipt: Receipt): string {
   const shares = receiptShares(receipt, trip.people);
   const fmt = (c: number) => formatCents(c, trip.currency);
-  const payer = trip.people.find((p) => p.id === receipt.paidBy)?.name ?? "?";
+  const payer = trip.people.find((p) => p.id === primaryPayerId(receipt))?.name ?? "?";
   return [
     `🧾 ${receipt.storeName || "Receipt"} · ${receipt.date}`,
     `${fmt(receipt.printedTotal)} paid by ${payer}`,

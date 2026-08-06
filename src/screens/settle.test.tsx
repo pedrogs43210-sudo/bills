@@ -12,8 +12,10 @@ function seedTrip(): Trip {
       { id: "p1", name: "Pedro", color: "#ffd9a0" },
       { id: "p2", name: "Ana", color: "#ffc4b8" },
     ],
+    groups: [],
     receipts: [{
-      id: "r1", storeName: "Lidl", date: "2026-07-08", paidBy: "p1",
+      id: "r1", storeName: "Lidl", date: "2026-07-08",
+      payments: [{ personId: "p1", amount: 1000 }],
       items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 1000, assignment: { kind: "everyone" } }],
       printedTotal: 1000, status: "done",
     }],

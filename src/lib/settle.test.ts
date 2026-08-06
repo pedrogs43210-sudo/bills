@@ -11,13 +11,14 @@ const people: Person[] = [
 function trip(receipts: Receipt[]): Trip {
   return {
     id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
-    people, receipts, createdAt: "2026-07-08T00:00:00Z", schemaVersion: 1,
+    people, groups: [], receipts, createdAt: "2026-07-08T00:00:00Z", schemaVersion: 1,
   };
 }
 
 function everyoneReceipt(total: number, paidBy: string): Receipt {
   return {
-    id: `r-${paidBy}-${total}`, storeName: "Lidl", date: "2026-07-08", paidBy,
+    id: `r-${paidBy}-${total}`, storeName: "Lidl", date: "2026-07-08",
+    payments: [{ personId: paidBy, amount: total }],
     items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: total, assignment: { kind: "everyone" } }],
     printedTotal: total, status: "done",
   };
@@ -52,7 +53,8 @@ describe("balances", () => {
 
   it("stays zero-sum even when a receipt contains a non-member assignment id", () => {
     const ghostReceipt: Receipt = {
-      id: "rg", storeName: "Lidl", date: "2026-07-08", paidBy: "pedro",
+      id: "rg", storeName: "Lidl", date: "2026-07-08",
+      payments: [{ personId: "pedro", amount: 300 }],
       items: [{ id: "i1", name: "stuff", quantity: 2, lineTotal: 300, assignment: { kind: "units", shares: { ghost: 1, ana: 1 } } }],
       printedTotal: 300, status: "done",
     };

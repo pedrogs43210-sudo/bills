@@ -1,4 +1,5 @@
 import type { Item, Person, Receipt } from "../types";
+import { primaryPayerId } from "./payments";
 
 export function isItemAssigned(item: Item): boolean {
   const a = item.assignment;
@@ -71,13 +72,16 @@ export function roundLargestRemainder(
 
 /**
  * Integer-cent share per person for one receipt. Sums exactly to printedTotal:
- * assigned items are rounded with largest-remainder, and the payer absorbs any
- * difference between the item sum and the printed total (spec §8).
+ * assigned items are rounded with largest-remainder, and the biggest payer absorbs
+ * any difference between the item sum and the printed total (spec §6).
+ * A receipt with no payments has no absorber; such receipts are excluded from trip
+ * maths by `countableReceipts` in settle.ts.
  */
 export function receiptShares(receipt: Receipt, people: Person[]): Record<string, number> {
-  const rounded = roundLargestRemainder(exactShares(receipt, people), receipt.paidBy);
+  const payer = primaryPayerId(receipt);
+  const rounded = roundLargestRemainder(exactShares(receipt, people), payer ?? undefined);
   const assignedSum = [...rounded.values()].reduce((s, v) => s + v, 0);
   const diff = receipt.printedTotal - assignedSum;
-  rounded.set(receipt.paidBy, (rounded.get(receipt.paidBy) ?? 0) + diff);
+  if (payer !== null) rounded.set(payer, (rounded.get(payer) ?? 0) + diff);
   return Object.fromEntries(rounded);
 }

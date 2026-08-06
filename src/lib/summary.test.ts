@@ -8,8 +8,10 @@ const trip: Trip = {
     { id: "pedro", name: "Pedro", color: "#ffd9a0" },
     { id: "ana", name: "Ana", color: "#ffc4b8" },
   ],
+  groups: [],
   receipts: [{
-    id: "r1", storeName: "Lidl", date: "2026-07-08", paidBy: "pedro",
+    id: "r1", storeName: "Lidl", date: "2026-07-08",
+    payments: [{ personId: "pedro", amount: 1000 }],
     items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 1000, assignment: { kind: "everyone" } }],
     printedTotal: 1000, status: "done",
   }],

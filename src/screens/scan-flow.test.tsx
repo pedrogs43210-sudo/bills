@@ -20,6 +20,7 @@ function seedTrip(): Trip {
   return {
     id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
     people: [{ id: "p1", name: "Pedro", color: "#ffd9a0" }],
+    groups: [],
     receipts: [], createdAt: "", schemaVersion: 1,
   };
 }

@@ -1,18 +1,25 @@
 import type { Trip } from "../types";
 import { receiptShares } from "./split";
+import { primaryPayerId } from "./payments";
 
 export type Transfer = { from: string; to: string; amount: number };
 
 /** Receipts whose payer is a trip member; others (corrupt/imported data) are excluded from all math. */
 function countableReceipts(trip: Trip) {
   const memberIds = new Set(trip.people.map((p) => p.id));
-  return trip.receipts.filter((r) => memberIds.has(r.paidBy));
+  return trip.receipts.filter((r) => {
+    const payer = primaryPayerId(r);
+    return payer !== null && memberIds.has(payer);
+  });
 }
 
 export function paidTotals(trip: Trip): Record<string, number> {
   const paid: Record<string, number> = {};
   for (const p of trip.people) paid[p.id] = 0;
-  for (const r of countableReceipts(trip)) paid[r.paidBy] += r.printedTotal;
+  for (const r of countableReceipts(trip)) {
+    const payer = primaryPayerId(r);
+    if (payer !== null) paid[payer] += r.printedTotal;
+  }
   return paid;
 }
 

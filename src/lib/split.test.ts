@@ -14,7 +14,11 @@ function item(lineTotal: number, assignment: Assignment, quantity = 1): Item {
 }
 
 function receipt(items: Item[], printedTotal: number, paidBy = "pedro"): Receipt {
-  return { id: "r1", storeName: "Lidl", date: "2026-07-08", paidBy, items, printedTotal, status: "assigning" };
+  return {
+    id: "r1", storeName: "Lidl", date: "2026-07-08",
+    payments: [{ personId: paidBy, amount: printedTotal }],
+    items, printedTotal, status: "assigning",
+  };
 }
 
 describe("receiptShares", () => {

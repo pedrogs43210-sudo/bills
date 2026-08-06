@@ -13,8 +13,10 @@ function seedTrip(): Trip {
       { id: "p2", name: "Ana", color: "#ffc4b8" },
       { id: "p3", name: "Bruno", color: "#c9e8c9" },
     ],
+    groups: [],
     receipts: [{
-      id: "r1", storeName: "Lidl", date: "2026-07-08", paidBy: "p1",
+      id: "r1", storeName: "Lidl", date: "2026-07-08",
+      payments: [{ personId: "p1", amount: 699 }],
       items: [
         { id: "i1", name: "Fries", quantity: 1, lineTotal: 249, assignment: { kind: "unassigned" } },
         { id: "i2", name: "Juice", quantity: 3, lineTotal: 450, assignment: { kind: "unassigned" } },

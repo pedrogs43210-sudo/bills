@@ -20,7 +20,7 @@ export type Action =
 export function personHasEntries(trip: Trip, personId: string): boolean {
   return trip.receipts.some(
     (r) =>
-      r.paidBy === personId ||
+      r.payments.some((pay) => pay.personId === personId) ||
       r.items.some((i) => {
         const a = i.assignment;
         if (a.kind === "everyone") return true;
@@ -48,7 +48,7 @@ export function reducer(data: AppData, action: Action): AppData {
           ...data.trips,
           {
             id: action.id, name: action.name, emoji: action.emoji, currency: "EUR",
-            people: [], receipts: [], createdAt: new Date().toISOString(),
+            people: [], groups: [], receipts: [], createdAt: new Date().toISOString(),
             schemaVersion: SCHEMA_VERSION,
           },
         ],

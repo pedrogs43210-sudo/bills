@@ -5,6 +5,7 @@ import type { Trip } from "../types";
 const trip: Trip = {
   id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
   people: [{ id: "p1", name: "Pedro", color: "#FFD9A0" }],
+  groups: [],
   receipts: [], createdAt: "2026-07-08T00:00:00Z", schemaVersion: 1,
 };
 
@@ -81,5 +82,52 @@ describe("export / import", () => {
   it("round-trips emoji and accents", () => {
     const t = { ...trip, name: "Férias 👨‍👩‍👧‍👦 🇵🇹" };
     expect(importTrip(exportTrip(t)).name).toBe("Férias 👨‍👩‍👧‍👦 🇵🇹");
+  });
+});
+
+describe("migration on load", () => {
+  it("upgrades v1 data and writes it back once", () => {
+    const v1 = {
+      schemaVersion: 1,
+      trips: [{
+        id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
+        people: [{ id: "p1", name: "Pedro", color: "#FFD9A0" }],
+        receipts: [{
+          id: "r1", storeName: "Lidl", date: "2026-07-09", paidBy: "p1",
+          items: [], printedTotal: 500, status: "done",
+        }],
+        createdAt: "2026-07-09T00:00:00Z", schemaVersion: 1,
+      }],
+    };
+    localStorage.setItem("bills.data.v1", JSON.stringify(v1));
+    const loaded = loadData();
+    expect(loaded.schemaVersion).toBe(2);
+    expect(loaded.trips[0].receipts[0].payments).toEqual([{ personId: "p1", amount: 500 }]);
+    expect(loaded.trips[0].groups).toEqual([]);
+    // written back, so the next load needs no conversion
+    const onDisk = JSON.parse(localStorage.getItem("bills.data.v1")!);
+    expect(onDisk.schemaVersion).toBe(2);
+  });
+
+  it("treats data from a newer version as corrupt", () => {
+    const future = JSON.stringify({ schemaVersion: 99, trips: [] });
+    localStorage.setItem("bills.data.v1", future);
+    expect(loadData()).toEqual(emptyData());
+    expect(localStorage.getItem("bills.data.v1.corrupt")).toBe(future);
+  });
+
+  it("imports a v1 export file", () => {
+    const file = JSON.stringify({
+      app: "bills", schemaVersion: 1,
+      trip: {
+        id: "t9", name: "Madeira", emoji: "⛰️", currency: "EUR",
+        people: [{ id: "p1", name: "Ana", color: "#FFC4B8" }],
+        receipts: [{ id: "r1", storeName: "Pingo", date: "2026-07-01", paidBy: "p1", items: [], printedTotal: 250, status: "done" }],
+        createdAt: "2026-07-01T00:00:00Z", schemaVersion: 1,
+      },
+    });
+    const trip = importTrip(file);
+    expect(trip.receipts[0].payments).toEqual([{ personId: "p1", amount: 250 }]);
+    expect(trip.groups).toEqual([]);
   });
 });
