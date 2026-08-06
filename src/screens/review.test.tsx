@@ -193,4 +193,101 @@ describe("review screen", () => {
     expect(screen.getByText(/can't be negative/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
   });
+
+  it("refuses a negative payer amount", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    const first = screen.getByLabelText("Payer 1 amount");
+    await user.clear(first);
+    await user.type(first, "-1.00");
+    await user.tab();
+    expect(screen.getByText(/can't be negative/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
+  });
+
+  it("flags a payer who is no longer in the trip instead of showing someone else", async () => {
+    const t = seedTrip();
+    t.receipts[0].payments = [{ personId: "ghost", amount: 699 }];
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    expect(screen.getByText(/isn't in this trip/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
+    expect((screen.getByLabelText("Payer 1") as HTMLSelectElement).value).toBe("");
+  });
+
+  it("allows a fully discounted receipt totalling zero", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    const total = screen.getByLabelText("Receipt total");
+    await user.clear(total);
+    await user.type(total, "0.00");
+    await user.tab();
+    expect(screen.queryByText(/can't be negative/i)).toBeNull();
+  });
+
+  it("names Split evenly as the way to fix short coverage", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    const first = screen.getByLabelText("Payer 1 amount");
+    await user.clear(first);
+    await user.type(first, "1.00");
+    await user.tab();
+    expect(screen.getByText(/tap split evenly/i)).toBeInTheDocument();
+  });
+
+  it("keeps a row's amount when its person changes", async () => {
+    // A third person is required here: seedTrip's other person (Ana) is already Payer 2,
+    // and the no-duplicate-payer invariant correctly keeps her out of Payer 1's options —
+    // so switching Payer 1 needs someone not already paying.
+    const t = seedTrip();
+    t.people.push({ id: "p3", name: "Bea", color: "#c9e8c9" });
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    const first = screen.getByLabelText("Payer 1 amount");
+    await user.clear(first);
+    await user.type(first, "5.00");
+    await user.tab();
+    await user.selectOptions(screen.getByLabelText("Payer 1"), "p3");
+    expect(screen.getByLabelText("Payer 1 amount")).toHaveValue("5.00");
+  });
+
+  it("hides Add another payer while no one is picked yet", async () => {
+    const t = seedTrip();
+    t.receipts[0].payments = [];
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    expect(screen.queryByRole("button", { name: /add another payer/i })).toBeNull();
+  });
+
+  it("hides the one-tap fix when the items sum is negative", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    const price = screen.getByLabelText("Fries price");
+    await user.clear(price);
+    await user.type(price, "-9.00");
+    await user.tab();
+    expect(screen.getByText(/off by/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^use /i })).toBeNull();
+  });
+
+  it("announces coverage changes to screen readers", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /add another payer/i }));
+    expect(screen.getByRole("status")).toHaveTextContent(/payers cover/i);
+  });
 });

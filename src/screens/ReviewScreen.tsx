@@ -59,23 +59,30 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
 
   const payments = receipt.payments;
   const payTotal = paymentsTotal(receipt);
-  // With one payer the amount is implicit — it tracks the total, and storage self-heals
-  // through withSyncedSinglePayment on the next edit. Treating that case as covered also
-  // stops imported data with a stale amount from trapping the user behind a disabled
-  // button with no amount field on screen to fix it. The settle maths stay correct either
-  // way: the lone payer absorbs any difference, so the receipt still contributes exactly
-  // printedTotal.
+  const isMember = (personId: string) => trip.people.some((p) => p.id === personId);
+  const unknownPayer = payments.some((p) => !isMember(p.personId));
+  const negativeAmount = payments.some((p) => p.amount < 0);
+  // A lone payer's amount is implicit (it tracks the total) so it always covers; the
+  // settle maths let that payer absorb any difference, so the receipt still contributes
+  // exactly printedTotal. Anything that would make settlement silently drop the whole
+  // receipt — nobody paying, an unknown payer, a negative amount — must not count as covered.
   const covered =
-    payments.length === 1 ? true : payments.length > 1 && payTotal === receipt.printedTotal;
+    payments.length > 0 &&
+    !unknownPayer &&
+    !negativeAmount &&
+    (payments.length === 1 || payTotal === receipt.printedTotal);
   const negativeTotal = receipt.printedTotal < 0;
-  const personName = (id: string) => trip!.people.find((p) => p.id === id)?.name ?? "?";
+  const personName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
 
-  const setPayments = (next: Payment[]) => update(withSyncedSinglePayment({ ...receipt!, payments: next }));
+  const setPayments = (next: Payment[]) => update(withSyncedSinglePayment({ ...receipt, payments: next }));
 
   /** People selectable in one row: the current payer, plus anyone not already paying. */
   const selectablePeople = (currentId: string) =>
-    trip!.people.filter((p) => p.id === currentId || !payments.some((pay) => pay.personId === p.id));
+    trip.people.filter((p) => p.id === currentId || !payments.some((pay) => pay.personId === p.id));
 
+  // A function declaration (unlike the const arrow helpers above) isn't narrowed by the
+  // `if (!trip || !receipt) return null;` guard above — TS treats it as callable from
+  // anywhere in scope, so the assertions here are genuinely needed.
   function addPayer() {
     const next = trip!.people.find((p) => !payments.some((pay) => pay.personId === p.id));
     if (!next) return;
@@ -141,11 +148,12 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
             <div key={pay.personId} className="row" style={{ padding: "4px 0" }}>
               <select
                 aria-label={`Payer ${index + 1}`}
-                value={pay.personId}
+                value={isMember(pay.personId) ? pay.personId : ""}
                 onChange={(e) =>
                   setPayments(payments.map((p) => (p.personId === pay.personId ? { ...p, personId: e.target.value } : p)))
                 }
               >
+                {!isMember(pay.personId) && <option value="" disabled>Nobody yet — pick a payer</option>}
                 {selectablePeople(pay.personId).map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
@@ -172,9 +180,11 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
           ))
         )}
         <div className="row" style={{ marginTop: 8 }}>
-          <button className="btn" disabled={payments.length >= trip.people.length} onClick={addPayer}>
-            ＋ Add another payer
-          </button>
+          {payments.length > 0 && (
+            <button className="btn" disabled={payments.length >= trip.people.length} onClick={addPayer}>
+              ＋ Add another payer
+            </button>
+          )}
           {payments.length > 1 && (
             <button
               className="btn"
@@ -185,7 +195,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
           )}
         </div>
         {payments.length > 1 && (
-          <div className={covered ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
+          <div role="status" className={covered ? "banner-good" : "banner-warn"} style={{ marginTop: 8 }}>
             Payers cover {formatCents(payTotal, trip.currency)} of {formatCents(receipt.printedTotal, trip.currency)}
             {covered ? " ✓" : ` — tap Split evenly, or edit the amounts, so ${payments.map((p) => personName(p.personId)).join(" + ")} add up.`}
           </div>
@@ -233,12 +243,16 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
       ) : (
         <div className="banner-warn">
           ⚠️ Items sum to {formatCents(itemSum, trip.currency)} — off by {formatCents(diff, trip.currency)}.{" "}
-          <button
-            className="btn btn-ghost"
-            onClick={() => update(withSyncedSinglePayment({ ...receipt, printedTotal: itemSum }))}
-          >
-            Use {formatCents(itemSum, trip.currency)}
-          </button>{" "}
+          {itemSum >= 0 && (
+            <>
+              <button
+                className="btn btn-ghost"
+                onClick={() => update(withSyncedSinglePayment({ ...receipt, printedTotal: itemSum }))}
+              >
+                Use {formatCents(itemSum, trip.currency)}
+              </button>{" "}
+            </>
+          )}
           or fix a line — otherwise the biggest payer absorbs the difference.
         </div>
       )}
@@ -247,6 +261,14 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         <div className="banner-warn">
           ⚠️ A receipt total can't be negative — check the item prices.
         </div>
+      )}
+      {/* For a lone payer the amount always mirrors the total (withSyncedSinglePayment), so
+          when the total is already negative this would just repeat the same warning. */}
+      {negativeAmount && !(payments.length === 1 && negativeTotal) && (
+        <div className="banner-warn">⚠️ A payer's amount can't be negative — check the amounts.</div>
+      )}
+      {unknownPayer && (
+        <div className="banner-warn">⚠️ Someone who paid isn't in this trip any more — pick who paid.</div>
       )}
 
       <div className="footerbar">

@@ -105,6 +105,17 @@ describe("migrateTrip", () => {
     expect(() => migrateTrip(bad)).toThrow();
   });
 
+  it("dedupes duplicate payer rows, keeping the first entry", () => {
+    const dup = {
+      ...v1Trip,
+      receipts: [{
+        id: "r1", storeName: "Lidl", date: "2026-07-09", printedTotal: 119, status: "review", items: [],
+        payments: [{ personId: "p1", amount: 60 }, { personId: "p1", amount: 59 }],
+      }],
+    };
+    expect(migrateTrip(dup).receipts[0].payments).toEqual([{ personId: "p1", amount: 60 }]);
+  });
+
   it("keeps the settle maths intact through migration", async () => {
     const { balances } = await import("./settle");
     const { receiptShares } = await import("./split");

@@ -17,13 +17,17 @@ function migrateReceipt(raw: unknown): Receipt {
     // Entries are load-bearing for the money maths, so drop anything unusable.
     // An empty result is allowed: spec §8 keeps such a receipt visible and editable
     // while settlement excludes it.
-    payments = source.payments.filter(
+    const usable = source.payments.filter(
       (p): p is Payment =>
         !!p &&
         typeof p === "object" &&
         typeof (p as Payment).personId === "string" &&
         Number.isInteger((p as Payment).amount)
     );
+    // Duplicate rows for the same person are hand-edited/imported mistakes: keep the
+    // first entry only, so the review screen never renders two rows for one person.
+    const seen = new Set<string>();
+    payments = usable.filter((p) => (seen.has(p.personId) ? false : (seen.add(p.personId), true)));
   } else if (typeof source.paidBy === "string") {
     payments = [{ personId: source.paidBy, amount: printedTotal }];
   } else {

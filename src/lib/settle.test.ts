@@ -188,4 +188,11 @@ describe("multiple payers", () => {
     expect(paidTotals(t)).toEqual({ pedro: 200, ana: 100, bruno: 0 });                             // only the good one counts
     expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
   });
+
+  it("credits a stale single payment as the full printed total", () => {
+    const stale: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 100 }] }; // total is 300
+    const t = trip([stale]);
+    expect(paidTotals(t)).toEqual({ pedro: 300, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
 });
