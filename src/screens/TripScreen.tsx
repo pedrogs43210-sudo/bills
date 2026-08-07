@@ -28,6 +28,17 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       alive.current = false;
     };
   }, []);
+  // groupForm is a snapshot; the friend list can change under it on this very screen.
+  // Reconcile it with live data so a removed person can't be saved back into a group.
+  useEffect(() => {
+    setGroupForm((form) => {
+      if (!form || !trip) return form;
+      if (trip.people.length < 2) return null; // the Groups card is gated away
+      if (form.id !== null && !trip.groups.some((g) => g.id === form.id)) return null; // group pruned away
+      const live = form.personIds.filter((id) => trip.people.some((p) => p.id === id));
+      return live.length === form.personIds.length ? form : { ...form, personIds: live };
+    });
+  }, [trip?.people, trip?.groups]);
   if (!trip) return null;
 
   async function handlePhoto(file: File) {
@@ -100,7 +111,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   function saveGroup() {
     if (!groupForm) return;
     const name = groupForm.name.trim();
-    if (!name || groupForm.personIds.length === 0) return;
+    if (!name || groupForm.personIds.length === 0 || duplicateName) return;
     if (groupForm.id === null) {
       dispatch({ type: "addGroup", tripId, groupId: newId(), name, personIds: groupForm.personIds });
     } else {
@@ -110,10 +121,9 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   }
 
   function deleteGroup() {
-    const id = groupForm?.id;
-    if (!id) return;
+    if (!groupForm || groupForm.id === null) return;
     if (window.confirm("Delete this group? Assignments you already made stay as they are.")) {
-      dispatch({ type: "deleteGroup", tripId, groupId: id });
+      dispatch({ type: "deleteGroup", tripId, groupId: groupForm.id });
       setGroupForm(null);
     }
   }
@@ -140,6 +150,13 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     dispatch({ type: "addReceipt", tripId, receipt });
     go({ screen: "receipt", tripId, receiptId: receipt.id });
   }
+
+  const duplicateName =
+    groupForm !== null &&
+    groupForm.name.trim() !== "" &&
+    trip.groups.some(
+      (g) => g.id !== groupForm.id && g.name.trim().toLowerCase() === groupForm.name.trim().toLowerCase()
+    );
 
   const payerName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
   const payerNames = (r: Receipt) => r.payments.map((pay) => payerName(pay.personId)).join(" + ") || "?";
@@ -217,7 +234,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             {trip.groups.map((g) => (
               <button
                 key={g.id}
-                className="chip"
+                className={`chip ${g.id === groupForm?.id ? "selected" : ""}`}
                 onClick={() => setGroupForm({ id: g.id, name: g.name, personIds: g.personIds })}
               >
                 👥 {g.name} · {g.personIds.length}
@@ -233,9 +250,16 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
               <input
                 aria-label="Group name"
                 placeholder="Group name"
+                maxLength={24}
                 value={groupForm.name}
                 onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && saveGroup()}
               />
+              {duplicateName && (
+                <span className="muted" style={{ display: "block", color: "var(--warn)" }}>
+                  There's already a group with that name.
+                </span>
+              )}
               <div style={{ marginTop: 6 }}>
                 {trip.people.map((p) => {
                   const on = groupForm.personIds.includes(p.id);
@@ -255,7 +279,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
               <div className="row" style={{ marginTop: 8 }}>
                 <button
                   className="btn"
-                  disabled={!groupForm.name.trim() || groupForm.personIds.length === 0}
+                  disabled={!groupForm.name.trim() || groupForm.personIds.length === 0 || duplicateName}
                   onClick={saveGroup}
                 >
                   Save group

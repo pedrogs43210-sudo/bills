@@ -103,35 +103,75 @@ describe("trip management", () => {
     expect(screen.queryByText(/✅ done/)).toBeNull();
   });
 
-  it("creates, edits and deletes a group", async () => {
+});
+
+/** Creates a trip named "Algarve" with Pedro and Ana already added, and renders it. */
+async function tripWithTwoFriends(user: ReturnType<typeof userEvent.setup>) {
+  render(<App />);
+  await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
+  await user.click(screen.getByRole("button", { name: /create trip/i }));
+  for (const name of ["Pedro", "Ana"]) {
+    await user.type(screen.getByPlaceholderText(/add friend/i), name);
+    await user.click(screen.getByRole("button", { name: "Add" }));
+  }
+}
+
+async function createGroup(user: ReturnType<typeof userEvent.setup>, name: string, memberNames: string[]) {
+  await user.click(screen.getByRole("button", { name: /new group/i }));
+  await user.type(screen.getByLabelText(/group name/i), name);
+  for (const member of memberNames) {
+    await user.click(screen.getByRole("button", { name: new RegExp(`add ${member} to group`, "i") }));
+  }
+  await user.click(screen.getByRole("button", { name: /save group/i }));
+}
+
+describe("groups on the trip screen", () => {
+  it("creates a group", async () => {
     const user = userEvent.setup();
-    render(<App />);
-    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
-    await user.click(screen.getByRole("button", { name: /create trip/i }));
-    for (const name of ["Pedro", "Ana"]) {
-      await user.type(screen.getByPlaceholderText(/add friend/i), name);
-      await user.click(screen.getByRole("button", { name: "Add" }));
-    }
-
-    await user.click(screen.getByRole("button", { name: /new group/i }));
-    await user.type(screen.getByLabelText(/group name/i), "Breakfast");
-    await user.click(screen.getByRole("button", { name: /add Pedro to group/i }));
-    await user.click(screen.getByRole("button", { name: /save group/i }));
+    await tripWithTwoFriends(user);
+    await createGroup(user, "Breakfast", ["Pedro"]);
     expect(screen.getByRole("button", { name: /👥 Breakfast · 1/ })).toBeInTheDocument();
+  });
 
-    // reopen and rename
+  it("reopens and renames a group", async () => {
+    const user = userEvent.setup();
+    await tripWithTwoFriends(user);
+    await createGroup(user, "Breakfast", ["Pedro"]);
+
     await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
     const nameInput = screen.getByLabelText(/group name/i);
     await user.clear(nameInput);
     await user.type(nameInput, "Brunch");
     await user.click(screen.getByRole("button", { name: /save group/i }));
     expect(screen.getByRole("button", { name: /👥 Brunch · 1/ })).toBeInTheDocument();
+  });
 
-    // delete it
+  it("changes members through the UI", async () => {
+    const user = userEvent.setup();
+    await tripWithTwoFriends(user);
+    await createGroup(user, "Breakfast", ["Pedro"]);
+
+    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
+    await user.click(screen.getByRole("button", { name: /add Ana to group/i }));
+    await user.click(screen.getByRole("button", { name: /remove Pedro from group/i }));
+    await user.click(screen.getByRole("button", { name: /save group/i }));
+    expect(screen.getByRole("button", { name: /👥 Breakfast · 1/ })).toBeInTheDocument();
+
+    // reopen to confirm it's Ana, not Pedro, who ended up in the group
+    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
+    expect(screen.getByRole("button", { name: /remove Ana from group/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add Pedro to group/i })).toBeInTheDocument();
+  });
+
+  it("deletes a group with confirmation", async () => {
+    const user = userEvent.setup();
+    await tripWithTwoFriends(user);
+    await createGroup(user, "Breakfast", ["Pedro"]);
+
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    await user.click(screen.getByRole("button", { name: /👥 Brunch · 1/ }));
+    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
     await user.click(screen.getByRole("button", { name: /delete group/i }));
-    expect(screen.queryByRole("button", { name: /👥 Brunch/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /👥 Breakfast/ })).toBeNull();
     vi.mocked(window.confirm).mockRestore();
   });
 
@@ -146,5 +186,56 @@ describe("trip management", () => {
     await user.type(screen.getByPlaceholderText(/add friend/i), "Ana");
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.getByRole("button", { name: /new group/i })).toBeInTheDocument();
+  });
+
+  it("drops a friend removed mid-edit instead of writing their id back on save", async () => {
+    const user = userEvent.setup();
+    await tripWithTwoFriends(user);
+    // a third friend so the trip stays at 2+ people after Ana leaves —
+    // otherwise the Groups card itself would hide and confound this case
+    await user.type(screen.getByPlaceholderText(/add friend/i), "Bruno");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await createGroup(user, "Breakfast", ["Pedro", "Ana"]);
+    expect(screen.getByRole("button", { name: /👥 Breakfast · 2/ })).toBeInTheDocument();
+
+    // reopen for editing, then remove Ana via the Friends card's × button
+    // while the group form is still open (she has no money entries, so it's allowed)
+    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 2/ }));
+    await user.click(screen.getByRole("button", { name: "Remove Ana" }));
+    await user.click(screen.getByRole("button", { name: /save group/i }));
+
+    // the stale form must not resurrect Ana's deleted id into the saved group
+    expect(screen.getByRole("button", { name: /👥 Breakfast · 1/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /👥 Breakfast · 2/ })).toBeNull();
+  });
+
+  it("closes the form when its group is pruned away entirely", async () => {
+    const user = userEvent.setup();
+    await tripWithTwoFriends(user);
+    // a third friend so the trip stays at 2+ people after Bruno leaves —
+    // otherwise the Groups card itself would hide and confound this case
+    await user.type(screen.getByPlaceholderText(/add friend/i), "Bruno");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    await createGroup(user, "Solo Bruno", ["Bruno"]);
+    expect(screen.getByRole("button", { name: /👥 Solo Bruno · 1/ })).toBeInTheDocument();
+
+    // reopen it, then remove Bruno — the group has nobody left, so it's pruned away
+    await user.click(screen.getByRole("button", { name: /👥 Solo Bruno · 1/ }));
+    await user.click(screen.getByRole("button", { name: "Remove Bruno" }));
+    expect(screen.queryByRole("button", { name: /save group/i })).toBeNull();
+    // the card itself is still there — Pedro and Ana keep the trip at 2 people
+    expect(screen.getByRole("button", { name: /new group/i })).toBeInTheDocument();
+  });
+
+  it("rejects a duplicate group name", async () => {
+    const user = userEvent.setup();
+    await tripWithTwoFriends(user);
+    await createGroup(user, "Breakfast", ["Pedro"]);
+
+    await user.click(screen.getByRole("button", { name: /new group/i }));
+    await user.type(screen.getByLabelText(/group name/i), "breakfast"); // case-insensitive match
+    await user.click(screen.getByRole("button", { name: /add Ana to group/i }));
+    expect(screen.getByText(/there's already a group with that name/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save group/i })).toBeDisabled();
   });
 });

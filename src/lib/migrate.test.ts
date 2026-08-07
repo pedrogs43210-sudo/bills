@@ -140,4 +140,29 @@ describe("migrateTrip", () => {
     expect(Object.values(b).reduce((x, y) => x + y, 0)).toBe(0);
     expect(b).toEqual({ p1: 250, p2: -250 });
   });
+
+  it("drops group members who aren't people in the trip", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: "Breakfast", personIds: ["p1", "ghost"] }] };
+    expect(migrateTrip(t).groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p1"] }]);
+  });
+
+  it("drops a group whose personIds isn't an array", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: "Breakfast", personIds: "not-an-array" }] };
+    expect(migrateTrip(t).groups).toEqual([]);
+  });
+
+  it("drops a bare-string group entry instead of crashing", () => {
+    const t = { ...v1Trip, groups: ["not even an object"] };
+    expect(migrateTrip(t).groups).toEqual([]);
+  });
+
+  it("drops a group with a non-string name", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: 42, personIds: ["p1"] }] };
+    expect(migrateTrip(t).groups).toEqual([]);
+  });
+
+  it("drops a group left with no known members", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: "Ghosts", personIds: ["ghost1", "ghost2"] }] };
+    expect(migrateTrip(t).groups).toEqual([]);
+  });
 });

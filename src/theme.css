@@ -33,6 +33,7 @@ h1, h2, h3 { font-weight: 800; margin: 0 0 8px; }
   display: inline-block; border: none; border-radius: 999px; padding: 6px 12px;
   margin: 3px 6px 3px 0; font-size: 14px; font-weight: 600; cursor: pointer;
   background: #f0e4d8; color: var(--ink);
+  max-width: 100%; overflow-wrap: anywhere;
 }
 .chip.selected { outline: 3px solid var(--sunset2); }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

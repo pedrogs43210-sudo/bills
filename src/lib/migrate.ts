@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, type Group, type Payment, type Receipt, type Trip } from "../types";
+import { SCHEMA_VERSION, type Group, type Payment, type Person, type Receipt, type Trip } from "../types";
 
 /**
  * Convert one stored receipt to the current shape.
@@ -38,6 +38,23 @@ function migrateReceipt(raw: unknown): Receipt {
   return { ...(source as unknown as Receipt), printedTotal, payments };
 }
 
+/** Groups are a convenience layer; drop anything unusable rather than risk a crash or a ghost member. */
+function migrateGroups(raw: unknown, people: Person[]): Group[] {
+  if (!Array.isArray(raw)) return [];
+  const memberIds = new Set(people.map((p) => p?.id));
+  return raw
+    .filter(
+      (g): g is Group =>
+        !!g &&
+        typeof g === "object" &&
+        typeof (g as Group).id === "string" &&
+        typeof (g as Group).name === "string" &&
+        Array.isArray((g as Group).personIds)
+    )
+    .map((g) => ({ ...g, personIds: g.personIds.filter((id) => typeof id === "string" && memberIds.has(id)) }))
+    .filter((g) => g.personIds.length > 0); // an emptied group is deleted, matching the prune rule
+}
+
 /**
  * Convert one stored trip to the current shape. Throws when the input is not
  * recognisably a trip, so callers can route it to their corrupt-data path.
@@ -56,7 +73,7 @@ export function migrateTrip(raw: unknown): Trip {
   const trip = raw as Trip & { groups?: unknown };
   return {
     ...trip,
-    groups: (Array.isArray(trip.groups) ? trip.groups : []) as Group[],
+    groups: migrateGroups(trip.groups, (trip.people ?? []) as Person[]),
     receipts: (trip.receipts as unknown[]).map(migrateReceipt),
     schemaVersion: SCHEMA_VERSION,
   };
