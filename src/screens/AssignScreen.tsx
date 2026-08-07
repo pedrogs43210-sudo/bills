@@ -54,7 +54,10 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
 
   function togglePerson(item: Item, personId: string) {
     const a = item.assignment;
-    const current = a.kind === "people" ? a.personIds : [];
+    // "Everyone" shows every name highlighted, so untapping one has to mean
+    // "everyone except them" rather than "only them".
+    const current =
+      a.kind === "people" ? a.personIds : a.kind === "everyone" ? trip!.people.map((p) => p.id) : [];
     const next = current.includes(personId) ? current.filter((id) => id !== personId) : [...current, personId];
     assign(item, next.length === 0 ? { kind: "unassigned" } : { kind: "people", personIds: next });
   }
@@ -124,7 +127,9 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
             {open && !unitsMode && (
               <div style={{ marginTop: 8 }}>
                 {trip.people.map((p) => {
-                  const selected = a.kind === "people" && a.personIds.includes(p.id);
+                  // Everyone highlights every name, so a group or Everyone tap can be
+                  // narrowed to "all except them" by untapping one.
+                  const selected = a.kind === "everyone" || (a.kind === "people" && a.personIds.includes(p.id));
                   return (
                     <button key={p.id} className={`chip ${selected ? "selected" : ""}`} style={{ background: p.color }}
                       onClick={() => togglePerson(item, p.id)}>
@@ -142,8 +147,9 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
                         className={`chip ${selected ? "selected" : ""}`}
                         onClick={() => {
                           // Copy, so later edits to the group can never rewrite this assignment.
+                          // The panel stays open: the members light up, so dropping one of them
+                          // ("Breakfast except Ana") is the next tap rather than a fresh start.
                           assign(item, { kind: "people", personIds: [...g.personIds] });
-                          setOpenItemId(null);
                         }}
                       >
                         👥 {g.name}
@@ -152,8 +158,8 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
                   })}
                 <button className={`chip ${a.kind === "everyone" ? "selected" : ""}`}
                   onClick={() => {
+                    // Stays open so a name can be untapped for "everyone except them".
                     assign(item, a.kind === "everyone" ? { kind: "unassigned" } : { kind: "everyone" });
-                    setOpenItemId(null);
                   }}>
                   👥 Everyone
                 </button>
