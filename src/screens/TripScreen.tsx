@@ -19,6 +19,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [editName, setEditName] = useState("");
   const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
+  const [groupForm, setGroupForm] = useState<{ id: string | null; name: string; personIds: string[] } | null>(null);
   const lastPhoto = useRef<File | null>(null);
   const alive = useRef(true);
   useEffect(() => {
@@ -94,6 +95,36 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       dispatch({ type: "renamePerson", tripId, personId, name });
     }
     setEditingPersonId(null);
+  }
+
+  function saveGroup() {
+    if (!groupForm) return;
+    const name = groupForm.name.trim();
+    if (!name || groupForm.personIds.length === 0) return;
+    if (groupForm.id === null) {
+      dispatch({ type: "addGroup", tripId, groupId: newId(), name, personIds: groupForm.personIds });
+    } else {
+      dispatch({ type: "updateGroup", tripId, groupId: groupForm.id, name, personIds: groupForm.personIds });
+    }
+    setGroupForm(null);
+  }
+
+  function deleteGroup() {
+    const id = groupForm?.id;
+    if (!id) return;
+    if (window.confirm("Delete this group? Assignments you already made stay as they are.")) {
+      dispatch({ type: "deleteGroup", tripId, groupId: id });
+      setGroupForm(null);
+    }
+  }
+
+  function toggleGroupPerson(personId: string) {
+    if (!groupForm) return;
+    const on = groupForm.personIds.includes(personId);
+    setGroupForm({
+      ...groupForm,
+      personIds: on ? groupForm.personIds.filter((id) => id !== personId) : [...groupForm.personIds, personId],
+    });
   }
 
   function addManualReceipt() {
@@ -177,6 +208,69 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           <button className="btn" onClick={addPerson}>Add</button>
         </div>
       </div>
+
+      {trip.people.length >= 2 && (
+        <div className="card">
+          <h3>Groups</h3>
+          <p className="muted">Save the sets of people who share things, then assign in one tap.</p>
+          <div>
+            {trip.groups.map((g) => (
+              <button
+                key={g.id}
+                className="chip"
+                onClick={() => setGroupForm({ id: g.id, name: g.name, personIds: g.personIds })}
+              >
+                👥 {g.name} · {g.personIds.length}
+              </button>
+            ))}
+          </div>
+          {groupForm === null ? (
+            <button className="btn" style={{ width: "100%", marginTop: 8 }} onClick={() => setGroupForm({ id: null, name: "", personIds: [] })}>
+              ＋ New group
+            </button>
+          ) : (
+            <div style={{ marginTop: 8 }}>
+              <input
+                aria-label="Group name"
+                placeholder="Group name"
+                value={groupForm.name}
+                onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+              />
+              <div style={{ marginTop: 6 }}>
+                {trip.people.map((p) => {
+                  const on = groupForm.personIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      className={`chip ${on ? "selected" : ""}`}
+                      style={{ background: p.color }}
+                      aria-label={`${on ? "Remove" : "Add"} ${p.name} ${on ? "from" : "to"} group`}
+                      onClick={() => toggleGroupPerson(p.id)}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="row" style={{ marginTop: 8 }}>
+                <button
+                  className="btn"
+                  disabled={!groupForm.name.trim() || groupForm.personIds.length === 0}
+                  onClick={saveGroup}
+                >
+                  Save group
+                </button>
+                <button className="btn btn-ghost" onClick={() => setGroupForm(null)}>Cancel</button>
+                {groupForm.id !== null && (
+                  <button className="btn btn-ghost" style={{ color: "var(--warn)" }} onClick={deleteGroup}>
+                    Delete group
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {trip.receipts.map((r) => (
         <button

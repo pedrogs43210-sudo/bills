@@ -102,4 +102,49 @@ describe("trip management", () => {
     // r2 is stored as "done", but exclusion outranks the status badge
     expect(screen.queryByText(/✅ done/)).toBeNull();
   });
+
+  it("creates, edits and deletes a group", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    for (const name of ["Pedro", "Ana"]) {
+      await user.type(screen.getByPlaceholderText(/add friend/i), name);
+      await user.click(screen.getByRole("button", { name: "Add" }));
+    }
+
+    await user.click(screen.getByRole("button", { name: /new group/i }));
+    await user.type(screen.getByLabelText(/group name/i), "Breakfast");
+    await user.click(screen.getByRole("button", { name: /add Pedro to group/i }));
+    await user.click(screen.getByRole("button", { name: /save group/i }));
+    expect(screen.getByRole("button", { name: /👥 Breakfast · 1/ })).toBeInTheDocument();
+
+    // reopen and rename
+    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
+    const nameInput = screen.getByLabelText(/group name/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Brunch");
+    await user.click(screen.getByRole("button", { name: /save group/i }));
+    expect(screen.getByRole("button", { name: /👥 Brunch · 1/ })).toBeInTheDocument();
+
+    // delete it
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: /👥 Brunch · 1/ }));
+    await user.click(screen.getByRole("button", { name: /delete group/i }));
+    expect(screen.queryByRole("button", { name: /👥 Brunch/ })).toBeNull();
+    vi.mocked(window.confirm).mockRestore();
+  });
+
+  it("hides groups until there are two friends", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    await user.type(screen.getByPlaceholderText(/add friend/i), "Pedro");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(screen.queryByRole("button", { name: /new group/i })).toBeNull();
+    await user.type(screen.getByPlaceholderText(/add friend/i), "Ana");
+    await user.click(screen.getByRole("button", { name: "Add" }));
+    expect(screen.getByRole("button", { name: /new group/i })).toBeInTheDocument();
+  });
 });

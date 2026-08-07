@@ -142,3 +142,40 @@ describe("importTrip action", () => {
     expect(data.trips).toHaveLength(2);
   });
 });
+
+describe("groups", () => {
+  const start = run([
+    { type: "createTrip", id: "t1", name: "Algarve", emoji: "🏖️" },
+    { type: "addPerson", tripId: "t1", personId: "p1", name: "Pedro" },
+    { type: "addPerson", tripId: "t1", personId: "p2", name: "Ana" },
+  ]);
+
+  it("adds a group", () => {
+    const data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1", "p2"] });
+    expect(data.trips[0].groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p1", "p2"] }]);
+  });
+
+  it("updates a group's name and members", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1", "p2"] });
+    data = reducer(data, { type: "updateGroup", tripId: "t1", groupId: "g1", name: "Brunch", personIds: ["p2"] });
+    expect(data.trips[0].groups).toEqual([{ id: "g1", name: "Brunch", personIds: ["p2"] }]);
+  });
+
+  it("deletes a group", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1"] });
+    data = reducer(data, { type: "deleteGroup", tripId: "t1", groupId: "g1" });
+    expect(data.trips[0].groups).toEqual([]);
+  });
+
+  it("prunes a removed person from groups", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1", "p2"] });
+    data = reducer(data, { type: "removePerson", tripId: "t1", personId: "p1" });
+    expect(data.trips[0].groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p2"] }]);
+  });
+
+  it("deletes a group left with nobody in it", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Solo", personIds: ["p1"] });
+    data = reducer(data, { type: "removePerson", tripId: "t1", personId: "p1" });
+    expect(data.trips[0].groups).toEqual([]);
+  });
+});

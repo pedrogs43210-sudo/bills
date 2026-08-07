@@ -54,7 +54,8 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
             })
             .join("; ")}
           {excluded.length > 3 ? `; and ${excluded.length - 3} more` : ""}. Open{" "}
-          {excluded.length === 1 ? "it" : "them"} from the trip screen and fix the warning at the bottom.
+          {excluded.length === 1 ? "it" : "them"} from the trip screen and fix the warning at the bottom
+          (tap ✏️ Edit items first if the receipt opens on the assigning screen).
         </div>
       )}
 
