@@ -155,4 +155,42 @@ describe("assign screen", () => {
     await user.click(screen.getByRole("button", { name: /everyone/i })); // re-assign to everyone
     expect(screen.getAllByText(/👥 Everyone/)).toHaveLength(2); // both summaries follow
   });
+
+  it("assigns an item to a whole group in one tap", async () => {
+    const t = seedTrip();
+    t.groups = [{ id: "g1", name: "Breakfast", personIds: ["p2", "p3"] }];
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openAssign(user);
+    await user.click(screen.getByText("Fries"));
+    await user.click(screen.getByRole("button", { name: "👥 Breakfast" }));
+    expect(screen.getByText("Ana, Bruno")).toBeInTheDocument();
+  });
+
+  it("highlights the group chip when the item matches it exactly", async () => {
+    const t = seedTrip();
+    t.groups = [{ id: "g1", name: "Breakfast", personIds: ["p2", "p3"] }];
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openAssign(user);
+    await user.click(screen.getByText("Fries"));
+    const chip = screen.getByRole("button", { name: "👥 Breakfast" });
+    expect(chip.className).not.toContain("selected");
+    await user.click(chip);
+    await user.click(screen.getByText("Fries")); // reopen the item
+    expect(screen.getByRole("button", { name: "👥 Breakfast" }).className).toContain("selected");
+  });
+
+  it("hides a group with no members left", async () => {
+    const t = seedTrip();
+    t.groups = [{ id: "g1", name: "Ghosts", personIds: [] }];
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openAssign(user);
+    await user.click(screen.getByText("Fries"));
+    expect(screen.queryByRole("button", { name: /Ghosts/ })).toBeNull();
+  });
 });

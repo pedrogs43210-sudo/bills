@@ -165,4 +165,14 @@ describe("migrateTrip", () => {
     const t = { ...v1Trip, groups: [{ id: "g1", name: "Ghosts", personIds: ["ghost1", "ghost2"] }] };
     expect(migrateTrip(t).groups).toEqual([]);
   });
+
+  it("de-dupes repeated member ids within a group", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: "Breakfast", personIds: ["p1", "p1"] }] };
+    expect(migrateTrip(t).groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p1"] }]);
+  });
+
+  it("drops a whitespace-only group name", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: "   ", personIds: ["p1"] }] };
+    expect(migrateTrip(t).groups).toEqual([]);
+  });
 });

@@ -7,6 +7,11 @@ import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
 import type { Assignment, Item, Person } from "../types";
 
+/** Order-insensitive set comparison, for highlighting a group chip that matches the assignment. */
+function sameMembers(a: string[], b: string[]): boolean {
+  return a.length === b.length && [...a].sort().join("|") === [...b].sort().join("|");
+}
+
 function assignmentSummary(item: Item, people: Person[]): string {
   const a = item.assignment;
   const name = (id: string) => people.find((p) => p.id === id)?.name ?? "?";
@@ -127,6 +132,23 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
                     </button>
                   );
                 })}
+                {trip.groups
+                  .filter((g) => g.personIds.length > 0)
+                  .map((g) => {
+                    const selected = a.kind === "people" && sameMembers(a.personIds, g.personIds);
+                    return (
+                      <button
+                        key={g.id}
+                        className={`chip ${selected ? "selected" : ""}`}
+                        onClick={() => {
+                          assign(item, { kind: "people", personIds: g.personIds });
+                          setOpenItemId(null);
+                        }}
+                      >
+                        👥 {g.name}
+                      </button>
+                    );
+                  })}
                 <button className={`chip ${a.kind === "everyone" ? "selected" : ""}`}
                   onClick={() => {
                     assign(item, a.kind === "everyone" ? { kind: "unassigned" } : { kind: "everyone" });

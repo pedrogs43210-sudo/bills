@@ -49,9 +49,18 @@ function migrateGroups(raw: unknown, people: Person[]): Group[] {
         typeof g === "object" &&
         typeof (g as Group).id === "string" &&
         typeof (g as Group).name === "string" &&
+        (g as Group).name.trim().length > 0 &&
         Array.isArray((g as Group).personIds)
     )
-    .map((g) => ({ ...g, personIds: g.personIds.filter((id) => typeof id === "string" && memberIds.has(id)) }))
+    .map((g) => {
+      // Duplicate rows for the same person are hand-edited/imported mistakes: keep the
+      // first entry only, mirroring how migrateReceipt de-dupes payments.
+      const seen = new Set<string>();
+      const personIds = g.personIds.filter(
+        (id) => typeof id === "string" && memberIds.has(id) && (seen.has(id) ? false : (seen.add(id), true))
+      );
+      return { ...g, personIds };
+    })
     .filter((g) => g.personIds.length > 0); // an emptied group is deleted, matching the prune rule
 }
 
