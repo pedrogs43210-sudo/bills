@@ -238,4 +238,20 @@ describe("groups on the trip screen", () => {
     expect(screen.getByText(/there's already a group with that name/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save group/i })).toBeDisabled();
   });
+
+  it("refuses to name a group Everyone, which would clone the assign screen's own chip", async () => {
+    const user = userEvent.setup();
+    await tripWithTwoFriends(user);
+
+    await user.click(screen.getByRole("button", { name: /new group/i }));
+    await user.type(screen.getByLabelText(/group name/i), " everyone "); // padded and lower-case
+    await user.click(screen.getByRole("button", { name: /add Ana to group/i }));
+    expect(screen.getByText(/already the button that picks the whole trip/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save group/i })).toBeDisabled();
+
+    // and it saves fine once the name is no longer the reserved one
+    await user.clear(screen.getByLabelText(/group name/i));
+    await user.type(screen.getByLabelText(/group name/i), "Everyone else");
+    expect(screen.getByRole("button", { name: /save group/i })).toBeEnabled();
+  });
 });

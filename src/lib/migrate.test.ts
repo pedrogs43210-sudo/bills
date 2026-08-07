@@ -171,6 +171,16 @@ describe("migrateTrip", () => {
     expect(migrateTrip(t).groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p1"] }]);
   });
 
+  it("renames an imported group called Everyone instead of dropping its members", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: "Everyone", personIds: ["p1"] }] };
+    expect(migrateTrip(t).groups).toEqual([{ id: "g1", name: "Everyone (group)", personIds: ["p1"] }]);
+  });
+
+  it("trims a padded group name", () => {
+    const t = { ...v1Trip, groups: [{ id: "g1", name: "  Breakfast  ", personIds: ["p1"] }] };
+    expect(migrateTrip(t).groups[0].name).toBe("Breakfast");
+  });
+
   it("drops a whitespace-only group name", () => {
     const t = { ...v1Trip, groups: [{ id: "g1", name: "   ", personIds: ["p1"] }] };
     expect(migrateTrip(t).groups).toEqual([]);

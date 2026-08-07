@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION, type Group, type Payment, type Person, type Receipt, type Trip } from "../types";
+import { unreserveGroupName } from "./groups";
 
 /**
  * Convert one stored receipt to the current shape.
@@ -56,10 +57,16 @@ function migrateGroups(raw: unknown, people: Person[]): Group[] {
       // Duplicate rows for the same person are hand-edited/imported mistakes: keep the
       // first entry only, mirroring how migrateReceipt de-dupes payments.
       const seen = new Set<string>();
-      const personIds = g.personIds.filter(
-        (id) => typeof id === "string" && memberIds.has(id) && (seen.has(id) ? false : (seen.add(id), true))
-      );
-      return { ...g, personIds };
+      const personIds: string[] = [];
+      for (const id of g.personIds) {
+        if (typeof id === "string" && memberIds.has(id) && !seen.has(id)) {
+          seen.add(id);
+          personIds.push(id);
+        }
+      }
+      // A group named "Everyone" would be indistinguishable from the assign screen's own
+      // Everyone chip, so rename it rather than discard members the user chose deliberately.
+      return { ...g, name: unreserveGroupName(g.name), personIds };
     })
     .filter((g) => g.personIds.length > 0); // an emptied group is deleted, matching the prune rule
 }

@@ -141,7 +141,8 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
                         key={g.id}
                         className={`chip ${selected ? "selected" : ""}`}
                         onClick={() => {
-                          assign(item, { kind: "people", personIds: g.personIds });
+                          // Copy, so later edits to the group can never rewrite this assignment.
+                          assign(item, { kind: "people", personIds: [...g.personIds] });
                           setOpenItemId(null);
                         }}
                       >

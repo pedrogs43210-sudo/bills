@@ -4,6 +4,7 @@ import { personHasEntries } from "../state/reducer";
 import { newId } from "../lib/ids";
 import { formatCents } from "../lib/money";
 import { isFullyAssigned } from "../lib/split";
+import { isReservedGroupName } from "../lib/groups";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
 import { scanReceipt, ScanError } from "../lib/scan";
@@ -111,7 +112,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   function saveGroup() {
     if (!groupForm) return;
     const name = groupForm.name.trim();
-    if (!name || groupForm.personIds.length === 0 || duplicateName) return;
+    if (!name || groupForm.personIds.length === 0 || nameRejected) return;
     if (groupForm.id === null) {
       dispatch({ type: "addGroup", tripId, groupId: newId(), name, personIds: groupForm.personIds });
     } else {
@@ -157,6 +158,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     trip.groups.some(
       (g) => g.id !== groupForm.id && g.name.trim().toLowerCase() === groupForm.name.trim().toLowerCase()
     );
+  const reservedName = groupForm !== null && isReservedGroupName(groupForm.name);
+  const nameRejected = duplicateName || reservedName;
 
   const payerName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
   const payerNames = (r: Receipt) => r.payments.map((pay) => payerName(pay.personId)).join(" + ") || "?";
@@ -260,6 +263,11 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                   There's already a group with that name.
                 </span>
               )}
+              {reservedName && (
+                <span className="muted" style={{ display: "block", color: "var(--warn)" }}>
+                  "Everyone" is already the button that picks the whole trip — pick another name.
+                </span>
+              )}
               <div style={{ marginTop: 6 }}>
                 {trip.people.map((p) => {
                   const on = groupForm.personIds.includes(p.id);
@@ -279,7 +287,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
               <div className="row" style={{ marginTop: 8 }}>
                 <button
                   className="btn"
-                  disabled={!groupForm.name.trim() || groupForm.personIds.length === 0 || duplicateName}
+                  disabled={!groupForm.name.trim() || groupForm.personIds.length === 0 || nameRejected}
                   onClick={saveGroup}
                 >
                   Save group
