@@ -50,7 +50,16 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
   const receipt = trip?.receipts.find((r) => r.id === receiptId);
   if (!trip || !receipt) return null;
 
-  const update = (r: Receipt) => dispatch({ type: "updateReceipt", tripId, receipt: r });
+  /**
+   * Save an edit. While the total is automatic it is re-derived from the items, so a
+   * hand-typed receipt adds itself up; the lone payer's amount follows either way.
+   */
+  const update = (r: Receipt) => {
+    const synced = r.totalIsAuto
+      ? { ...r, printedTotal: r.items.reduce((s, i) => s + i.lineTotal, 0) }
+      : r;
+    dispatch({ type: "updateReceipt", tripId, receipt: withSyncedSinglePayment(synced) });
+  };
   const updateItem = (item: Item) =>
     update({ ...receipt, items: receipt.items.map((i) => (i.id === item.id ? item : i)) });
 
@@ -71,7 +80,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
   const negativeTotal = receipt.printedTotal < 0;
   const personName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
 
-  const setPayments = (next: Payment[]) => update(withSyncedSinglePayment({ ...receipt, payments: next }));
+  const setPayments = (next: Payment[]) => update({ ...receipt, payments: next });
 
   /** People selectable in one row: the current payer, plus anyone not already paying. */
   const selectablePeople = (currentId: string) =>
@@ -237,9 +246,14 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         <MoneyInput
           label="Receipt total"
           cents={receipt.printedTotal}
-          onChange={(c) => update(withSyncedSinglePayment({ ...receipt, printedTotal: c }))}
+          onChange={(c) => update({ ...receipt, printedTotal: c, totalIsAuto: false })}
         />
       </div>
+      {receipt.totalIsAuto && (
+        <p className="muted" style={{ margin: "-4px 0 8px" }}>
+          Added up from the items — type your own total if the receipt says something different.
+        </p>
+      )}
 
       {diff === 0 ? (
         <div className="banner-good">✓ Matches the receipt total ({formatCents(itemSum, trip.currency)})</div>
@@ -250,7 +264,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
             <>
               <button
                 className="btn btn-ghost"
-                onClick={() => update(withSyncedSinglePayment({ ...receipt, printedTotal: itemSum }))}
+                onClick={() => update({ ...receipt, printedTotal: itemSum, totalIsAuto: true })}
               >
                 Use {formatCents(itemSum, trip.currency)}
               </button>{" "}

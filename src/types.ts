@@ -28,6 +28,14 @@ export type Receipt = {
   items: Item[];
   printedTotal: number; // integer cents
   status: ReceiptStatus;
+  /**
+   * True while the total is just the items added up, which is how a receipt typed in by
+   * hand starts: there is no paper total to copy, so making the user enter one twice is
+   * busywork. Typing a total clears this; tapping "Use <sum>" sets it again. Absent on a
+   * scanned receipt, whose printed total is what the shop actually charged and must never
+   * be quietly rewritten when a misread line is corrected.
+   */
+  totalIsAuto?: boolean;
 };
 
 export type Trip = {

@@ -147,6 +147,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       items: [],
       printedTotal: 0,
       status: "review",
+      totalIsAuto: true, // nothing was printed, so the items are the total
     };
     dispatch({ type: "addReceipt", tripId, receipt });
     go({ screen: "receipt", tripId, receiptId: receipt.id });

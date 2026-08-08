@@ -322,3 +322,82 @@ describe("review screen", () => {
     expect(status).not.toHaveClass("banner-good");
   });
 });
+
+describe("a receipt typed in by hand", () => {
+  /** Start a blank hand-made receipt on a trip that has people. */
+  async function addByHand(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByText(/algarve/i));
+    await user.click(screen.getByRole("button", { name: /add items by hand/i }));
+  }
+
+  async function typePrice(user: ReturnType<typeof userEvent.setup>, label: string, value: string) {
+    const field = screen.getByLabelText(label);
+    await user.clear(field);
+    await user.type(field, value);
+    await user.tab(); // blur commits
+  }
+
+  it("adds the items up into the total by itself", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addByHand(user);
+
+    await user.click(screen.getByRole("button", { name: /add item/i }));
+    await typePrice(user, "price", "4.00");
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("4.00");
+
+    await user.click(screen.getByRole("button", { name: /add item/i }));
+    const prices = screen.getAllByLabelText("price");
+    await user.clear(prices[1]);
+    await user.type(prices[1], "2.50");
+    await user.tab();
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("6.50");
+  });
+
+  it("keeps the payer's amount in step with the automatic total", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addByHand(user);
+    await user.click(screen.getByRole("button", { name: /add item/i }));
+    await typePrice(user, "price", "4.00");
+
+    const receipts = JSON.parse(localStorage.getItem("bills.data.v1")!).trips[0].receipts;
+    const stored = receipts[receipts.length - 1]; // the hand-made one, appended
+    expect(stored.printedTotal).toBe(400);
+    expect(stored.payments).toEqual([{ personId: "p1", amount: 400 }]);
+  });
+
+  it("stops adding up once the total is typed over, and resumes on Use", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await addByHand(user);
+    await user.click(screen.getByRole("button", { name: /add item/i }));
+    await typePrice(user, "price", "4.00");
+
+    // an explicit total wins, even when the items disagree
+    await typePrice(user, "Receipt total", "10.00");
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("10.00");
+    await user.click(screen.getByRole("button", { name: /add item/i }));
+    await typePrice(user, "Receipt total", "10.00"); // still mine after another item
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("10.00");
+
+    // tapping the suggestion hands control back to the items
+    await user.click(screen.getByRole("button", { name: /^Use /i }));
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("4.00");
+    const prices = screen.getAllByLabelText("price");
+    await user.clear(prices[1]);
+    await user.type(prices[1], "1.00");
+    await user.tab();
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("5.00");
+  });
+
+  it("leaves a scanned receipt's printed total alone when an item is corrected", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByText(/algarve/i));
+    await user.click(screen.getByText(/lidl/i)); // seeded, came from a scan
+    await typePrice(user, "Fries price", "3.00");
+    // the paper said 6.99 — correcting a misread line must not rewrite it
+    expect(screen.getByLabelText("Receipt total")).toHaveValue("6.99");
+  });
+});

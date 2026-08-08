@@ -2,8 +2,20 @@ import { useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { newId } from "../lib/ids";
 import type { View } from "../App";
+import type { Trip } from "../types";
 
 const EMOJIS = ["🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
+
+/**
+ * Newest trip first. Trips are stored in the order they were added, so a missing or equal
+ * date falls back to that: the last one added still reads as the most recent.
+ */
+export function newestFirst(trips: Trip[]): Trip[] {
+  return trips
+    .map((trip, index) => ({ trip, index }))
+    .sort((a, b) => (b.trip.createdAt ?? "").localeCompare(a.trip.createdAt ?? "") || b.index - a.index)
+    .map(({ trip }) => trip);
+}
 
 export function TripListScreen({ go }: { go: (v: View) => void }) {
   const { data, dispatch } = useStore();
@@ -28,22 +40,6 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
         </button>
       </div>
 
-      {data.trips.map((t) => (
-        <button
-          key={t.id}
-          className="card row"
-          style={{ width: "100%", border: "none", cursor: "pointer", textAlign: "left" }}
-          onClick={() => go({ screen: "trip", tripId: t.id })}
-        >
-          <span style={{ fontSize: 18 }}>
-            {t.emoji} <b>{t.name}</b>
-          </span>
-          <span className="muted">
-            {t.people.length} 👥 · {t.receipts.length} 🧾
-          </span>
-        </button>
-      ))}
-
       <div className="card">
         <h3>New trip</h3>
         <input
@@ -63,6 +59,22 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           Create trip
         </button>
       </div>
+
+      {newestFirst(data.trips).map((t) => (
+        <button
+          key={t.id}
+          className="card row"
+          style={{ width: "100%", border: "none", cursor: "pointer", textAlign: "left" }}
+          onClick={() => go({ screen: "trip", tripId: t.id })}
+        >
+          <span style={{ fontSize: 18 }}>
+            {t.emoji} <b>{t.name}</b>
+          </span>
+          <span className="muted">
+            {t.people.length} 👥 · {t.receipts.length} 🧾
+          </span>
+        </button>
+      ))}
     </div>
   );
 }

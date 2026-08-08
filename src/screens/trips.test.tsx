@@ -7,6 +7,50 @@ import type { Trip } from "../types";
 
 beforeEach(() => localStorage.clear());
 
+describe("the trip list", () => {
+  function tripNamed(id: string, name: string, createdAt: string): Trip {
+    return {
+      id, name, emoji: "🏖️", currency: "EUR",
+      people: [], groups: [], receipts: [], createdAt, schemaVersion: 2,
+    };
+  }
+
+  it("puts the newest trip first, whatever order it was stored in", () => {
+    saveData({
+      schemaVersion: 2,
+      trips: [
+        tripNamed("t1", "Oldest", "2026-01-01T00:00:00Z"),
+        tripNamed("t3", "Newest", "2026-08-01T00:00:00Z"),
+        tripNamed("t2", "Middle", "2026-05-01T00:00:00Z"),
+      ],
+    });
+    render(<App />);
+    const shown = screen.getAllByRole("button", { name: /Oldest|Middle|Newest/ }).map((b) => b.textContent);
+    expect(shown[0]).toContain("Newest");
+    expect(shown[1]).toContain("Middle");
+    expect(shown[2]).toContain("Oldest");
+  });
+
+  it("falls back to the stored order when trips have no date", () => {
+    saveData({
+      schemaVersion: 2,
+      trips: [tripNamed("t1", "First added", ""), tripNamed("t2", "Last added", "")],
+    });
+    render(<App />);
+    const shown = screen.getAllByRole("button", { name: /added/ }).map((b) => b.textContent);
+    expect(shown[0]).toContain("Last added"); // most recently added still comes first
+  });
+
+  it("shows the new-trip box above the trips", () => {
+    saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
+    render(<App />);
+    const newTripBox = screen.getByPlaceholderText(/trip name/i);
+    const tripRow = screen.getByRole("button", { name: /Algarve/ });
+    // DOCUMENT_POSITION_FOLLOWING: the trip row comes after the box in the document
+    expect(newTripBox.compareDocumentPosition(tripRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
 describe("trip management", () => {
   it("creates a trip and lands on the trip screen", async () => {
     const user = userEvent.setup();
