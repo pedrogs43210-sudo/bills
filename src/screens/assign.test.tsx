@@ -222,6 +222,27 @@ describe("assign screen", () => {
     expect(screen.getByRole("button", { name: "Bruno" }).className).not.toContain("selected");
   });
 
+  it("keeps the discount line following when Everyone is narrowed to all-but-one", async () => {
+    const t = seedTrip();
+    t.receipts[0].items = [
+      { id: "i1", name: "Fries", quantity: 1, lineTotal: 249, assignment: { kind: "unassigned" } },
+      { id: "d1", name: "Desconto Fries", quantity: 1, lineTotal: -50, assignment: { kind: "unassigned" } },
+    ];
+    t.receipts[0].printedTotal = 199;
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openAssign(user);
+    await user.click(screen.getByText("Fries"));
+    await user.click(screen.getByRole("button", { name: "👥 Everyone" }));
+    await user.click(screen.getByRole("button", { name: "Bruno" })); // everyone except Bruno
+
+    // the discount must land on the same people, or it would be credited to the wrong pockets
+    const items = JSON.parse(localStorage.getItem("bills.data.v1")!).trips[0].receipts[0].items;
+    expect(items[0].assignment).toEqual({ kind: "people", personIds: ["p1", "p2"] });
+    expect(items[1].assignment).toEqual({ kind: "people", personIds: ["p1", "p2"] });
+  });
+
   it("hides a group with no members left", async () => {
     const t = seedTrip();
     t.groups = [{ id: "g1", name: "Ghosts", personIds: [] }];

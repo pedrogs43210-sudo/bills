@@ -3,7 +3,7 @@ import { useStore } from "../state/StoreProvider";
 import { balances, excludedReceipts, exclusionReason, paidTotals, settle, shareTotals, type ExclusionReason } from "../lib/settle";
 import { isFullyAssigned } from "../lib/split";
 import { formatCents } from "../lib/money";
-import { summaryText } from "../lib/summary";
+import { settledMessage, summaryText } from "../lib/summary";
 import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
 
@@ -75,7 +75,7 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
       <div className="card">
         <h3>To settle</h3>
         {transfers.length === 0 ? (
-          <p>All square! 🎉</p>
+          <p>{settledMessage(trip)}</p>
         ) : (
           transfers.map((t, idx) => (
             <div key={idx} className="row" style={{ padding: "6px 0" }}>

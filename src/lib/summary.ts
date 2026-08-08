@@ -3,6 +3,18 @@ import { balances, countableReceipts, excludedReceipts, paidTotals, settle, shar
 import { receiptShares } from "./split";
 import { formatCents } from "./money";
 
+/**
+ * What "nobody owes anybody" actually means, which depends on how much the app was able to
+ * count. Claiming "All square! 🎉" while receipts sit excluded reads as a final answer when
+ * it is really an unfinished one, so the confident version is reserved for a complete trip.
+ * Shared by the settle screen and the shared summary text so the two can never disagree.
+ */
+export function settledMessage(trip: Trip): string {
+  if (countableReceipts(trip).length === 0) return "Nothing to settle yet.";
+  if (excludedReceipts(trip).length > 0) return "All square so far — some receipts aren't counted yet.";
+  return "All square! 🎉";
+}
+
 export function summaryText(trip: Trip): string {
   const paid = paidTotals(trip);
   const shares = shareTotals(trip);
@@ -27,7 +39,7 @@ export function summaryText(trip: Trip): string {
     lines.push("To settle:");
     for (const t of transfers) lines.push(`💸 ${name(t.from)} → ${name(t.to)} ${fmt(t.amount)}`);
   } else {
-    lines.push("All square! 🎉");
+    lines.push(settledMessage(trip));
   }
   return lines.join("\n");
 }

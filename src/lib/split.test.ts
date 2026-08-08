@@ -32,6 +32,18 @@ function receipt(items: Item[], printedTotal: number, paidBy = "pedro"): Receipt
 }
 
 describe("receiptShares", () => {
+  it("treats everyone as a live rule and an explicit list as fixed", () => {
+    // Intentional asymmetry: "everyone" picks up a friend who joins the trip later,
+    // while "everyone except Bruno" stays with the people who were chosen.
+    const later = [...people, { id: "carla", name: "Carla", color: "#eee" }];
+    const everyone = receipt([item(300, { kind: "everyone" })], 300);
+    const exceptBruno = receipt([item(300, { kind: "people", personIds: ["pedro", "ana"] })], 300);
+
+    expect(receiptShares(everyone, later)).toEqual({ pedro: 75, ana: 75, bruno: 75, carla: 75 });
+    // Carla joined after the fact, so she owes nothing on the fixed list
+    expect(receiptShares(exceptBruno, later)).toEqual({ pedro: 150, ana: 150, bruno: 0, carla: 0 });
+  });
+
   it("gives a solo item entirely to its person", () => {
     const r = receipt([item(249, { kind: "people", personIds: ["pedro"] })], 249);
     expect(receiptShares(r, people)).toEqual({ pedro: 249, ana: 0, bruno: 0 });

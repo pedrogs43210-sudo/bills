@@ -27,9 +27,45 @@ describe("summaryText", () => {
     expect(text).toMatch(/💸 Ana → Pedro .*5[.,]00/);
   });
 
-  it("says all square when balanced", () => {
-    const even: Trip = { ...trip, receipts: [] };
+  it("says all square when balanced and everything is counted", () => {
+    const even: Trip = {
+      ...trip,
+      receipts: [{
+        ...trip.receipts[0],
+        items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 1000, assignment: { kind: "people", personIds: ["pedro"] } }],
+      }],
+    };
     expect(summaryText(even)).toContain("All square! 🎉");
+  });
+
+  it("says nothing to settle when no receipt could be counted", () => {
+    // one receipt, excluded because its payer isn't in the trip
+    const stuck: Trip = {
+      ...trip,
+      receipts: [{ ...trip.receipts[0], payments: [{ personId: "ghost", amount: 1000 }] }],
+    };
+    const text = summaryText(stuck);
+    expect(text).toContain("Nothing to settle yet.");
+    expect(text).not.toContain("All square! 🎉");
+    expect(text).toContain("Not final");
+  });
+
+  it("qualifies all-square while a receipt is still excluded", () => {
+    const partly: Trip = {
+      ...trip,
+      receipts: [
+        // counted, and it balances by itself
+        {
+          ...trip.receipts[0],
+          items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 1000, assignment: { kind: "people", personIds: ["pedro"] } }],
+        },
+        // excluded: no payer at all
+        { ...trip.receipts[0], id: "r2", payments: [] },
+      ],
+    };
+    const text = summaryText(partly);
+    expect(text).toContain("All square so far");
+    expect(text).not.toContain("All square! 🎉");
   });
 });
 
