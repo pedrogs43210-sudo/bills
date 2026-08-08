@@ -46,7 +46,7 @@ describe("scanReceipt", () => {
     expect(result.items[0].name).toBe("Sumo laranja");
     // sends the image and asks the right model
     const req = parseMock.mock.calls[0][0];
-    expect(req.model).toBe("claude-opus-4-8");
+    expect(req.model).toBe("claude-haiku-4-5");
     expect(req.messages[0].content[0]).toMatchObject({ type: "image" });
   });
 

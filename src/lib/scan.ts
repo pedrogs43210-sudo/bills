@@ -17,6 +17,14 @@ export const ScanResultSchema = z.object({
 });
 export type ScanResult = z.infer<typeof ScanResultSchema>;
 
+/**
+ * Reading a receipt into a list is not work that needs the largest model, and every scan
+ * costs real money once the app pays for its own scanning: Haiku is about a fifth the price
+ * of Opus per receipt. Its images cap at 1568px on the long edge, which is what
+ * downscaleToBase64Jpeg already produces.
+ */
+const SCAN_MODEL = "claude-haiku-4-5";
+
 export type ScanFailure = "no-key" | "bad-key" | "refused" | "unparseable" | "network";
 
 export class ScanError extends Error {
@@ -47,7 +55,7 @@ export async function scanReceipt(apiKey: string, imageBase64: string): Promise<
   let response;
   try {
     response = await client.messages.parse({
-      model: "claude-opus-4-8",
+      model: SCAN_MODEL,
       max_tokens: 8192,
       messages: [
         {
@@ -78,7 +86,7 @@ export async function verifyApiKey(apiKey: string): Promise<boolean> {
   const client = makeClient(apiKey);
   try {
     await client.messages.create({
-      model: "claude-opus-4-8",
+      model: SCAN_MODEL,
       max_tokens: 1,
       messages: [{ role: "user", content: "ping" }],
     }, { timeout: 15_000 });

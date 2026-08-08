@@ -65,34 +65,84 @@ This is more code than Option A and worth doing **only once you know what scanni
 
 ## 2. Money
 
-**The shape you chose:** free scans up to a limit, then a subscription for unlimited; ads on free, no ads for subscribers.
+**The shape chosen:** free scans up to a limit, then **one annual subscription** for unlimited scanning and no ads. Ads on the free tier, as many placements as the app can carry without breaking what it's for.
 
-### On the free limit
+### The free limit
 
 Set it by holiday, not by month. Your users are not daily users — they use this intensely for one week and then not for three months. A monthly cap punishes exactly the week they need it, which is the week they'd otherwise consider paying.
 
-**Suggested: 10 free scans per month, unused ones not rolling over.** Ten covers a long weekend and most of a week's shopping; a two-week holiday for a big group hits the wall, which is the moment to offer the subscription. Splitting bills by hand always stays free and unlimited — you should only ever charge for the thing that costs you money.
+**Suggested: 10 free scans per month, unused ones not rolling over.** Ten covers a long weekend and most of a week's shopping; a two-week holiday for a big group hits the wall, which is the moment to sell. Splitting bills by hand always stays free and unlimited — only ever charge for the thing that costs you money.
 
-### On price
+### Price: annual only
 
-At ~1 cent a scan, a heavy user scanning 40 receipts a month costs you 40 cents. Almost anything you charge is profitable; the question is what people will actually pay for a holiday app.
+**€9.99/year, no monthly option.** Right call for this app: usage is seasonal, so an annual subscription survives the nine months nobody opens it, and a monthly subscriber to a holiday app cancels in week two while you pay a store fee on every transaction.
 
-- **€2.49/month** or **€9.99/year** — the annual one priced so it's obviously the better deal, because your users' usage is seasonal and an annual subscription survives the nine months they don't open the app.
-- Lead with annual. A monthly subscriber on a holiday app cancels in week two, and you pay a store fee on every transaction either way.
+One thing to add on top: **a 7-day free trial**. Annual-only is a bigger commitment than monthly, and the trial is the standard way to recover the conversion you lose by removing the cheap entry point. It costs you almost nothing — a trial user scanning 20 receipts costs 20 cents.
 
-### On ads — my recommendation differs from your instinct
+At €9.99, roughly **200 subscribers clears about €2,000/year** before Apple and Google take their 15–30%. That covers the scanning bill many times over. It is not an income.
 
-You mentioned banners or an ad during the scan. **During the scan is the wrong moment and banners are the wrong format.**
+### Ads: what each placement is actually worth
 
-The scan is the app's one moment of magic — you photograph a crumpled receipt and it turns into a tidy list. Interrupting it teaches people the app is slow and cheap. And a persistent banner on a screen full of money is where it looks least trustworthy; this app's whole value is that the numbers are right, and a flashing ad beside them undermines that for very little revenue.
+Rates for 2026, and the spread between formats is the whole story:
 
-**Better: a single full-screen ad after the settle-up is shared** — the task is complete, the user got what they came for, and nothing is at risk of being mis-tapped. One per session, never during scanning or assigning.
+| Format | Global eCPM | Tier 1 (US/UK/CA/AU) |
+|---|---|---|
+| **Rewarded video** | **$10–22** | $18–45 |
+| Interstitial (full screen) | $2.50–5.00 | $5–8 |
+| Banner | $0.25–0.90 | $0.50–2.10 |
 
-Be realistic about the number, though: a small app with a few thousand seasonal users earns **single-digit euros per month** from ads. Ads are not the business. If the choice is a cleaner app or a few euros, take the cleaner app — the subscription is where the money is, and ads mainly exist to make the ad-free upgrade feel worth buying.
+Two things to read from that table. **A rewarded video is worth 20–40 banner impressions.** And your audience is mostly Portugal and Europe, not the US, so assume the low end of each range — plus a further discount because reported gaming rates run 20–30% higher than utility apps like this one, where people don't expect interruptions.
 
-### The uncomfortable maths
+### The placement plan
 
-At €9.99/year you need roughly **200 subscribers to clear €2,000/year** before store fees (Apple and Google take 15–30%). That covers your scanning bill many times over but is not an income. Price it to be sustainable, not to get rich, and it can pay for itself indefinitely.
+Ordered by revenue per unit of annoyance. The first one is worth more than all the others combined.
+
+**1. Rewarded: "watch an ad, get one more scan."** Shown at the moment someone hits scan 11. This is the single best idea available to you, for four reasons: it's the highest-paying format by a wide margin; it's opt-in, so no store risk and no trust damage; it monetises precisely the users who won't subscribe; and it makes the subscription concrete — the alternative to €9.99/year is watching a video every time you photograph a receipt. Cap it (3–5 a day) so it doesn't become a free replacement for subscribing.
+
+**2. App-open ad, once per day.** Fires on the first cold start of the day, skippable. High-volume, standard, and it lands before the user has begun a task, so it interrupts nothing.
+
+**3. Interstitial after the settle-up is shared.** The task is finished, everyone has their number, nothing can be mis-tapped.
+
+**4. Interstitial after a receipt is marked done.** A natural break, and on a shopping trip with three receipts it fires three times. Frequency-cap it to one every couple of minutes so a fast user isn't hit repeatedly.
+
+**5. Interstitial during the scan wait.** You asked for this one and it's defensible: the scan takes 5–20 seconds of genuinely idle attention. Two conditions make it safe rather than damaging: **the ad must never delay the result** — the moment the items are ready, the ad is dismissible and the user is through — and it should be the first placement you cut if you see people abandoning after their first scan. It is the app's one moment of magic, and it's also its most fragile.
+
+**6. Native ad card in the trip list.** Styled as a card among the trips, below the first one. Low friction, always visible, no interaction risk.
+
+**7. Banner on the settings screen.** Free money, no downside, nobody is doing anything delicate there.
+
+**8. Banner on the trip screen.** Above the bottom button bar, on the receipt list. Not an editing surface, so a mis-tap costs a wasted tap and nothing else.
+
+### Two screens that stay ad-free — for correctness, not taste
+
+**The assign screen's chip rows** and **the review screen's price and total fields.** These are the only places in the app where a mis-tap silently changes money: tap the wrong chip and an item is split between the wrong people; nudge the wrong field and a price changes. Nobody sees an error message, the numbers just come out wrong, and the whole app is worth using only because the numbers are right. Ads elsewhere cost attention; ads there cost accuracy.
+
+That still leaves eight placements, including the two most valuable formats.
+
+### What that's worth
+
+At 2,000 monthly-active users during the season, a rough monthly estimate:
+
+| Placement | Impressions/month | Revenue |
+|---|---|---|
+| Rewarded (20% of users, ~3 each) | ~1,200 | ~€12 |
+| App-open (once daily, ~4 sessions each) | ~8,000 | ~€24 |
+| Interstitials (share + receipt-done + scan) | ~10,000 | ~€30 |
+| Banners + native cards | ~40,000 | ~€20 |
+| **Total** | | **~€85/month** |
+
+Treat that as an order of magnitude, not a forecast. The useful conclusion: **at this scale ads roughly cover the scanning bill (~$100/month), and the subscription becomes profit.** That's a better reason to run ads than the revenue itself — it makes the free tier self-funding, so a user who never pays costs you nothing.
+
+Banners are the weakest line in that table: 40,000 impressions for €20, paid for with permanent visual clutter on a money app. Keep the two low-risk banner slots, but if you ever find yourself adding a ninth banner for another €5, that's the point where the app starts looking cheap for nothing.
+
+### Ads are not free to build
+
+Running ads adds real obligations, all of which belong in the work list:
+
+- **A Google-certified consent platform (CMP) is mandatory** for users in the EU, UK, and Switzerland — which is your entire audience. Google's own User Messaging Platform SDK is the usual choice, and TCF v2.3 has been required since February 2026. No CMP means no personalised ads in Europe, which means the low end of every rate above.
+- **Apple's tracking prompt** on iOS, and a privacy policy that names the ad SDK and what it collects.
+- **Store data-safety declarations** that match actual behaviour — reviewers reject manifests that contradict what the app does.
+- **Ad-free must actually be ad-free.** A subscriber who still sees a banner because of a caching bug will ask for a refund and leave a one-star review, and they'll be right.
 
 ---
 
@@ -107,6 +157,7 @@ Ordered by whether the launch is blocked without it.
 - A scan endpoint holding your API key, that accepts a photo and returns items. This must never become a free API for the whole internet, so: per-device authentication, rate limiting, and a hard monthly ceiling that fails safe. A leaked or abused endpoint is a bill you can't cap after the fact.
 - Scan counting per user, to enforce the free limit — the only server-side state you actually need.
 - Subscription verification against Apple's and Google's receipts. Never trust the app's claim that someone has paid.
+- **Rewarded-ad credit granted server-side**, for the same reason. A client that can award itself extra scans is a client that has given itself a free unlimited plan.
 - **Deliberately not on the server: trips, receipts, or who owes whom.** Keep all of that on the phone. It stays simple, it stays private, and it means a server outage doesn't stop anyone splitting a bill by hand.
 
 **Store presence.** An Apple developer account (~$99/year) and a Google Play one (~$25 once). App icons, screenshots, store descriptions, an age rating.
@@ -120,8 +171,9 @@ Ordered by whether the launch is blocked without it.
 **Missing screens:**
 
 - **Onboarding** — right now the app opens on an empty trip list with no explanation. A stranger has no idea what to do; your friends did because you told them.
-- **Paywall** — what appears at scan 11. Needs to be honest about what's free forever.
-- **Subscription management** — status, restore purchases (Apple requires this), cancel.
+- **Paywall** — what appears at scan 11. Two doors: subscribe, or watch an ad for one more scan. Honest about what's free forever (splitting by hand always is).
+- **Subscription management** — status, scans left this month, restore purchases (Apple requires this), cancel.
+- **A consent screen** for EU ad tracking, shown before the first ad. Not optional, and it has to come before any ad loads.
 - **Something when scanning fails** — currently an error message. A stranger needs a way forward, i.e. "add the items by hand".
 - **Help / about** — how the split works, and how to reach you.
 - **Account deletion** — required by both stores if you hold any user data.
@@ -130,18 +182,19 @@ Ordered by whether the launch is blocked without it.
 
 - **The discount-convention problem**, already written up in `docs/superpowers/specs/2026-08-06-discount-conventions-notes.md` and needing real receipts from Pingo Doce and Continente. This is a correctness issue that affects the numbers, and it's the one item on this list your existing users would notice.
 - **Crash and error reporting.** With strangers using it, you cannot rely on someone telling you it broke.
-- **A way to know what scanning is costing you**, per day, before the bill arrives.
+- **A way to know what scanning is costing you**, per day, before the bill arrives — and what ads are earning, so you can tell whether the free tier pays for itself.
+- **Ad placement, one at a time, with retention watched.** Eight placements shipped at once is untestable: if installs stop converting you won't know which one did it. Ship the rewarded ad and the app-open ad first (highest value, lowest risk), then add the rest.
 - **Sharing a trip between phones.** The one-phone-holds-the-ledger model works for friends in a kitchen and will be the most-requested change once strangers use it. It is a large change; don't put it in the first release.
 
 ---
 
 ## 4. A sensible order
 
-**Now:** switch scanning to Haiku and measure accuracy on real receipts. Cheapest possible change, five-fold cost reduction, and it tells you whether Option A is viable at all.
+**Done:** scanning switched to Haiku 4.5. Still needs measuring against real Pingo Doce and Continente receipts — the code change is verified, the accuracy is not.
+
+**Next:** the design refresh (see `docs/design-brief.md`). v2 is built and waiting on this before it publishes, and it has to happen before store screenshots rather than after.
 
 **Then:** the discount-convention fix. It's correctness, it's already specified, and it affects every user you have today.
-
-**Then:** the design refresh (see `docs/design-brief.md`). Do it before the store screenshots, not after.
 
 **Then:** the backend and the paywall — the big one. Nothing about the store submission can start until scanning works without the user's own key.
 
