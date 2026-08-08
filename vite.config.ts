@@ -18,5 +18,10 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./src/test-setup.ts",
     restoreMocks: true,
+    // The component tests drive real user gestures through jsdom and routinely take 5-9s
+    // each. Against Vitest's 5s default they fail in a different place on every run, which
+    // trains you to re-run instead of reading the failure. Raised so a red test means a
+    // broken test.
+    testTimeout: 20_000,
   },
 });
