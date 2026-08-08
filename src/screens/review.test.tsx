@@ -401,3 +401,78 @@ describe("a receipt typed in by hand", () => {
     expect(screen.getByLabelText("Receipt total")).toHaveValue("6.99");
   });
 });
+
+describe("the discount-convention band", () => {
+  /** A Continente-shaped receipt: the 4.00 price already has the 0.50 off. */
+  function continenteTrip(): Trip {
+    const t = seedTrip();
+    t.receipts[0] = {
+      ...t.receipts[0],
+      payments: [{ personId: "p1", amount: 400 }],
+      items: [
+        { id: "i1", name: "Sumo", quantity: 1, lineTotal: 400, assignment: { kind: "unassigned" } },
+        { id: "d1", name: "Desconto", quantity: 1, lineTotal: -50, assignment: { kind: "unassigned" },
+          discountLine: true, informational: true },
+      ],
+      printedTotal: 400,
+      discountConvention: "discounts-included",
+    };
+    return t;
+  }
+
+  const storedItems = () => JSON.parse(localStorage.getItem("bills.data.v1")!).trips[0].receipts[0].items;
+
+  it("says in plain words that it left the discount out", async () => {
+    saveData({ schemaVersion: 2, trips: [continenteTrip()] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    expect(screen.getByText(/prices already include the discount/i)).toBeInTheDocument();
+    expect(screen.getByText(/left that line out/i)).toBeInTheDocument();
+    // and the arithmetic agrees, so no spurious warning
+    expect(screen.getByText(/Matches the receipt total/i)).toBeInTheDocument();
+  });
+
+  it("counts the discount when overruled, and the money follows immediately", async () => {
+    saveData({ schemaVersion: 2, trips: [continenteTrip()] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /count them/i }));
+
+    // the line now counts: 4.00 - 0.50 is 3.50 against a 4.00 total
+    expect(screen.getByText(/off by/i)).toBeInTheDocument();
+    expect(storedItems()[1]).not.toHaveProperty("informational");
+    expect(screen.getByText(/separate line on the receipt/i)).toBeInTheDocument();
+  });
+
+  it("can be switched back again", async () => {
+    saveData({ schemaVersion: 2, trips: [continenteTrip()] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    await user.click(screen.getByRole("button", { name: /count them/i }));
+    await user.click(screen.getByRole("button", { name: /already included/i }));
+    expect(storedItems()[1].informational).toBe(true);
+    expect(screen.getByText(/Matches the receipt total/i)).toBeInTheDocument();
+  });
+
+  it("admits it when the numbers fit neither convention", async () => {
+    const t = continenteTrip();
+    t.receipts[0] = { ...t.receipts[0], printedTotal: 700, discountConvention: "mismatch",
+      items: t.receipts[0].items.map((i) => ({ ...i, informational: undefined })) };
+    saveData({ schemaVersion: 2, trips: [t] });
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user);
+    expect(screen.getByText(/couldn't tell whether/i)).toBeInTheDocument();
+    expect(screen.getByText(/It's counted/i)).toBeInTheDocument();
+  });
+
+  it("says nothing at all on a receipt with no discount lines", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await openReceipt(user); // the plain seeded receipt
+    expect(screen.queryByText(/discount/i)).toBeNull();
+  });
+});

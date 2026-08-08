@@ -75,6 +75,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           quantity: Math.max(1, Math.round(i.quantity)),
           lineTotal: Math.round(i.lineTotal),
           assignment: { kind: "unassigned" as const },
+          ...(i.kind === "discount" ? { discountLine: true } : {}),
           ...(i.kind === "discount" && discountsAreInformational ? { informational: true } : {}),
         })),
         printedTotal: Math.round(result.paidTotal),

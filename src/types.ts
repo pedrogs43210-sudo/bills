@@ -23,6 +23,14 @@ export type Item = {
    * existed before this flag keeps behaving exactly as it did.
    */
   informational?: boolean;
+  /**
+   * True for a line the scanner read as a discount rather than something bought. This records
+   * what is printed on the paper and never changes; `informational` records the separate
+   * decision about whether it counts, which the user can overrule. Both are needed: without
+   * this, switching the convention back could only guess which lines were discounts, and a
+   * refund is negative too.
+   */
+  discountLine?: boolean;
 };
 
 export type ReceiptStatus = "review" | "assigning" | "done";

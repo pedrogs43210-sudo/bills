@@ -6,6 +6,7 @@ import type { View } from "../App";
 import type { Item, Payment, Receipt } from "../types";
 import { paymentsTotal, splitEvenly, withSyncedSinglePayment } from "../lib/payments";
 import { countedItemsTotal } from "../lib/split";
+import { applyConvention, conventionSentence } from "../lib/discounts";
 
 function MoneyInput({ cents, onChange, label }: { cents: number; onChange: (c: number) => void; label: string }) {
   const [text, setText] = useState((cents / 100).toFixed(2));
@@ -66,6 +67,10 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
 
   const itemSum = countedItemsTotal(receipt);
   const diff = receipt.printedTotal - itemSum;
+  // The convention band speaks about the discount lines the scanner found, so a receipt typed
+  // by hand — which has no discount lines and no verdict — says nothing at all.
+  const discountLines = receipt.items.filter((i) => i.discountLine);
+  const countingDiscounts = !discountLines.some((i) => i.informational);
 
   const payments = receipt.payments;
   const payTotal = paymentsTotal(receipt);
@@ -215,9 +220,29 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         )}
       </div>
 
+      {discountLines.length > 0 && receipt.discountConvention && (
+        <div className={receipt.discountConvention === "mismatch" ? "banner-warn" : "banner-good"} role="status">
+          {receipt.discountConvention === "mismatch" && "⚠️ "}
+          {conventionSentence(receipt.discountConvention, discountLines.length, countingDiscounts)}{" "}
+          <button
+            className="btn btn-ghost"
+            style={{ padding: "2px 6px" }}
+            onClick={() =>
+              update({
+                ...receipt,
+                discountConvention: countingDiscounts ? "discounts-included" : "discounts-separate",
+                items: applyConvention(receipt.items, countingDiscounts ? "discounts-included" : "discounts-separate"),
+              })
+            }
+          >
+            {countingDiscounts ? "Already included →" : "Count them →"}
+          </button>
+        </div>
+      )}
+
       <div className="card">
         {receipt.items.map((item) => (
-          <div key={item.id} className="item-row row">
+          <div key={item.id} className="item-row row" style={item.informational ? { opacity: 0.72 } : undefined}>
             <input
               placeholder="Item name"
               aria-label={`${item.name || "new item"} name`}

@@ -47,6 +47,10 @@ function migrateReceipt(raw: unknown): Receipt {
       if (!raw || typeof raw !== "object") return raw;
       const item = { ...(raw as Record<string, unknown>) };
       if (item.informational !== true) delete item.informational;
+      // Same rule for the discount marker: it decides what the convention toggle may touch,
+      // so a stray value must not turn an ordinary item into one the toggle can silently
+      // drop from the maths.
+      if (item.discountLine !== true) delete item.discountLine;
       return item;
     });
   }

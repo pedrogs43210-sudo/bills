@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { countsDiscountLines, discountConvention, type ReceiptTotals } from "./discounts";
+import { applyConvention, conventionSentence, countsDiscountLines, discountConvention, type ReceiptTotals } from "./discounts";
+import type { Item } from "../types";
 
 /** Pingo Doce: items at full price, discount on its own line, two printed totals. */
 const pingoDoce: ReceiptTotals = { itemsTotal: 699, discountsTotal: -50, paidTotal: 649 };
@@ -60,6 +61,90 @@ describe("countsDiscountLines", () => {
 
   it("keeps counting them on a mismatch, so a misread receipt behaves as it does today", () => {
     expect(countsDiscountLines("mismatch")).toBe(true);
+  });
+});
+
+describe("conventionSentence", () => {
+  it("reads correctly for a single discount", () => {
+    expect(conventionSentence("discounts-included", 1, false)).toBe(
+      "These prices already include the discount, so I left that line out."
+    );
+    expect(conventionSentence("discounts-separate", 1, true)).toBe(
+      "That discount is a separate line on the receipt, so I counted it."
+    );
+  });
+
+  it("reads correctly for several", () => {
+    expect(conventionSentence("discounts-included", 3, false)).toBe(
+      "These prices already include the discounts, so I left those 3 lines out."
+    );
+    expect(conventionSentence("discounts-separate", 3, true)).toBe(
+      "Those 3 discounts are separate lines on the receipt, so I counted them."
+    );
+  });
+
+  it("admits uncertainty on a mismatch and says which way it went", () => {
+    expect(conventionSentence("mismatch", 1, true)).toContain("couldn't tell whether that discount is");
+    expect(conventionSentence("mismatch", 1, true)).toContain("It's counted");
+    expect(conventionSentence("mismatch", 2, false)).toContain("those 2 discounts are");
+    expect(conventionSentence("mismatch", 2, false)).toContain("They're left out");
+  });
+
+  it("never produces a number disagreeing with its own verb", () => {
+    for (const convention of ["discounts-included", "discounts-separate", "mismatch"] as const) {
+      for (const count of [1, 2, 5]) {
+        for (const counting of [true, false]) {
+          const s = conventionSentence(convention, count, counting);
+          expect(s).not.toMatch(/\b1 discounts\b/);
+          expect(s).not.toMatch(/\bthose 1\b/);
+          if (count > 1) expect(s).not.toMatch(/\bthat discount is\b/);
+        }
+      }
+    }
+  });
+});
+
+describe("applyConvention", () => {
+  const item = (over: Partial<Item> = {}): Item => ({
+    id: "i1", name: "Sumo", quantity: 1, lineTotal: 400, assignment: { kind: "unassigned" }, ...over,
+  });
+
+  it("marks discount lines informational when the prices already include them", () => {
+    const out = applyConvention([item(), item({ id: "d1", lineTotal: -50, discountLine: true })], "discounts-included");
+    expect(out[0].informational).toBeUndefined();
+    expect(out[1].informational).toBe(true);
+  });
+
+  it("unmarks them when they are separate lines, leaving no stale flag behind", () => {
+    const out = applyConvention(
+      [item(), item({ id: "d1", lineTotal: -50, discountLine: true, informational: true })],
+      "discounts-separate"
+    );
+    expect(out[1]).not.toHaveProperty("informational");
+  });
+
+  it("never touches a negative item line, which is a refund and counts either way", () => {
+    const refund = item({ id: "r1", name: "Devolução", lineTotal: -200 });
+    expect(applyConvention([refund], "discounts-included")).toEqual([refund]);
+  });
+
+  it("returns the same objects when nothing needs changing", () => {
+    const items = [item(), item({ id: "d1", discountLine: true })];
+    const out = applyConvention(items, "discounts-separate");
+    expect(out[0]).toBe(items[0]);
+    expect(out[1]).toBe(items[1]);
+  });
+
+  it("round-trips: included then separate restores the original", () => {
+    const items = [item(), item({ id: "d1", lineTotal: -50, discountLine: true })];
+    const there = applyConvention(items, "discounts-included");
+    const back = applyConvention(there, "discounts-separate");
+    expect(back).toEqual(items);
+  });
+
+  it("counts discount lines for a mismatch, as countsDiscountLines says", () => {
+    const out = applyConvention([item({ id: "d1", discountLine: true, informational: true })], "mismatch");
+    expect(out[0]).not.toHaveProperty("informational");
   });
 });
 

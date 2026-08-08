@@ -13,6 +13,8 @@
  * prints it unsigned — but the totals disambiguate on their own.
  */
 
+import type { Item } from "../types";
+
 /** All amounts in integer cents. Discounts are normalised negative before they reach here. */
 export type ReceiptTotals = {
   /** Sum of the real item lines, as printed. */
@@ -60,4 +62,55 @@ export function discountConvention(totals: ReceiptTotals): DiscountConvention {
  */
 export function countsDiscountLines(convention: DiscountConvention): boolean {
   return convention !== "discounts-included";
+}
+
+/**
+ * The one sentence the review screen shows about the receipt's discounts. Kept here beside the
+ * decision it describes, and written out per count rather than assembled from fragments —
+ * "These 1 discount line are separate lines" is how the assembled version reads.
+ *
+ * `counting` comes from the lines themselves rather than from the convention, so the sentence
+ * describes what is actually true even if stored data disagrees with its own verdict.
+ */
+export function conventionSentence(
+  convention: DiscountConvention,
+  discountCount: number,
+  counting: boolean
+): string {
+  const one = discountCount === 1;
+  if (convention === "mismatch") {
+    const subject = one ? "that discount is" : `those ${discountCount} discounts are`;
+    const state = counting ? (one ? "It's counted" : "They're counted") : one ? "It's left out" : "They're left out";
+    return `I couldn't tell whether ${subject} already included in the prices above. ${state} — switch if that's wrong.`;
+  }
+  if (counting) {
+    return one
+      ? "That discount is a separate line on the receipt, so I counted it."
+      : `Those ${discountCount} discounts are separate lines on the receipt, so I counted them.`;
+  }
+  return one
+    ? "These prices already include the discount, so I left that line out."
+    : `These prices already include the discounts, so I left those ${discountCount} lines out.`;
+}
+
+/**
+ * Apply a convention to a receipt's lines: every line the scanner read as a discount is marked
+ * informational, or unmarked, to match. Only discount lines are touched — a negative item line
+ * is a refund and counts either way.
+ *
+ * The stored verdict is deliberately not recomputed when the user edits a price. Recomputing
+ * would let the convention flip underneath someone who is halfway through fixing a misread
+ * number, which is worse than a stale verdict they can see and overrule.
+ */
+export function applyConvention(items: Item[], convention: DiscountConvention): Item[] {
+  const counted = countsDiscountLines(convention);
+  return items.map((item) => {
+    if (!item.discountLine) return item;
+    if (counted) {
+      if (!item.informational) return item;
+      const { informational: _dropped, ...rest } = item;
+      return rest;
+    }
+    return item.informational ? item : { ...item, informational: true };
+  });
 }
