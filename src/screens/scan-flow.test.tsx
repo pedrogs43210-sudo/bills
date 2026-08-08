@@ -38,8 +38,8 @@ describe("scan flow", () => {
   it("scans a photo into a review-ready receipt", async () => {
     vi.mocked(scanReceipt).mockResolvedValue({
       storeName: "Lidl", date: "2026-07-08", currency: "EUR",
-      items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450 }],
-      printedTotal: 450,
+      items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450, kind: "item" }],
+      paidTotal: 450, preDiscountTotal: null,
     });
     const user = userEvent.setup();
     render(<App />);
@@ -60,8 +60,8 @@ describe("scan flow", () => {
     // retry uses the kept photo
     vi.mocked(scanReceipt).mockResolvedValue({
       storeName: "Lidl", date: null, currency: "EUR",
-      items: [{ name: "Pão", quantity: 1, lineTotal: 119 }],
-      printedTotal: 119,
+      items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }],
+      paidTotal: 119, preDiscountTotal: null,
     });
     await user.click(screen.getByRole("button", { name: /try again/i }));
     expect(await screen.findByDisplayValue("Pão")).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe("scan flow", () => {
     await user.click(screen.getByRole("button", { name: /back/i })); // leave mid-scan
     resolveScan({
       storeName: "Lidl", date: null, currency: "EUR",
-      items: [{ name: "Pão", quantity: 1, lineTotal: 119 }], printedTotal: 119,
+      items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }], paidTotal: 119, preDiscountTotal: null,
     });
     expect(await screen.findByPlaceholderText(/trip name/i)).toBeInTheDocument(); // still on trip list
     expect(screen.queryByText(/check the receipt/i)).toBeNull(); // no surprise navigation

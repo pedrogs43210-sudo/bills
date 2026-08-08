@@ -62,7 +62,9 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         id: newId(),
         storeName: result.storeName,
         date: result.date ?? new Date().toISOString().slice(0, 10),
-        payments: [{ personId: trip!.people[0].id, amount: Math.round(result.printedTotal) }],
+        payments: [{ personId: trip!.people[0].id, amount: Math.round(result.paidTotal) }],
+        // Discount lines still become ordinary negative items, exactly as before. Acting on
+        // the store's convention is Task 3; this only changes what the scanner reports.
         items: result.items.map((i) => ({
           id: newId(),
           name: i.name,
@@ -70,7 +72,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           lineTotal: Math.round(i.lineTotal),
           assignment: { kind: "unassigned" as const },
         })),
-        printedTotal: Math.round(result.printedTotal),
+        printedTotal: Math.round(result.paidTotal),
         status: "review",
       };
       const currency = /^[A-Za-z]{3}$/.test(result.currency) ? result.currency.toUpperCase() : "";
