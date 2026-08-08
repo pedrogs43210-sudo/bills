@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { formatCents } from "../lib/money";
-import { isFullyAssigned, isItemAssigned } from "../lib/split";
+import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { receiptSummaryText } from "../lib/summary";
 import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
@@ -45,7 +45,9 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
     setAssignment(item.id, assignment);
     const idx = receipt!.items.findIndex((i) => i.id === item.id);
     const next = receipt!.items[idx + 1];
-    if (!next || next.lineTotal >= 0) return;
+    // An informational discount is already inside the price above it, so it must not follow
+    // anyone: crediting it would subtract the same discount a second time.
+    if (!next || next.lineTotal >= 0 || next.informational) return;
     const follows =
       next.assignment.kind === "unassigned" ||
       JSON.stringify(next.assignment) === JSON.stringify(item.assignment);
@@ -72,7 +74,7 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
     assign(item, Object.keys(shares).length === 0 ? { kind: "unassigned" } : { kind: "units", shares });
   }
 
-  const unassignedCount = receipt.items.filter((i) => !isItemAssigned(i)).length;
+  const unassignedCount = countedItems(receipt).filter((i) => !isItemAssigned(i)).length;
 
   return (
     <div>
@@ -107,6 +109,20 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
         const open = openItemId === item.id;
         const a = item.assignment;
         const unitsAssigned = a.kind === "units" ? Object.values(a.shares).reduce((s, u) => s + u, 0) : 0;
+        // Shown because it is on the paper, but there is nobody to assign it to.
+        if (item.informational) {
+          return (
+            <div key={item.id} className="card">
+              <span className="row" style={{ display: "flex" }}>
+                <span>{item.name}</span>
+                <b>{formatCents(item.lineTotal, trip.currency)}</b>
+              </span>
+              <span className="muted" style={{ display: "block" }}>
+                Already in the prices above — not counted
+              </span>
+            </div>
+          );
+        }
         return (
           <div key={item.id} className="card" style={!isItemAssigned(item) ? { outline: "2px dashed #ffb347" } : undefined}>
             <button

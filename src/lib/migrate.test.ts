@@ -171,6 +171,41 @@ describe("migrateTrip", () => {
     expect(migrateTrip(t).groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p1"] }]);
   });
 
+  it("keeps a genuine informational flag", () => {
+    const t = {
+      ...v1Trip,
+      receipts: [{ ...v1Trip.receipts[0], items: [{ ...v1Trip.receipts[0].items[0], informational: true }] }],
+    };
+    expect(migrateTrip(t).receipts[0].items[0].informational).toBe(true);
+  });
+
+  it("drops a non-boolean informational flag, so the line stays counted", () => {
+    // absent means counted, which is how every receipt behaved before the flag existed
+    for (const bad of ["true", 1, {}, null]) {
+      const t = {
+        ...v1Trip,
+        receipts: [{ ...v1Trip.receipts[0], items: [{ ...v1Trip.receipts[0].items[0], informational: bad }] }],
+      };
+      expect(migrateTrip(t).receipts[0].items[0]).not.toHaveProperty("informational");
+    }
+  });
+
+  it("keeps a known discount convention and drops an unknown one", () => {
+    const withConvention = (v: unknown) => ({
+      ...v1Trip,
+      receipts: [{ ...v1Trip.receipts[0], discountConvention: v }],
+    });
+    expect(migrateTrip(withConvention("discounts-included")).receipts[0].discountConvention).toBe("discounts-included");
+    expect(migrateTrip(withConvention("whatever")).receipts[0]).not.toHaveProperty("discountConvention");
+    expect(migrateTrip(withConvention(7)).receipts[0]).not.toHaveProperty("discountConvention");
+  });
+
+  it("leaves an ordinary v1 item exactly as it was", () => {
+    const item = migrateTrip(v1Trip).receipts[0].items[0];
+    expect(item).not.toHaveProperty("informational");
+    expect(migrateTrip(v1Trip).receipts[0]).not.toHaveProperty("discountConvention");
+  });
+
   it("renames an imported group called Everyone instead of dropping its members", () => {
     const t = { ...v1Trip, groups: [{ id: "g1", name: "Everyone", personIds: ["p1"] }] };
     expect(migrateTrip(t).groups).toEqual([{ id: "g1", name: "Everyone (group)", personIds: ["p1"] }]);

@@ -1,3 +1,5 @@
+import type { DiscountConvention } from "./lib/discounts";
+
 export type Person = { id: string; name: string; color: string };
 
 export type Assignment =
@@ -12,6 +14,15 @@ export type Item = {
   quantity: number; // >= 1
   lineTotal: number; // integer cents, negative allowed (discounts)
   assignment: Assignment;
+  /**
+   * True for a line that is printed on the receipt but must not be counted: a discount that
+   * the item prices above it already include (Continente's convention). Counting it would
+   * subtract the same discount twice. Such a line stays visible — it is on the paper, and
+   * hiding it would make the app look like it misread the receipt — but it takes no part in
+   * the maths and needs nobody assigned to it. Absent means counted, so every receipt that
+   * existed before this flag keeps behaving exactly as it did.
+   */
+  informational?: boolean;
 };
 
 export type ReceiptStatus = "review" | "assigning" | "done";
@@ -36,6 +47,12 @@ export type Receipt = {
    * be quietly rewritten when a misread line is corrected.
    */
   totalIsAuto?: boolean;
+  /**
+   * Which discount convention the receipt's own arithmetic pointed to when it was scanned,
+   * kept so the review screen can say what was decided and offer to overrule it. Absent on a
+   * hand-typed receipt and on everything scanned before this existed.
+   */
+  discountConvention?: DiscountConvention;
 };
 
 export type Trip = {

@@ -1,6 +1,8 @@
 import { SCHEMA_VERSION, type Group, type Payment, type Person, type Receipt, type Trip } from "../types";
 import { unreserveGroupName } from "./groups";
 
+const KNOWN_CONVENTIONS = new Set(["discounts-separate", "discounts-included", "no-discounts", "mismatch"]);
+
 /**
  * Convert one stored receipt to the current shape.
  * v1 receipts carry `paidBy`; v2 receipts carry `payments`.
@@ -36,6 +38,22 @@ function migrateReceipt(raw: unknown): Receipt {
   }
 
   delete source.paidBy;
+
+  // `informational` decides whether a line counts towards the split, so only a literal true
+  // may set it. Anything else is dropped, which means counted — the behaviour every receipt
+  // had before the flag existed, and the safer way to be wrong.
+  if (Array.isArray(source.items)) {
+    source.items = source.items.map((raw) => {
+      if (!raw || typeof raw !== "object") return raw;
+      const item = { ...(raw as Record<string, unknown>) };
+      if (item.informational !== true) delete item.informational;
+      return item;
+    });
+  }
+  // Only ever read back to explain a decision on screen, so an unrecognised value is dropped
+  // rather than trusted.
+  if (!KNOWN_CONVENTIONS.has(source.discountConvention as string)) delete source.discountConvention;
+
   return { ...(source as unknown as Receipt), printedTotal, payments };
 }
 

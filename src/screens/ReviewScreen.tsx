@@ -5,6 +5,7 @@ import { formatCents, parseToCents } from "../lib/money";
 import type { View } from "../App";
 import type { Item, Payment, Receipt } from "../types";
 import { paymentsTotal, splitEvenly, withSyncedSinglePayment } from "../lib/payments";
+import { countedItemsTotal } from "../lib/split";
 
 function MoneyInput({ cents, onChange, label }: { cents: number; onChange: (c: number) => void; label: string }) {
   const [text, setText] = useState((cents / 100).toFixed(2));
@@ -56,14 +57,14 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
    */
   const update = (r: Receipt) => {
     const synced = r.totalIsAuto
-      ? { ...r, printedTotal: r.items.reduce((s, i) => s + i.lineTotal, 0) }
+      ? { ...r, printedTotal: countedItemsTotal(r) }
       : r;
     dispatch({ type: "updateReceipt", tripId, receipt: withSyncedSinglePayment(synced) });
   };
   const updateItem = (item: Item) =>
     update({ ...receipt, items: receipt.items.map((i) => (i.id === item.id ? item : i)) });
 
-  const itemSum = receipt.items.reduce((s, i) => s + i.lineTotal, 0);
+  const itemSum = countedItemsTotal(receipt);
   const diff = receipt.printedTotal - itemSum;
 
   const payments = receipt.payments;

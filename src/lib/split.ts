@@ -1,6 +1,20 @@
 import type { Item, Person, Receipt } from "../types";
 import { primaryPayerId } from "./payments";
 
+/**
+ * The lines that take part in the money. One definition, used by the split maths, the
+ * "items match the total" check and the assign screen's outstanding count, so those three
+ * can never disagree about which lines count.
+ */
+export function countedItems(receipt: Receipt): Item[] {
+  return receipt.items.filter((i) => !i.informational);
+}
+
+/** Sum of the lines that count, which is what a receipt's total should match. */
+export function countedItemsTotal(receipt: Receipt): number {
+  return countedItems(receipt).reduce((s, i) => s + i.lineTotal, 0);
+}
+
 export function isItemAssigned(item: Item): boolean {
   const a = item.assignment;
   if (a.kind === "unassigned") return false;
@@ -13,7 +27,9 @@ export function isItemAssigned(item: Item): boolean {
 }
 
 export function isFullyAssigned(receipt: Receipt): boolean {
-  return receipt.items.every(isItemAssigned);
+  // An informational line has nobody to assign, so requiring it would make the receipt
+  // impossible to finish.
+  return countedItems(receipt).every(isItemAssigned);
 }
 
 /** Exact (possibly fractional) cent shares of a receipt's assigned items. */
@@ -26,7 +42,10 @@ function exactShares(receipt: Receipt, people: Person[]): Map<string, number> {
     shares.set(id, (shares.get(id) ?? 0) + amount);
   };
 
-  for (const item of receipt.items) {
+  // Skip informational lines explicitly rather than relying on them being unassigned: a
+  // discount line can carry an assignment inherited before it was marked informational, and
+  // that stale assignment would otherwise credit a discount that was already in the prices.
+  for (const item of countedItems(receipt)) {
     const a = item.assignment;
     if (a.kind === "everyone") {
       for (const p of people) add(p.id, item.lineTotal / people.length);

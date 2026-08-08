@@ -7,7 +7,8 @@ import { isFullyAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
-import { scanReceipt, ScanError } from "../lib/scan";
+import { scanReceipt, scanTotals, ScanError } from "../lib/scan";
+import { countsDiscountLines, discountConvention } from "../lib/discounts";
 import type { View } from "../App";
 import type { Receipt } from "../types";
 import { excludedReceipts } from "../lib/settle";
@@ -58,22 +59,27 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         );
       });
       const result = await scanReceipt(apiKey, base64);
+      // Work out from the receipt's own arithmetic whether its discounts are separate lines
+      // or already inside the item prices. Only in the latter case must they be left out of
+      // the maths, or the same discount is subtracted twice.
+      const convention = discountConvention(scanTotals(result));
+      const discountsAreInformational = !countsDiscountLines(convention);
       const receipt: Receipt = {
         id: newId(),
         storeName: result.storeName,
         date: result.date ?? new Date().toISOString().slice(0, 10),
         payments: [{ personId: trip!.people[0].id, amount: Math.round(result.paidTotal) }],
-        // Discount lines still become ordinary negative items, exactly as before. Acting on
-        // the store's convention is Task 3; this only changes what the scanner reports.
         items: result.items.map((i) => ({
           id: newId(),
           name: i.name,
           quantity: Math.max(1, Math.round(i.quantity)),
           lineTotal: Math.round(i.lineTotal),
           assignment: { kind: "unassigned" as const },
+          ...(i.kind === "discount" && discountsAreInformational ? { informational: true } : {}),
         })),
         printedTotal: Math.round(result.paidTotal),
         status: "review",
+        discountConvention: convention,
       };
       const currency = /^[A-Za-z]{3}$/.test(result.currency) ? result.currency.toUpperCase() : "";
       if (trip!.receipts.length === 0 && currency) {

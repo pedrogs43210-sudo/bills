@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { receiptShares, roundLargestRemainder, isItemAssigned, isFullyAssigned } from "./split";
+import {
+  countedItems,
+  countedItemsTotal,
+  receiptShares,
+  roundLargestRemainder,
+  isItemAssigned,
+  isFullyAssigned,
+} from "./split";
 import { splitEvenly } from "./payments";
 import type { Item, Person, Receipt, Assignment } from "../types";
 
@@ -30,6 +37,56 @@ function receipt(items: Item[], printedTotal: number, paidBy = "pedro"): Receipt
     items, printedTotal, status: "assigning",
   };
 }
+
+describe("informational lines", () => {
+  /** Continente: the 4.00 already has the 0.50 off, so counting the bracket charges 3.50. */
+  const continenteReceipt = () =>
+    receipt(
+      [
+        item(400, { kind: "everyone" }),
+        { ...item(-50, { kind: "unassigned" }), informational: true },
+      ],
+      400
+    );
+
+  it("leaves an informational line out of the split", () => {
+    const shares = receiptShares(continenteReceipt(), people);
+    expect(shares).toEqual({ pedro: 134, ana: 133, bruno: 133 });
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(400);
+  });
+
+  it("counts a discount that is a separate line", () => {
+    // Pingo Doce: 4.50 printed, 0.50 off, 4.00 paid — the discount is real and must count
+    const r = receipt([item(450, { kind: "everyone" }), item(-50, { kind: "everyone" })], 400);
+    expect(Object.values(receiptShares(r, people)).reduce((s, v) => s + v, 0)).toBe(400);
+  });
+
+  it("ignores a stale assignment on an informational line", () => {
+    // the line inherited "everyone" before the convention was worked out
+    const r = receipt(
+      [item(400, { kind: "everyone" }), { ...item(-50, { kind: "everyone" }), informational: true }],
+      400
+    );
+    expect(receiptShares(r, people)).toEqual({ pedro: 134, ana: 133, bruno: 133 });
+  });
+
+  it("does not ask for an informational line to be assigned", () => {
+    expect(isFullyAssigned(continenteReceipt())).toBe(true);
+  });
+
+  it("still requires the real items to be assigned", () => {
+    const r = receipt(
+      [item(400, { kind: "unassigned" }), { ...item(-50, { kind: "unassigned" }), informational: true }],
+      400
+    );
+    expect(isFullyAssigned(r)).toBe(false);
+  });
+
+  it("excludes informational lines from the total the receipt should match", () => {
+    expect(countedItemsTotal(continenteReceipt())).toBe(400);
+    expect(countedItems(continenteReceipt())).toHaveLength(1);
+  });
+});
 
 describe("receiptShares", () => {
   it("treats everyone as a live rule and an explicit list as fixed", () => {
