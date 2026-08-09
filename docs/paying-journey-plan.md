@@ -2,171 +2,175 @@
 
 Where someone subscribes, where they manage it, and where they watch an ad to keep scanning.
 
-**Status:** plan only, nothing built. Two findings below change the shape of it, so read them
-before the screens.
+**Status:** plan only, nothing built.
 
----
+## Decisions taken
 
-## Finding 1 — the thing that actually blocks going public
+| | |
+|---|---|
+| Platform | **Native apps for the App Store and Play**, wrapping the existing web app |
+| Server | **Cloudflare Workers + D1** |
+| Free tier | **5 scans a month**, revisit once there is usage to look at |
+| Price | **€4.99 for the first year, then €9.99/year** — a store introductory offer |
+| Accounts | **None.** See below — the stores make them unnecessary |
+| Ads | Available again on native, incl. rewarded video. Not in the first release |
 
-**Today, every user has to create their own Anthropic API key.** Settings walks them through
-console.anthropic.com, loading credit, and pasting a key.
+### Why native changes two things for the better
 
-No member of the general public will do that. Not one. It is the entire funnel, and it is a
-wall.
-
-So the first piece of the paying journey is not the paywall — it is a **scan proxy**: a small
-server that holds *one* key (yours) and scans on the user's behalf. That single change is what
-makes the app usable by a stranger, and it is also the only place a free-scan limit can be
-enforced. Everything else in this document depends on it.
-
-Related: the scan counter cannot live on the phone. `localStorage.clear()` is an infinite
-supply of free scans, and "settings → clear site data" is a normal thing people do.
-
-## Finding 2 — the ad plan assumed a native app, and this is a website
-
-**AdMob cannot be used in a PWA**, and there is no supported way to show AdMob banners or
-rewarded ads inside a wrapper (TWA/WebView) either — doing it anyway breaks AdMob and AdSense
-policy. Sources: [AdMob SDK
+**Rewarded ads are back.** AdMob is native-SDK only and cannot be used in a PWA or a WebView
+wrapper ([AdMob SDK
 group](https://groups.google.com/g/google-admob-ads-sdk/c/PeonG5OcoKY),
-[android-browser-helper #535](https://github.com/GoogleChrome/android-browser-helper/issues/535),
-[PWA monetisation
-discussion](https://slickstack.io/forum/topic/monetizing-pwa-app-options-google-adsense-allowed-or-not).
+[android-browser-helper #535](https://github.com/GoogleChrome/android-browser-helper/issues/535)).
+Going native restores "watch an ad, get one more scan" — the strongest revenue idea in
+`going-public.md`, worth 20–40 banner impressions per view.
 
-That kills the best idea in `going-public.md` as long as Bills is a website. **Rewarded video —
-"watch an ad, get one more scan" — does not exist on the open web.** The eCPM table in that
-document ($10–22 rewarded, $2.50–5 interstitial) is AdMob, i.e. native only. On the web you get
-AdSense display ads, which is the $0.25–0.90 banner row and nothing else.
+**Nobody has to sign up.** Store IAP is tied to the buyer's Apple or Google account, so a
+subscription survives a new phone via *Restore purchases* with no account system of your own.
+That was the only reason the earlier draft wanted email magic links.
 
-**This is a platform decision, not an ad-placement decision, and it has to be made first.**
+Two useful consequences: there is no personal data to hold, and **Apple's account-deletion
+requirement does not apply**, because it only applies to apps that create accounts. That screen
+drops off the launch list.
 
-| | Path A — stay a website | Path B — wrap for the stores |
-|---|---|---|
-| Subscription | Stripe, ~2.9% + 30¢ | Apple/Google IAP, 15–30% |
-| Ads available | AdSense display only | AdMob, incl. **rewarded video** |
-| "Watch an ad for a scan" | **impossible** | yes — the whole point |
-| Cost to start | domain + Stripe account | $99/yr Apple, $25 Google |
-| Review / compliance | none | app review, ATT, consent SDK, data safety, account deletion |
-| Time to first payment | days | weeks |
+### The price, presented honestly
 
-### Recommendation: A first, then B if the money is real
+**"€4.99 for your first year, then €9.99/year."** Both stores support this natively as an
+*introductory offer* and display it themselves as a saving against the standard price.
 
-Ship **paid subscriptions on the web** first, with no ads at all. Reasons:
-
-1. It tests the only question that matters — *will anyone pay for this?* — in days rather than
-   weeks, and Stripe keeps 3% where Apple keeps 15–30%.
-2. Ads were never the business. The estimate in `going-public.md` was ~€85/month at 2,000
-   users, and that was with rewarded video included. Without it, web display ads on a small
-   app are a rounding error that costs you the clean look.
-3. If subscriptions do work, Path B becomes an evidence-backed decision instead of a bet, and
-   the rewarded-ad idea comes back at that point.
-
-The free tier still needs a limit, and without rewarded ads it is simply: **10 scans a month,
-then subscribe, and splitting by hand stays free forever.** That is an honest, complete product.
+Deliberately *not* a permanent "was €9.99, now €4.99". Under the EU Omnibus rules (Portugal:
+DL 109-G/2021) announcing a reduction requires the prior price to have genuinely been charged, a
+never-charged reference price is a prohibited misleading claim, and a "limited time" offer that
+never ends is the dark pattern regulators fine. The introductory offer gets the same effect, the
+store does the advertising, and the discount is real.
 
 ---
 
-## The journey, as a walk-through
+## Finding that still blocks everything
 
-### 1. First run — no key, no account, no questions
+**Today every user must create their own Anthropic API key** — console.anthropic.com, load
+credit, paste it into Settings. No member of the general public will do this. It is the whole
+funnel and it is a wall.
 
-A stranger opens the app. No sign-up, no permissions, no API key. They create a trip, add
-friends, and scan a receipt. The proxy does it. **Onboarding has to say nothing about money.**
+So the first build is the **scan proxy**: one key (yours) on a server, scanning on the user's
+behalf. It is also the only place a free-scan limit can exist, because `localStorage.clear()` is
+otherwise an infinite supply of free scans and clearing site data is a normal thing people do.
 
-Scan counter surfaces quietly from the start: `7 scans left this month` on the trip screen,
-where the scan button already is. Never a surprise.
+---
 
-### 2. Hitting the wall — scan 11
+## Identity without accounts
 
-Full-screen paywall, and it appears *before* the camera opens, never after (nobody should take
-a photo that gets thrown away).
+Three layers, none of which ask the user anything:
 
-**What it says:**
+1. **Anonymous install ID**, generated on first launch, kept in device storage. Enough to count
+   five scans a month.
+2. **App Attest (iOS) / Play Integrity (Android)**, so the server can tell a genuine install of
+   your app from a script pointed at the proxy. This is the abuse that would actually cost
+   money — someone burning your Anthropic credit — and it is worth stopping properly.
+3. **Store receipts** for subscribers, verified server-side: Apple's App Store Server API
+   (signed JWS transactions) and Google's Play Developer API `subscriptions.v2`. The client
+   never asserts its own entitlement.
 
-- `You've used this month's 10 scans.`
-- `€9.99 a year — unlimited scanning. 7 days free.`
-- `Or keep splitting by hand: still free, still unlimited.` ← the honest way out
-- `Restore purchase` (required by Apple later; harmless now)
+A reinstall resets someone's free counter. **Accept it.** At roughly a cent a scan with Haiku,
+that abuse is far cheaper than the conversions a sign-up wall would cost.
 
-**What it must not do:** imply the app is now unusable. Adding items by hand is the whole app
-minus the camera, and someone who leaves believing otherwise never comes back.
+---
 
-### 3. Paying — Stripe Checkout, then straight back
+## The journey, screen by screen
 
-Tap subscribe → Stripe Checkout (hosted, so no card details ever touch this code) → back to
-exactly where they were, with the receipt they were about to scan still waiting.
+### 1. First run — nothing asked for
 
-The trial is 7 days, card required, cancel any time. After Checkout the server writes the
-subscription against their account and the client asks the server what it is — never the
-reverse.
+No sign-up, no permissions, no API key. Create a trip, add friends, scan. Onboarding says
+nothing about money.
 
-**This is the step that forces accounts.** A subscription has to survive a new phone, and
-`localStorage` does not. Lightest thing that works: **email magic link, only at the moment of
-subscribing.** Free users stay anonymous forever.
+The counter is visible from the first scan, on the trip screen where the scan button already is:
+`4 scans left this month`. Running out is never a surprise.
 
-### 4. Living with it — subscription management
+### 2. The wall — scan 6
 
-In Settings, a card that answers the four questions people actually have:
+Full screen, and it appears **before the camera opens**, never after. Nobody should photograph a
+receipt only to have it thrown away.
+
+- `You've used this month's 5 scans.`
+- `€4.99 for your first year, then €9.99/year.`
+- `Watch a short ad → one more scan now` *(when rewarded ads ship; capped 3–5/day)*
+- `Or keep splitting by hand — still free, still unlimited.`
+- `Restore purchase`
+
+**It must not imply the app is now useless.** Adding items by hand is the entire app minus the
+camera, and anyone who leaves believing otherwise never returns.
+
+### 3. Paying — the store's own sheet
+
+Tap subscribe → the native purchase sheet → back to exactly where they were, with the receipt
+they were about to scan still waiting. No card details ever touch this code.
+
+The server verifies the transaction and records the entitlement; the client then asks the server
+what it has. Never the reverse.
+
+### 4. Living with it — in Settings
+
+A card answering the four questions people actually have:
 
 - What have I got? `Bills unlimited — renews 14 Aug 2027`
-- Am I in the trial? `Trial ends in 4 days, then €9.99/year`
-- Where's my receipt? → Stripe customer portal
-- How do I stop? → **Cancel**, in plain words, one tap, no retention maze
+- Am I still in the intro year? `First year at €4.99, then €9.99`
+- Where's my receipt? → the store's subscription page
+- How do I stop? → **Cancel** in plain words, one tap out to the store, no retention maze
 
-Free users see the same card showing `Free — 7 scans left this month` and the upgrade button.
+Free users see the same card: `Free — 4 scans left this month`, plus the upgrade button.
 
-### 5. Failure states, which are most of the real work
+### 5. Failure states — most of the real work
 
 | What happened | What the user sees |
 |---|---|
-| Card declined at renewal | A note, not a lockout: `We couldn't renew — update your card. Scanning keeps working for 3 days.` |
-| Subscribed but offline | Scanning needs the network anyway; the rest of the app works. Never "unsubscribed" because a check failed. |
-| Cancelled | Keeps unlimited until the paid period ends, then quietly returns to 10/month. Nothing is deleted, ever. |
+| Billing retry at renewal | A note, not a lockout: `We couldn't renew — check your payment method. Scanning keeps working for 3 days.` |
+| Subscribed but offline | Scanning needs the network anyway; everything else works. Never "unsubscribed" because a check failed. |
+| Cancelled | Unlimited until the paid period ends, then quietly back to 5/month. Nothing is ever deleted. |
 | Server down | `Scanning is down — add the items by hand and we'll be back.` The maths is local, so the app still works. |
 | Refund / chargeback | Back to free at the next check. No punishment, no data loss. |
+| Grace period / billing retry (store-driven) | Treated as subscribed until the store says otherwise. |
 
 ---
 
-## What has to exist on the server
+## The server
 
-Small, boring, and only three jobs:
+One Worker, three jobs, and deliberately boring:
 
-1. **Scan proxy.** Holds your Anthropic key, forwards the photo, returns items. Rate-limited
-   per install. Never stores the photo.
-2. **Entitlement.** Who is subscribed, and how many scans has this install used this month.
-   Both server-authoritative: a client that can grant itself scans has given itself a free
-   unlimited plan.
-3. **Stripe webhooks.** `checkout.session.completed`, `invoice.paid`,
-   `customer.subscription.deleted`. The webhook is the source of truth, not the browser
-   redirect — people close the tab.
+1. **Scan proxy** — holds the Anthropic key, forwards the photo, returns items. Attestation
+   required, rate-limited per install, **never stores the photo**.
+2. **Entitlement** — is this install subscribed, and how many scans has it used this month.
+   Server-authoritative: a client that can grant itself scans has given itself a free unlimited
+   plan.
+3. **Store notifications** — Apple App Store Server Notifications v2 and Google Real-time
+   Developer Notifications. These are the source of truth for renewals, cancellations and
+   refunds, not anything the app reports.
+
+D1 holds two small tables: installs (id, attestation state, month, scans used) and subscriptions
+(store, original transaction id, status, current period end).
 
 **Deliberately not on the server: trips, receipts, or who owes whom.** That stays on the phone.
 It keeps the privacy promise true, keeps the server tiny, and means an outage never stops anyone
-splitting a bill.
-
-New screens needed: **onboarding**, **paywall**, **sign-in (magic link)**, **subscription
-management**, **scan-failed**, and a **scans-left indicator**. All but the last are in
-`screens-to-design.md` already; the ad-consent screen drops out entirely under Path A.
+splitting a bill by hand.
 
 ---
 
 ## Order of work
 
-1. **Scan proxy + server-side scan counting.** Unblocks strangers using the app at all. No
-   payments yet — a generous free allowance while it is proved out.
-2. **Scans-left indicator + paywall screen.** Still no payments: the paywall's only door is
-   "split by hand". This measures how many people actually hit the wall before you build
-   billing.
-3. **Stripe subscription + magic-link accounts + management screen.** The money.
-4. **Failure states.** The table above. Not optional — this is where trust is won or lost.
-5. **Only then**, and only if the subscription is earning: evaluate Path B for rewarded ads.
+1. **Scan proxy + attestation + server-side counting.** The app becomes usable by a stranger.
+   Generous free allowance while it settles; no payments yet.
+2. **Capacitor wrapper, both stores, review passed.** Nothing about billing can be tested until
+   the app is actually in a store build.
+3. **Scans-left indicator + paywall, with "split by hand" as its only door.** Measures how many
+   people hit the wall before billing exists.
+4. **IAP: the introductory offer, receipt verification, store notifications, Settings card.**
+5. **Failure states.** Where trust is won or lost.
+6. **Then ads**, rewarded first — highest value, lowest risk — with the EU consent SDK, which is
+   mandatory before any ad loads.
 
-## Open questions for you
+## Still open
 
-1. **Path A or B?** My recommendation is A now, B later on evidence. It changes everything
-   below it.
-2. **Where should the server live?** Cloudflare Workers or Vercel are both free at this size
-   and both fit a static front end.
-3. **Is €9.99/year still right** once you keep ~97% of it instead of ~75%?
-4. **Free allowance during step 1** — before billing exists, is 10 a month right, or more
-   generous to get people using it?
+- **Store accounts** — Apple $99/yr and Google $25 one-off need to exist before step 2, in your
+  name with your details. I can't create those for you.
+- **A privacy policy that is true**, naming Anthropic as processing receipt photos. Both stores
+  require it, as does the law where your users are.
+- **Haiku's accuracy and the discount tagging are still unvalidated** against real Pingo Doce
+  and Continente receipts. That is worth settling before strangers rely on it.
