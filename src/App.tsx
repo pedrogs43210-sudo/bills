@@ -6,12 +6,15 @@ import { ReviewScreen } from "./screens/ReviewScreen";
 import { AssignScreen } from "./screens/AssignScreen";
 import { SettleScreen } from "./screens/SettleScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { PaywallScreen } from "./screens/PaywallScreen";
+import { lastKnownQuota } from "./lib/scan";
 
 export type View =
   | { screen: "trips" }
   | { screen: "trip"; tripId: string }
   | { screen: "receipt"; tripId: string; receiptId: string }
   | { screen: "settle"; tripId: string }
+  | { screen: "paywall"; tripId: string }
   | { screen: "settings" };
 
 function Router() {
@@ -26,6 +29,8 @@ function Router() {
 
   if (view.screen === "trip") return <TripScreen tripId={trip.id} go={setView} />;
   if (view.screen === "settle") return <SettleScreen tripId={trip.id} go={setView} />;
+  if (view.screen === "paywall")
+    return <PaywallScreen tripId={trip.id} quota={lastKnownQuota()} go={setView} />;
 
   const receipt = trip.receipts.find((r) => r.id === view.receiptId);
   if (!receipt) return <TripScreen tripId={trip.id} go={setView} />;

@@ -8,7 +8,7 @@ import { isReservedGroupName } from "../lib/groups";
 import { Disc } from "../components/chips";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
-import { scanReceipt, scanTotals, ScanError } from "../lib/scan";
+import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanQuota } from "../lib/scan";
 import { countsDiscountLines, discountConvention } from "../lib/discounts";
 import type { View } from "../App";
 import type { Person, Receipt } from "../types";
@@ -23,8 +23,23 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
   const [groupForm, setGroupForm] = useState<{ id: string | null; name: string; personIds: string[] } | null>(null);
+  const [quota, setQuota] = useState<ScanQuota | null>(lastKnownQuota());
   const lastPhoto = useRef<File | null>(null);
   const alive = useRef(true);
+  // Asked for on arrival rather than on tap: the scan control is a file input, so the camera
+  // opens the instant it is touched. Knowing the answer beforehand is what makes it possible to
+  // show the paywall *before* someone photographs a receipt that would be thrown away.
+  useEffect(() => {
+    if (!usingProxy()) return;
+    let stale = false;
+    void fetchQuota().then((q) => {
+      if (!stale && q) setQuota(q);
+    });
+    return () => {
+      stale = true;
+    };
+  }, []);
+  const outOfScans = quota !== null && quota.left !== null && quota.left <= 0;
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -47,7 +62,9 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   async function handlePhoto(file: File) {
     lastPhoto.current = file;
     const apiKey = loadApiKey();
-    if (!apiKey) {
+    // Only the user's-own-key path needs a key. With a proxy configured, sending someone to
+    // Settings would reinstate the exact wall the proxy exists to remove.
+    if (!apiKey && !usingProxy()) {
       go({ screen: "settings" });
       return;
     }
@@ -90,9 +107,18 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       dispatch({ type: "addReceipt", tripId, receipt });
       if (!alive.current) return; // user left this screen — keep the data, skip the navigation
       setScanState("idle");
+      setQuota(lastKnownQuota());
       go({ screen: "receipt", tripId, receiptId: receipt.id });
     } catch (err) {
       if (!alive.current) return;
+      if (err instanceof ScanError && err.reason === "out-of-scans") {
+        // The allowance went while they were choosing a photo, so send them to the same place
+        // they would have gone had we known a moment earlier.
+        setScanState("idle");
+        setQuota(lastKnownQuota());
+        go({ screen: "paywall", tripId });
+        return;
+      }
       setScanState("error");
       setScanMessage(
         err instanceof ScanError ? err.message : "Something went wrong reading the photo."
@@ -411,21 +437,42 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       </button>
 
       <div className="footerbar">
-        <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
-          {scanState === "busy" ? "🧾✨ Reading receipt…" : "📸 Scan receipt"}
-          <input
-            hidden
-            type="file"
-            accept="image/*"
-            aria-label="Scan receipt"
-            disabled={trip.people.length === 0 || scanState === "busy"}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void handlePhoto(f);
-              e.target.value = "";
-            }}
-          />
-        </label>
+        {/* Out of scans means a button, not a file input: a file input opens the camera the
+            moment it is touched, and the paywall has to come first. */}
+        {outOfScans ? (
+          <button
+            className="btn btn-primary"
+            style={{ marginBottom: 8 }}
+            onClick={() => go({ screen: "paywall", tripId })}
+          >
+            📸 Scan receipt
+          </button>
+        ) : (
+          <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
+            {scanState === "busy" ? "🧾✨ Reading receipt…" : "📸 Scan receipt"}
+            <input
+              hidden
+              type="file"
+              accept="image/*"
+              aria-label="Scan receipt"
+              disabled={trip.people.length === 0 || scanState === "busy"}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handlePhoto(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
+        {/* Only ever shown when there is a real number to show: no proxy means no counter, and
+            a subscriber has no cap to count against. */}
+        {quota?.left !== null && quota?.left !== undefined && (
+          <div className="micro" style={{ textAlign: "center", marginBottom: 8 }}>
+            {quota.left === 0
+              ? "No scans left this month"
+              : `${quota.left} scan${quota.left === 1 ? "" : "s"} left this month`}
+          </div>
+        )}
         <div className="row">
           <button className="btn" style={{ flex: 1 }} disabled={trip.people.length === 0} onClick={addManualReceipt}>
             ✍️ Add items by hand
