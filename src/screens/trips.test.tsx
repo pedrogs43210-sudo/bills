@@ -174,7 +174,7 @@ describe("groups on the trip screen", () => {
     const user = userEvent.setup();
     await tripWithTwoFriends(user);
     await createGroup(user, "Breakfast", ["Pedro"]);
-    expect(screen.getByRole("button", { name: /👥 Breakfast · 1/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Breakfast · 1/ })).toBeInTheDocument();
   });
 
   it("reopens and renames a group", async () => {
@@ -182,12 +182,12 @@ describe("groups on the trip screen", () => {
     await tripWithTwoFriends(user);
     await createGroup(user, "Breakfast", ["Pedro"]);
 
-    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
+    await user.click(screen.getByRole("button", { name: /Breakfast · 1/ }));
     const nameInput = screen.getByLabelText(/group name/i);
     await user.clear(nameInput);
     await user.type(nameInput, "Brunch");
     await user.click(screen.getByRole("button", { name: /save group/i }));
-    expect(screen.getByRole("button", { name: /👥 Brunch · 1/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Brunch · 1/ })).toBeInTheDocument();
   });
 
   it("changes members through the UI", async () => {
@@ -195,14 +195,14 @@ describe("groups on the trip screen", () => {
     await tripWithTwoFriends(user);
     await createGroup(user, "Breakfast", ["Pedro"]);
 
-    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
+    await user.click(screen.getByRole("button", { name: /Breakfast · 1/ }));
     await user.click(screen.getByRole("button", { name: /add Ana to group/i }));
     await user.click(screen.getByRole("button", { name: /remove Pedro from group/i }));
     await user.click(screen.getByRole("button", { name: /save group/i }));
-    expect(screen.getByRole("button", { name: /👥 Breakfast · 1/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Breakfast · 1/ })).toBeInTheDocument();
 
     // reopen to confirm it's Ana, not Pedro, who ended up in the group
-    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
+    await user.click(screen.getByRole("button", { name: /Breakfast · 1/ }));
     expect(screen.getByRole("button", { name: /remove Ana from group/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /add Pedro to group/i })).toBeInTheDocument();
   });
@@ -213,9 +213,9 @@ describe("groups on the trip screen", () => {
     await createGroup(user, "Breakfast", ["Pedro"]);
 
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 1/ }));
+    await user.click(screen.getByRole("button", { name: /Breakfast · 1/ }));
     await user.click(screen.getByRole("button", { name: /delete group/i }));
-    expect(screen.queryByRole("button", { name: /👥 Breakfast/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Breakfast/ })).toBeNull();
     vi.mocked(window.confirm).mockRestore();
   });
 
@@ -240,17 +240,17 @@ describe("groups on the trip screen", () => {
     await user.type(screen.getByPlaceholderText(/add friend/i), "Bruno");
     await user.click(screen.getByRole("button", { name: "Add" }));
     await createGroup(user, "Breakfast", ["Pedro", "Ana"]);
-    expect(screen.getByRole("button", { name: /👥 Breakfast · 2/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Breakfast · 2/ })).toBeInTheDocument();
 
     // reopen for editing, then remove Ana via the Friends card's × button
     // while the group form is still open (she has no money entries, so it's allowed)
-    await user.click(screen.getByRole("button", { name: /👥 Breakfast · 2/ }));
+    await user.click(screen.getByRole("button", { name: /Breakfast · 2/ }));
     await user.click(screen.getByRole("button", { name: "Remove Ana" }));
     await user.click(screen.getByRole("button", { name: /save group/i }));
 
     // the stale form must not resurrect Ana's deleted id into the saved group
-    expect(screen.getByRole("button", { name: /👥 Breakfast · 1/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /👥 Breakfast · 2/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Breakfast · 1/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Breakfast · 2/ })).toBeNull();
   });
 
   it("closes the form when its group is pruned away entirely", async () => {
@@ -261,10 +261,10 @@ describe("groups on the trip screen", () => {
     await user.type(screen.getByPlaceholderText(/add friend/i), "Bruno");
     await user.click(screen.getByRole("button", { name: "Add" }));
     await createGroup(user, "Solo Bruno", ["Bruno"]);
-    expect(screen.getByRole("button", { name: /👥 Solo Bruno · 1/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Solo Bruno · 1/ })).toBeInTheDocument();
 
     // reopen it, then remove Bruno — the group has nobody left, so it's pruned away
-    await user.click(screen.getByRole("button", { name: /👥 Solo Bruno · 1/ }));
+    await user.click(screen.getByRole("button", { name: /Solo Bruno · 1/ }));
     await user.click(screen.getByRole("button", { name: "Remove Bruno" }));
     expect(screen.queryByRole("button", { name: /save group/i })).toBeNull();
     // the card itself is still there — Pedro and Ana keep the trip at 2 people

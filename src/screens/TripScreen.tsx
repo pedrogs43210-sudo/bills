@@ -3,14 +3,15 @@ import { useStore } from "../state/StoreProvider";
 import { personHasEntries } from "../state/reducer";
 import { newId } from "../lib/ids";
 import { formatCents } from "../lib/money";
-import { isFullyAssigned } from "../lib/split";
+import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
+import { Disc } from "../components/chips";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
 import { scanReceipt, scanTotals, ScanError } from "../lib/scan";
 import { countsDiscountLines, discountConvention } from "../lib/discounts";
 import type { View } from "../App";
-import type { Receipt } from "../types";
+import type { Person, Receipt } from "../types";
 import { excludedReceipts } from "../lib/settle";
 
 export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => void }) {
@@ -173,6 +174,27 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
 
   const payerName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
   const payerNames = (r: Receipt) => r.payments.map((pay) => payerName(pay.personId)).join(" + ") || "?";
+  /**
+   * The payers' faces, then their names. The discs are the fast read down a list of receipts;
+   * the names stay because this is money and a 22px circle is not proof of anything.
+   */
+  const payerDiscs = (r: Receipt) => {
+    const payers = r.payments
+      .map((pay) => trip!.people.find((p) => p.id === pay.personId))
+      .filter((p): p is Person => !!p);
+    return (
+      <>
+        {payers.length > 0 && (
+          <span className="disc-stack" style={{ verticalAlign: "middle", marginRight: 6 }}>
+            {payers.map((p) => (
+              <Disc key={p.id} person={p} small />
+            ))}
+          </span>
+        )}
+        paid by {payerNames(r)} ·{" "}
+      </>
+    );
+  };
   const excludedIds = new Set(excludedReceipts(trip).map((r) => r.id));
   const badge = (r: Receipt) =>
     excludedIds.has(r.id) ? "⚠️ not counted" :
@@ -204,7 +226,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                 onBlur={() => commitRename(p.id)}
               />
             ) : (
-              <span key={p.id} className="chip" style={{ background: p.color, cursor: "default" }}>
+              <span key={p.id} className="chip chip-person" style={{ background: p.color, borderColor: "transparent", cursor: "default" }}>
+                <Disc person={p} />
                 <button
                   style={{ all: "unset", cursor: "pointer" }}
                   aria-label={`Rename ${p.name}`}
@@ -247,10 +270,18 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             {trip.groups.map((g) => (
               <button
                 key={g.id}
-                className={`chip ${g.id === groupForm?.id ? "selected" : ""}`}
+                className={`chip chip-group${g.id === groupForm?.id ? " selected" : ""}`}
                 onClick={() => setGroupForm({ id: g.id, name: g.name, personIds: g.personIds })}
               >
-                👥 {g.name} · {g.personIds.length}
+                <span className="disc-stack">
+                  {trip.people
+                    .filter((p) => g.personIds.includes(p.id))
+                    .slice(0, 4)
+                    .map((p) => (
+                      <Disc key={p.id} person={p} small />
+                    ))}
+                </span>
+                {g.name} · {g.personIds.length}
               </button>
             ))}
           </div>
@@ -314,20 +345,48 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         </div>
       )}
 
-      {trip.receipts.map((r) => (
-        <button
-          key={r.id}
-          className="card row"
-          style={{ width: "100%", border: "none", cursor: "pointer", textAlign: "left" }}
-          onClick={() => go({ screen: "receipt", tripId, receiptId: r.id })}
-        >
-          <span>
-            🧾 <b>{r.storeName || "Receipt"}</b> · {formatCents(r.printedTotal, trip.currency)}
-            <span className="muted" style={{ display: "block" }}>paid by {payerNames(r)} · {r.date}</span>
-          </span>
-          <span className="muted" style={{ color: excludedIds.has(r.id) ? "var(--warn)" : undefined }}>{badge(r)}</span>
-        </button>
-      ))}
+      {trip.receipts.map((r) => {
+        const counted = countedItems(r);
+        const assigned = counted.filter(isItemAssigned).length;
+        const excluded = excludedIds.has(r.id);
+        return (
+          <button
+            key={r.id}
+            className={`card receipt-row${excluded ? " card-todo" : ""}`}
+            onClick={() => go({ screen: "receipt", tripId, receiptId: r.id })}
+          >
+            <span className="row" style={{ alignItems: "flex-start" }}>
+              <span style={{ minWidth: 0 }}>
+                <b>{r.storeName || "Receipt"}</b>
+                <span className="label" style={{ display: "block" }}>
+                  {payerDiscs(r)}
+                  {r.date}
+                </span>
+              </span>
+              <span className="money-2">{formatCents(r.printedTotal, trip.currency)}</span>
+            </span>
+            {/* Rule 3 — the same track and fraction as the assign footer and the trip summary. */}
+            <span className="row" style={{ marginTop: 8, gap: "var(--s3)" }}>
+              {/* An excluded receipt never goes green, however well its items are assigned: a
+                  full green bar beside "not counted" says finished next to something that
+                  contributes nothing. Amber means there is work left, and there is. */}
+              <span
+                className={`track${
+                  !excluded && counted.length > 0 && assigned === counted.length
+                    ? " done"
+                    : excluded || assigned === 0
+                      ? " none"
+                      : ""
+                }`}
+                style={{ flex: 1 }}
+              >
+                <span style={{ width: counted.length === 0 ? "0%" : `${(assigned / counted.length) * 100}%` }} />
+              </span>
+              <span className="micro" style={excluded ? { color: "var(--note)" } : undefined}>{badge(r)}</span>
+            </span>
+          </button>
+        );
+      })}
 
       {scanState === "error" && (
         <div className="banner-warn">

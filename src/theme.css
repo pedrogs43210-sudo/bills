@@ -130,6 +130,18 @@ h3 { font-size: 15.5px; }
   margin-bottom: var(--s3);
 }
 
+/* A whole receipt row is one tap target, so it resets the button chrome rather than looking
+   like a button wrapped around a card. */
+.receipt-row {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
 /* Still to do: an amber left edge, so a glance down the list finds the gaps. */
 .card-todo { border-left: 4px solid var(--note-line); }
 /* On the paper, but not part of the maths — present, and visibly inactive. */
