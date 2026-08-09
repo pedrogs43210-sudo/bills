@@ -34,8 +34,12 @@ describe("settle screen", () => {
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
-    expect(screen.getByText("Pedro")).toBeInTheDocument();
-    expect(screen.getByText(/Ana → Pedro/)).toBeInTheDocument();
+    // Pedro appears in both the transfer row and his own share row
+    expect(screen.getAllByText("Pedro").length).toBeGreaterThan(0);
+    // the transfer row is now names, discs and an arrow in separate elements, so match the row
+    const row = screen.getByText("pays").parentElement!;
+    expect(row.textContent).toContain("Ana");
+    expect(row.textContent).toContain("Pedro");
   });
 
   it("copies the summary when Web Share is unavailable", async () => {
@@ -64,7 +68,7 @@ describe("settle screen", () => {
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
-    expect(screen.getByText(/unassigned items/i)).toBeInTheDocument();
+    expect(screen.getByText(/aren't assigned to anyone/i)).toBeInTheDocument();
   });
 
   it("warns that a receipt isn't counted, naming the receipt and the real reason", async () => {
@@ -80,7 +84,7 @@ describe("settle screen", () => {
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
-    expect(screen.getByText(/not counted yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/isn't counted yet/i)).toBeInTheDocument();
     expect(screen.getByText(/pingo doce/i)).toBeInTheDocument();
     expect(screen.getByText(/an amount is negative/i)).toBeInTheDocument();
   });

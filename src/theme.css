@@ -137,6 +137,19 @@ h3 { font-size: 15.5px; }
 
 .row { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
 
+/* Read aloud, not shown — for words a sighted user gets from layout or an icon. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .topbar { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s4); }
 
 .footerbar {
