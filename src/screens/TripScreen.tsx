@@ -352,7 +352,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         return (
           <button
             key={r.id}
-            className={`card receipt-row${excluded ? " card-todo" : ""}`}
+            className={`card tap-card${excluded ? " card-todo" : ""}`}
             onClick={() => go({ screen: "receipt", tripId, receiptId: r.id })}
           >
             <span className="row" style={{ alignItems: "flex-start" }}>

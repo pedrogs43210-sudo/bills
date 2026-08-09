@@ -3,6 +3,7 @@ import { useStore } from "../state/StoreProvider";
 import { newId } from "../lib/ids";
 import type { View } from "../App";
 import type { Trip } from "../types";
+import { Disc } from "../components/chips";
 
 const EMOJIS = ["🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
 
@@ -50,7 +51,13 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
         />
         <div style={{ margin: "10px 0" }}>
           {EMOJIS.map((e) => (
-            <button key={e} className={`chip ${e === emoji ? "selected" : ""}`} onClick={() => setEmoji(e)}>
+            <button
+              key={e}
+              className={`chip chip-emoji${e === emoji ? " selected" : ""}`}
+              aria-label={`Use ${e}`}
+              aria-pressed={e === emoji}
+              onClick={() => setEmoji(e)}
+            >
               {e}
             </button>
           ))}
@@ -63,16 +70,37 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
       {newestFirst(data.trips).map((t) => (
         <button
           key={t.id}
-          className="card row"
-          style={{ width: "100%", border: "none", cursor: "pointer", textAlign: "left" }}
+          className="card tap-card"
           onClick={() => go({ screen: "trip", tripId: t.id })}
         >
-          <span style={{ fontSize: 18 }}>
-            {t.emoji} <b>{t.name}</b>
+          <span className="row" style={{ alignItems: "flex-start" }}>
+            <span className="trip-name">
+              <span aria-hidden="true" style={{ marginRight: 6 }}>{t.emoji}</span>
+              {t.name}
+            </span>
+            <span className="micro">
+              {t.receipts.length} receipt{t.receipts.length === 1 ? "" : "s"}
+            </span>
           </span>
-          <span className="muted">
-            {t.people.length} 👥 · {t.receipts.length} 🧾
-          </span>
+          {/* Who is on this trip, as faces. Deliberately no money here: the only honest total
+              would have to explain which receipts it leaves out, and there is nowhere to say so
+              on a one-line row. The settle screen is where money gets its context. */}
+          {t.people.length > 0 ? (
+            <span className="row" style={{ marginTop: 8, justifyContent: "flex-start", gap: "var(--s2)" }}>
+              <span className="disc-stack">
+                {t.people.slice(0, 6).map((p) => (
+                  <Disc key={p.id} person={p} small />
+                ))}
+              </span>
+              <span className="label">
+                {t.people.length > 6 ? `${t.people.length} people` : t.people.map((p) => p.name).join(", ")}
+              </span>
+            </span>
+          ) : (
+            <span className="label" style={{ display: "block", marginTop: 8 }}>
+              Nobody added yet — open it to add your friends.
+            </span>
+          )}
         </button>
       ))}
     </div>

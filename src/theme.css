@@ -130,9 +130,9 @@ h3 { font-size: 15.5px; }
   margin-bottom: var(--s3);
 }
 
-/* A whole receipt row is one tap target, so it resets the button chrome rather than looking
+/* A whole row is one tap target, so it resets the button chrome rather than looking
    like a button wrapped around a card. */
-.receipt-row {
+.tap-card {
   display: block;
   width: 100%;
   border: 1px solid var(--line-strong);
@@ -366,3 +366,18 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* A trip's name, in the brand face — the one place a name is the headline. */
+.trip-name { font: 600 17px/1.25 var(--brand); letter-spacing: -0.012em; min-width: 0; }
+
+/* The emoji picker: square-ish, so six of them read as one control rather than six people. */
+.chip-emoji {
+  width: 52px;
+  justify-content: center;
+  border-radius: var(--r-md);
+  font-size: 20px;
+  padding: 0;
+}
+/* No ✓ here — the emoji is the label, and a tick beside it would crowd a 52px box. */
+.chip-emoji.selected::after { content: none; }
+.chip-emoji.selected { background: var(--ink); border-color: var(--ink); }

@@ -59,11 +59,22 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
 
       <div className="card">
         <h3>Scanning</h3>
-        <p className="muted">
+        <p className="label" style={{ marginTop: 0 }}>
           Receipt scanning uses your own Anthropic API key. Create one at console.anthropic.com → API keys,
-          load a few euros of credit, and paste it here. It never leaves this phone. A scan costs a few cents.
+          load a few euros of credit, and paste it here. A scan costs a few cents.
         </p>
-        <label className="muted" htmlFor="apikey">Anthropic API key</label>
+        {/* The one claim on this screen a stranger has to take on trust, so it gets said
+            properly rather than in grey small print at the end of a paragraph. */}
+        <div className="note note-good" style={{ marginTop: "var(--s3)" }}>
+          <span className="note-dot" aria-hidden="true">✓</span>
+          <div>
+            <span className="note-head">The key stays on this phone. </span>
+            It is kept in this browser's storage and sent only to Anthropic when you scan a receipt.
+          </div>
+        </div>
+        <label className="micro" htmlFor="apikey" style={{ display: "block", marginTop: "var(--s3)" }}>
+          Anthropic API key
+        </label>
         <input
           id="apikey"
           type="password"
@@ -91,13 +102,23 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
 
       <div className="card">
         <h3>Backup</h3>
+        <p className="label" style={{ marginTop: 0 }}>
+          Everything lives on this phone, so a backup is the only way it survives a lost or wiped
+          browser. Export each trip you care about.
+        </p>
+        {data.trips.length === 0 && <p className="muted">No trips to export yet.</p>}
         {data.trips.map((t) => (
-          <div key={t.id} className="row" style={{ padding: "4px 0" }}>
-            <span>{t.emoji} {t.name}</span>
+          <div key={t.id} className="row" style={{ padding: "var(--s1) 0" }}>
+            <span className="row" style={{ gap: "var(--s2)", minWidth: 0 }}>
+              <span aria-hidden="true">{t.emoji}</span>
+              <span>{t.name}</span>
+            </span>
             <button className="btn" onClick={() => download(t.id)}>Export</button>
           </div>
         ))}
-        <label className="muted" htmlFor="import">Import trip</label>
+        <label className="micro" htmlFor="import" style={{ display: "block", marginTop: "var(--s4)" }}>
+          Import trip
+        </label>
         <input
           id="import"
           type="file"
