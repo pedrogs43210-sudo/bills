@@ -11,7 +11,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       injectRegister: "auto",
       manifest: false, // we ship our own public/manifest.webmanifest
-      workbox: { globPatterns: ["**/*.{js,css,html,svg,webmanifest}"] },
+      // woff2 included so the installed app keeps its type offline rather than falling back
+      workbox: { globPatterns: ["**/*.{js,css,html,svg,webmanifest,woff2}"] },
     }),
   ],
   test: {
