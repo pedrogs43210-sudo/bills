@@ -20,6 +20,7 @@ function seedTrip(): Trip {
   return {
     id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
     people: [{ id: "p1", name: "Pedro", color: "#ffd9a0" }],
+    groups: [],
     receipts: [], createdAt: "", schemaVersion: 1,
   };
 }
@@ -33,12 +34,73 @@ beforeEach(() => {
 
 const photo = new File(["x"], "receipt.jpg", { type: "image/jpeg" });
 
+describe("discount conventions from a scan", () => {
+  const scanned = (items: { name: string; lineTotal: number; kind: "item" | "discount" }[], paidTotal: number) => ({
+    storeName: "Loja", date: "2026-08-08", currency: "EUR", preDiscountTotal: null, paidTotal,
+    items: items.map((i) => ({ quantity: 1, ...i })),
+  });
+  const storedItems = () => JSON.parse(localStorage.getItem("bills.data.v1")!).trips[0].receipts[0].items;
+  const storedReceipt = () => JSON.parse(localStorage.getItem("bills.data.v1")!).trips[0].receipts[0];
+
+  async function scan() {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByText(/algarve/i));
+    await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+    await screen.findByDisplayValue("Sumo laranja");
+  }
+
+  it("leaves a Continente discount out of the maths, because the price already has it", async () => {
+    // 4.00 already reduced from 4.50; the bracket is information only
+    vi.mocked(scanReceipt).mockResolvedValue(
+      scanned([
+        { name: "Sumo laranja", lineTotal: 400, kind: "item" },
+        { name: "Desconto", lineTotal: -50, kind: "discount" },
+      ], 400)
+    );
+    await scan();
+    expect(storedReceipt().discountConvention).toBe("discounts-included");
+    expect(storedItems()[1].informational).toBe(true);
+    // the items now agree with the total, instead of being 50 cents short
+    expect(await screen.findByText(/matches the receipt total/i)).toBeInTheDocument();
+  });
+
+  it("counts a Pingo Doce discount, because it is a real separate line", async () => {
+    // 2.49 + 4.50 = 6.99 printed, 0.50 off, 6.49 paid
+    vi.mocked(scanReceipt).mockResolvedValue(
+      scanned([
+        { name: "Sumo laranja", lineTotal: 450, kind: "item" },
+        { name: "Batatas fritas", lineTotal: 249, kind: "item" },
+        { name: "Desconto", lineTotal: -50, kind: "discount" },
+      ], 649)
+    );
+    await scan();
+    expect(storedReceipt().discountConvention).toBe("discounts-separate");
+    expect(storedItems()[2]).not.toHaveProperty("informational");
+    expect(await screen.findByText(/matches the receipt total/i)).toBeInTheDocument();
+  });
+
+  it("changes nothing when the numbers do not add up either way", async () => {
+    vi.mocked(scanReceipt).mockResolvedValue(
+      scanned([
+        { name: "Sumo laranja", lineTotal: 807, kind: "item" },
+        { name: "Desconto", lineTotal: -50, kind: "discount" },
+      ], 700)
+    );
+    await scan();
+    expect(storedReceipt().discountConvention).toBe("mismatch");
+    // counted, as before — the totals are already being questioned on screen
+    expect(storedItems()[1]).not.toHaveProperty("informational");
+    expect(await screen.findByText(/off by/i)).toBeInTheDocument();
+  });
+});
+
 describe("scan flow", () => {
   it("scans a photo into a review-ready receipt", async () => {
     vi.mocked(scanReceipt).mockResolvedValue({
       storeName: "Lidl", date: "2026-07-08", currency: "EUR",
-      items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450 }],
-      printedTotal: 450,
+      items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450, kind: "item" }],
+      paidTotal: 450, preDiscountTotal: null,
     });
     const user = userEvent.setup();
     render(<App />);
@@ -59,8 +121,8 @@ describe("scan flow", () => {
     // retry uses the kept photo
     vi.mocked(scanReceipt).mockResolvedValue({
       storeName: "Lidl", date: null, currency: "EUR",
-      items: [{ name: "Pão", quantity: 1, lineTotal: 119 }],
-      printedTotal: 119,
+      items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }],
+      paidTotal: 119, preDiscountTotal: null,
     });
     await user.click(screen.getByRole("button", { name: /try again/i }));
     expect(await screen.findByDisplayValue("Pão")).toBeInTheDocument();
@@ -76,7 +138,7 @@ describe("scan flow", () => {
     await user.click(screen.getByRole("button", { name: /back/i })); // leave mid-scan
     resolveScan({
       storeName: "Lidl", date: null, currency: "EUR",
-      items: [{ name: "Pão", quantity: 1, lineTotal: 119 }], printedTotal: 119,
+      items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }], paidTotal: 119, preDiscountTotal: null,
     });
     expect(await screen.findByPlaceholderText(/trip name/i)).toBeInTheDocument(); // still on trip list
     expect(screen.queryByText(/check the receipt/i)).toBeNull(); // no surprise navigation

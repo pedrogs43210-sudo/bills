@@ -1,4 +1,5 @@
 import { SCHEMA_VERSION, type Trip } from "../types";
+import { migrateTrip } from "./migrate";
 
 const DATA_KEY = "bills.data.v1";
 const API_KEY_KEY = "bills.apiKey";
@@ -17,10 +18,39 @@ export function loadData(): AppData {
     if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.trips) || typeof parsed.schemaVersion !== "number") {
       throw new Error("bad shape");
     }
-    return parsed;
+    // Data written by a newer version of the app: don't guess at its shape.
+    if (parsed.schemaVersion > SCHEMA_VERSION) throw new Error("data from a newer version");
+    // Isolate per trip: one unreadable trip must not cost the user the others.
+    const trips: Trip[] = [];
+    const rejected: unknown[] = [];
+    for (const rawTrip of parsed.trips) {
+      try {
+        trips.push(migrateTrip(rawTrip));
+      } catch {
+        rejected.push(rawTrip);
+      }
+    }
+    if (rejected.length > 0) {
+      try {
+        localStorage.setItem(`${DATA_KEY}.rejected`, JSON.stringify(rejected));
+      } catch { /* nothing more we can do */ }
+    }
+    const data: AppData = { schemaVersion: SCHEMA_VERSION, trips };
+    if (parsed.schemaVersion < SCHEMA_VERSION) {
+      // One-time insurance: keep the pre-migration blob in case a bug surfaces later.
+      if (localStorage.getItem(`${DATA_KEY}.pre-v${SCHEMA_VERSION}`) === null) {
+        try {
+          localStorage.setItem(`${DATA_KEY}.pre-v${SCHEMA_VERSION}`, raw);
+        } catch { /* backup is best-effort */ }
+      }
+      saveData(data); // StoreProvider also persists on mount and surfaces quota failures
+    }
+    return data;
   } catch {
     // Never lose user data: keep the raw string for manual recovery.
-    localStorage.setItem(`${DATA_KEY}.corrupt`, raw);
+    try {
+      localStorage.setItem(`${DATA_KEY}.corrupt`, raw);
+    } catch { /* storage unavailable — nothing left to do */ }
     return emptyData();
   }
 }
@@ -47,16 +77,11 @@ export function exportTrip(trip: Trip): string {
 }
 
 export function importTrip(json: string): Trip {
-  const parsed = JSON.parse(json) as { trip?: Trip };
-  const trip = parsed?.trip;
-  if (
-    !trip ||
-    typeof trip.id !== "string" ||
-    typeof trip.name !== "string" ||
-    !Array.isArray(trip.people) ||
-    !Array.isArray(trip.receipts)
-  ) {
-    throw new Error("Not a Bills trip export");
+  const parsed = JSON.parse(json) as { trip?: unknown; schemaVersion?: unknown };
+  const claimed = [parsed?.schemaVersion, (parsed?.trip as { schemaVersion?: unknown } | undefined)?.schemaVersion];
+  if (claimed.some((v) => typeof v === "number" && v > SCHEMA_VERSION)) {
+    throw new Error("This file was made by a newer version of Bills");
   }
-  return trip;
+  // migrateTrip validates the shape and upgrades v1 export files.
+  return migrateTrip(parsed?.trip);
 }

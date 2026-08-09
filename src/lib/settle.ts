@@ -1,18 +1,66 @@
-import type { Trip } from "../types";
+import type { Receipt, Trip } from "../types";
 import { receiptShares } from "./split";
+import { paymentsTotal, primaryPayerId } from "./payments";
 
 export type Transfer = { from: string; to: string; amount: number };
 
-/** Receipts whose payer is a trip member; others (corrupt/imported data) are excluded from all math. */
-function countableReceipts(trip: Trip) {
+export type ExclusionReason = "no-payer" | "unknown-payer" | "negative-amount";
+
+/** A receipt counts when someone paid, everyone who paid is a member, and no amount is negative. */
+function isCountable(receipt: Receipt, memberIds: Set<string>): boolean {
+  return (
+    receipt.payments.length > 0 &&
+    receipt.payments.every((p) => memberIds.has(p.personId) && p.amount >= 0)
+  );
+}
+
+/**
+ * Receipts that count towards trip maths. A receipt is skipped when:
+ *  - it has no payments, or any payment is from a non-member — either would let
+ *    money escape the people-only balance loop and break the zero-sum invariant;
+ *  - any payment amount is negative — nobody can pay a negative amount, so the
+ *    receipt is corrupt data and its credits would be meaningless (zero-sum would
+ *    actually survive this one; we exclude it because the numbers would be nonsense).
+ */
+export function countableReceipts(trip: Trip) {
   const memberIds = new Set(trip.people.map((p) => p.id));
-  return trip.receipts.filter((r) => memberIds.has(r.paidBy));
+  return trip.receipts.filter((r) => isCountable(r, memberIds));
+}
+
+/**
+ * Receipts left out of the trip maths — malformed payments the user needs to fix.
+ * In practice the reachable cause is a negative receipt total: ReviewScreen's
+ * `withSyncedSinglePayment` mirrors it onto the lone payment, which then fails the
+ * amount >= 0 check above.
+ */
+export function excludedReceipts(trip: Trip): Receipt[] {
+  const memberIds = new Set(trip.people.map((p) => p.id));
+  return trip.receipts.filter((r) => !isCountable(r, memberIds));
+}
+
+/** Why a receipt is left out of the maths, or null when it counts. Drives what we tell the user. */
+export function exclusionReason(receipt: Receipt, trip: Trip): ExclusionReason | null {
+  const memberIds = new Set(trip.people.map((p) => p.id));
+  if (isCountable(receipt, memberIds)) return null;
+  if (receipt.payments.length === 0) return "no-payer";
+  if (receipt.payments.some((p) => !memberIds.has(p.personId))) return "unknown-payer";
+  return "negative-amount";
 }
 
 export function paidTotals(trip: Trip): Record<string, number> {
   const paid: Record<string, number> = {};
   for (const p of trip.people) paid[p.id] = 0;
-  for (const r of countableReceipts(trip)) paid[r.paidBy] += r.printedTotal;
+  for (const r of countableReceipts(trip)) {
+    const payer = primaryPayerId(r); // countableReceipts guarantees this is a trip member
+    for (const pay of r.payments) paid[pay.personId] += pay.amount;
+    // The review screen requires payments to cover the total exactly, so a mismatch
+    // only arrives via imported or hand-edited data. The biggest payer absorbs it in
+    // either direction, which keeps every receipt contributing exactly printedTotal.
+    // An overshoot can therefore credit that payer a negative amount — accepted:
+    // the numbers stay balanced, and the receipt is still editable so the user can fix it.
+    const shortfall = r.printedTotal - paymentsTotal(r);
+    if (shortfall !== 0 && payer !== null) paid[payer] += shortfall;
+  }
   return paid;
 }
 

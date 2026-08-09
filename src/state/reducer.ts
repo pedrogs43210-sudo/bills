@@ -14,13 +14,16 @@ export type Action =
   | { type: "setAssignment"; tripId: string; receiptId: string; itemId: string; assignment: Assignment }
   | { type: "setReceiptStatus"; tripId: string; receiptId: string; status: ReceiptStatus }
   | { type: "setCurrency"; tripId: string; currency: string }
-  | { type: "importTrip"; trip: Trip };
+  | { type: "importTrip"; trip: Trip }
+  | { type: "addGroup"; tripId: string; groupId: string; name: string; personIds: string[] }
+  | { type: "updateGroup"; tripId: string; groupId: string; name: string; personIds: string[] }
+  | { type: "deleteGroup"; tripId: string; groupId: string };
 
 /** True if removing this person would orphan data (they paid, are assigned, or an everyone-split exists). */
 export function personHasEntries(trip: Trip, personId: string): boolean {
   return trip.receipts.some(
     (r) =>
-      r.paidBy === personId ||
+      r.payments.some((pay) => pay.personId === personId) ||
       r.items.some((i) => {
         const a = i.assignment;
         if (a.kind === "everyone") return true;
@@ -48,7 +51,7 @@ export function reducer(data: AppData, action: Action): AppData {
           ...data.trips,
           {
             id: action.id, name: action.name, emoji: action.emoji, currency: "EUR",
-            people: [], receipts: [], createdAt: new Date().toISOString(),
+            people: [], groups: [], receipts: [], createdAt: new Date().toISOString(),
             schemaVersion: SCHEMA_VERSION,
           },
         ],
@@ -75,7 +78,14 @@ export function reducer(data: AppData, action: Action): AppData {
       return mapTrip(data, action.tripId, (t) =>
         personHasEntries(t, action.personId)
           ? t // blocked — UI should disable the button; reducer is the last line of defense
-          : { ...t, people: t.people.filter((p) => p.id !== action.personId) }
+          : {
+              ...t,
+              people: t.people.filter((p) => p.id !== action.personId),
+              // group membership is not a money entry, so it never blocks removal — it just prunes
+              groups: t.groups
+                .map((g) => ({ ...g, personIds: g.personIds.filter((id) => id !== action.personId) }))
+                .filter((g) => g.personIds.length > 0),
+            }
       );
     case "addReceipt":
       return mapTrip(data, action.tripId, (t) => ({ ...t, receipts: [...t.receipts, action.receipt] }));
@@ -108,5 +118,22 @@ export function reducer(data: AppData, action: Action): AppData {
           : [...data.trips, action.trip],
       };
     }
+    case "addGroup":
+      return mapTrip(data, action.tripId, (t) => ({
+        ...t,
+        groups: [...t.groups, { id: action.groupId, name: action.name, personIds: action.personIds }],
+      }));
+    case "updateGroup":
+      return mapTrip(data, action.tripId, (t) => ({
+        ...t,
+        groups: t.groups.map((g) =>
+          g.id === action.groupId ? { ...g, name: action.name, personIds: action.personIds } : g
+        ),
+      }));
+    case "deleteGroup":
+      return mapTrip(data, action.tripId, (t) => ({
+        ...t,
+        groups: t.groups.filter((g) => g.id !== action.groupId),
+      }));
   }
 }

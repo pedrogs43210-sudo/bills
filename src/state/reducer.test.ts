@@ -8,7 +8,8 @@ function run(actions: Action[], start: AppData = emptyData()): AppData {
 }
 
 const baseReceipt: Receipt = {
-  id: "r1", storeName: "Lidl", date: "2026-07-08", paidBy: "p1",
+  id: "r1", storeName: "Lidl", date: "2026-07-08",
+  payments: [{ personId: "p1", amount: 450 }],
   items: [{ id: "i1", name: "Juice", quantity: 3, lineTotal: 450, assignment: { kind: "unassigned" } }],
   printedTotal: 450, status: "review",
 };
@@ -113,6 +114,7 @@ describe("personHasEntries", () => {
   const trip: Trip = {
     id: "t1", name: "A", emoji: "x", currency: "EUR",
     people: [{ id: "p1", name: "Pedro", color: "#fff" }, { id: "p2", name: "Ana", color: "#eee" }],
+    groups: [],
     receipts: [{
       ...baseReceipt,
       items: [{ id: "i1", name: "Juice", quantity: 1, lineTotal: 100, assignment: { kind: "people", personIds: ["p2"] } }],
@@ -124,19 +126,56 @@ describe("personHasEntries", () => {
     expect(personHasEntries(trip, "p2")).toBe(true); // assigned
   });
   it("true for everyone-assignments", () => {
-    const t = { ...trip, receipts: [{ ...trip.receipts[0], paidBy: "p2", items: [{ id: "i1", name: "x", quantity: 1, lineTotal: 100, assignment: { kind: "everyone" as const } }] }] };
+    const t = { ...trip, receipts: [{ ...trip.receipts[0], payments: [{ personId: "p2", amount: 100 }], items: [{ id: "i1", name: "x", quantity: 1, lineTotal: 100, assignment: { kind: "everyone" as const } }] }] };
     expect(personHasEntries(t, "p1")).toBe(true);
   });
 });
 
 describe("importTrip action", () => {
   it("appends a new trip and replaces an existing one by id", () => {
-    const t1: Trip = { id: "t1", name: "Old", emoji: "x", currency: "EUR", people: [], receipts: [], createdAt: "", schemaVersion: 1 };
+    const t1: Trip = { id: "t1", name: "Old", emoji: "x", currency: "EUR", people: [], groups: [], receipts: [], createdAt: "", schemaVersion: 1 };
     let data = run([], { schemaVersion: 1, trips: [t1] });
     data = reducer(data, { type: "importTrip", trip: { ...t1, name: "New" } });
     expect(data.trips).toHaveLength(1);
     expect(data.trips[0].name).toBe("New");
     data = reducer(data, { type: "importTrip", trip: { ...t1, id: "t2", name: "Other" } });
     expect(data.trips).toHaveLength(2);
+  });
+});
+
+describe("groups", () => {
+  const start = run([
+    { type: "createTrip", id: "t1", name: "Algarve", emoji: "🏖️" },
+    { type: "addPerson", tripId: "t1", personId: "p1", name: "Pedro" },
+    { type: "addPerson", tripId: "t1", personId: "p2", name: "Ana" },
+  ]);
+
+  it("adds a group", () => {
+    const data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1", "p2"] });
+    expect(data.trips[0].groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p1", "p2"] }]);
+  });
+
+  it("updates a group's name and members", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1", "p2"] });
+    data = reducer(data, { type: "updateGroup", tripId: "t1", groupId: "g1", name: "Brunch", personIds: ["p2"] });
+    expect(data.trips[0].groups).toEqual([{ id: "g1", name: "Brunch", personIds: ["p2"] }]);
+  });
+
+  it("deletes a group", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1"] });
+    data = reducer(data, { type: "deleteGroup", tripId: "t1", groupId: "g1" });
+    expect(data.trips[0].groups).toEqual([]);
+  });
+
+  it("prunes a removed person from groups", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Breakfast", personIds: ["p1", "p2"] });
+    data = reducer(data, { type: "removePerson", tripId: "t1", personId: "p1" });
+    expect(data.trips[0].groups).toEqual([{ id: "g1", name: "Breakfast", personIds: ["p2"] }]);
+  });
+
+  it("deletes a group left with nobody in it", () => {
+    let data = reducer(start, { type: "addGroup", tripId: "t1", groupId: "g1", name: "Solo", personIds: ["p1"] });
+    data = reducer(data, { type: "removePerson", tripId: "t1", personId: "p1" });
+    expect(data.trips[0].groups).toEqual([]);
   });
 });

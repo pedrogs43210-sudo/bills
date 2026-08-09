@@ -3,12 +3,16 @@ import { useStore } from "../state/StoreProvider";
 import { personHasEntries } from "../state/reducer";
 import { newId } from "../lib/ids";
 import { formatCents } from "../lib/money";
-import { isFullyAssigned } from "../lib/split";
+import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
+import { isReservedGroupName } from "../lib/groups";
+import { Disc } from "../components/chips";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
-import { scanReceipt, ScanError } from "../lib/scan";
+import { scanReceipt, scanTotals, ScanError } from "../lib/scan";
+import { countsDiscountLines, discountConvention } from "../lib/discounts";
 import type { View } from "../App";
-import type { Receipt } from "../types";
+import type { Person, Receipt } from "../types";
+import { excludedReceipts } from "../lib/settle";
 
 export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => void }) {
   const { data, dispatch } = useStore();
@@ -18,6 +22,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [editName, setEditName] = useState("");
   const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
+  const [groupForm, setGroupForm] = useState<{ id: string | null; name: string; personIds: string[] } | null>(null);
   const lastPhoto = useRef<File | null>(null);
   const alive = useRef(true);
   useEffect(() => {
@@ -26,6 +31,17 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       alive.current = false;
     };
   }, []);
+  // groupForm is a snapshot; the friend list can change under it on this very screen.
+  // Reconcile it with live data so a removed person can't be saved back into a group.
+  useEffect(() => {
+    setGroupForm((form) => {
+      if (!form || !trip) return form;
+      if (trip.people.length < 2) return null; // the Groups card is gated away
+      if (form.id !== null && !trip.groups.some((g) => g.id === form.id)) return null; // group pruned away
+      const live = form.personIds.filter((id) => trip.people.some((p) => p.id === id));
+      return live.length === form.personIds.length ? form : { ...form, personIds: live };
+    });
+  }, [trip?.people, trip?.groups]);
   if (!trip) return null;
 
   async function handlePhoto(file: File) {
@@ -44,20 +60,28 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         );
       });
       const result = await scanReceipt(apiKey, base64);
+      // Work out from the receipt's own arithmetic whether its discounts are separate lines
+      // or already inside the item prices. Only in the latter case must they be left out of
+      // the maths, or the same discount is subtracted twice.
+      const convention = discountConvention(scanTotals(result));
+      const discountsAreInformational = !countsDiscountLines(convention);
       const receipt: Receipt = {
         id: newId(),
         storeName: result.storeName,
         date: result.date ?? new Date().toISOString().slice(0, 10),
-        paidBy: trip!.people[0].id,
+        payments: [{ personId: trip!.people[0].id, amount: Math.round(result.paidTotal) }],
         items: result.items.map((i) => ({
           id: newId(),
           name: i.name,
           quantity: Math.max(1, Math.round(i.quantity)),
           lineTotal: Math.round(i.lineTotal),
           assignment: { kind: "unassigned" as const },
+          ...(i.kind === "discount" ? { discountLine: true } : {}),
+          ...(i.kind === "discount" && discountsAreInformational ? { informational: true } : {}),
         })),
-        printedTotal: Math.round(result.printedTotal),
+        printedTotal: Math.round(result.paidTotal),
         status: "review",
+        discountConvention: convention,
       };
       const currency = /^[A-Za-z]{3}$/.test(result.currency) ? result.currency.toUpperCase() : "";
       if (trip!.receipts.length === 0 && currency) {
@@ -95,22 +119,85 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     setEditingPersonId(null);
   }
 
+  function saveGroup() {
+    if (!groupForm) return;
+    const name = groupForm.name.trim();
+    if (!name || groupForm.personIds.length === 0 || nameRejected) return;
+    if (groupForm.id === null) {
+      dispatch({ type: "addGroup", tripId, groupId: newId(), name, personIds: groupForm.personIds });
+    } else {
+      dispatch({ type: "updateGroup", tripId, groupId: groupForm.id, name, personIds: groupForm.personIds });
+    }
+    setGroupForm(null);
+  }
+
+  function deleteGroup() {
+    if (!groupForm || groupForm.id === null) return;
+    if (window.confirm("Delete this group? Assignments you already made stay as they are.")) {
+      dispatch({ type: "deleteGroup", tripId, groupId: groupForm.id });
+      setGroupForm(null);
+    }
+  }
+
+  function toggleGroupPerson(personId: string) {
+    if (!groupForm) return;
+    const on = groupForm.personIds.includes(personId);
+    setGroupForm({
+      ...groupForm,
+      personIds: on ? groupForm.personIds.filter((id) => id !== personId) : [...groupForm.personIds, personId],
+    });
+  }
+
   function addManualReceipt() {
     const receipt: Receipt = {
       id: newId(),
       storeName: "",
       date: new Date().toISOString().slice(0, 10),
-      paidBy: trip!.people[0].id,
+      payments: [{ personId: trip!.people[0].id, amount: 0 }],
       items: [],
       printedTotal: 0,
       status: "review",
+      totalIsAuto: true, // nothing was printed, so the items are the total
     };
     dispatch({ type: "addReceipt", tripId, receipt });
     go({ screen: "receipt", tripId, receiptId: receipt.id });
   }
 
+  const duplicateName =
+    groupForm !== null &&
+    groupForm.name.trim() !== "" &&
+    trip.groups.some(
+      (g) => g.id !== groupForm.id && g.name.trim().toLowerCase() === groupForm.name.trim().toLowerCase()
+    );
+  const reservedName = groupForm !== null && isReservedGroupName(groupForm.name);
+  const nameRejected = duplicateName || reservedName;
+
   const payerName = (id: string) => trip.people.find((p) => p.id === id)?.name ?? "?";
+  const payerNames = (r: Receipt) => r.payments.map((pay) => payerName(pay.personId)).join(" + ") || "?";
+  /**
+   * The payers' faces, then their names. The discs are the fast read down a list of receipts;
+   * the names stay because this is money and a 22px circle is not proof of anything.
+   */
+  const payerDiscs = (r: Receipt) => {
+    const payers = r.payments
+      .map((pay) => trip!.people.find((p) => p.id === pay.personId))
+      .filter((p): p is Person => !!p);
+    return (
+      <>
+        {payers.length > 0 && (
+          <span className="disc-stack" style={{ verticalAlign: "middle", marginRight: 6 }}>
+            {payers.map((p) => (
+              <Disc key={p.id} person={p} small />
+            ))}
+          </span>
+        )}
+        paid by {payerNames(r)} ·{" "}
+      </>
+    );
+  };
+  const excludedIds = new Set(excludedReceipts(trip).map((r) => r.id));
   const badge = (r: Receipt) =>
+    excludedIds.has(r.id) ? "⚠️ not counted" :
     r.status === "done" ? "✅ done" : r.status === "review" ? "📝 checking" : isFullyAssigned(r) ? "✅ assigned" : "👉 assigning";
 
   return (
@@ -139,7 +226,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                 onBlur={() => commitRename(p.id)}
               />
             ) : (
-              <span key={p.id} className="chip" style={{ background: p.color, cursor: "default" }}>
+              <span key={p.id} className="chip chip-person" style={{ background: p.color, borderColor: "transparent", cursor: "default" }}>
+                <Disc person={p} />
                 <button
                   style={{ all: "unset", cursor: "pointer" }}
                   aria-label={`Rename ${p.name}`}
@@ -174,20 +262,131 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         </div>
       </div>
 
-      {trip.receipts.map((r) => (
-        <button
-          key={r.id}
-          className="card row"
-          style={{ width: "100%", border: "none", cursor: "pointer", textAlign: "left" }}
-          onClick={() => go({ screen: "receipt", tripId, receiptId: r.id })}
-        >
-          <span>
-            🧾 <b>{r.storeName || "Receipt"}</b> · {formatCents(r.printedTotal, trip.currency)}
-            <span className="muted" style={{ display: "block" }}>paid by {payerName(r.paidBy)} · {r.date}</span>
-          </span>
-          <span className="muted">{badge(r)}</span>
-        </button>
-      ))}
+      {trip.people.length >= 2 && (
+        <div className="card">
+          <h3>Groups</h3>
+          <p className="muted">Save the sets of people who share things, then assign in one tap.</p>
+          <div>
+            {trip.groups.map((g) => (
+              <button
+                key={g.id}
+                className={`chip chip-group${g.id === groupForm?.id ? " selected" : ""}`}
+                onClick={() => setGroupForm({ id: g.id, name: g.name, personIds: g.personIds })}
+              >
+                <span className="disc-stack">
+                  {trip.people
+                    .filter((p) => g.personIds.includes(p.id))
+                    .slice(0, 4)
+                    .map((p) => (
+                      <Disc key={p.id} person={p} small />
+                    ))}
+                </span>
+                {g.name} · {g.personIds.length}
+              </button>
+            ))}
+          </div>
+          {groupForm === null ? (
+            <button className="btn" style={{ width: "100%", marginTop: 8 }} onClick={() => setGroupForm({ id: null, name: "", personIds: [] })}>
+              ＋ New group
+            </button>
+          ) : (
+            <div style={{ marginTop: 8 }}>
+              <input
+                aria-label="Group name"
+                placeholder="Group name"
+                maxLength={24}
+                value={groupForm.name}
+                onChange={(e) => setGroupForm({ ...groupForm, name: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && saveGroup()}
+              />
+              {duplicateName && (
+                <span className="muted" style={{ display: "block", color: "var(--warn)" }}>
+                  There's already a group with that name.
+                </span>
+              )}
+              {reservedName && (
+                <span className="muted" style={{ display: "block", color: "var(--warn)" }}>
+                  "Everyone" is already the button that picks the whole trip — pick another name.
+                </span>
+              )}
+              <div style={{ marginTop: 6 }}>
+                {trip.people.map((p) => {
+                  const on = groupForm.personIds.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      className={`chip ${on ? "selected" : ""}`}
+                      style={{ background: p.color }}
+                      aria-label={`${on ? "Remove" : "Add"} ${p.name} ${on ? "from" : "to"} group`}
+                      onClick={() => toggleGroupPerson(p.id)}
+                    >
+                      {p.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="row" style={{ marginTop: 8 }}>
+                <button
+                  className="btn"
+                  disabled={!groupForm.name.trim() || groupForm.personIds.length === 0 || nameRejected}
+                  onClick={saveGroup}
+                >
+                  Save group
+                </button>
+                <button className="btn btn-ghost" onClick={() => setGroupForm(null)}>Cancel</button>
+                {groupForm.id !== null && (
+                  <button className="btn btn-ghost" style={{ color: "var(--warn)" }} onClick={deleteGroup}>
+                    Delete group
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {trip.receipts.map((r) => {
+        const counted = countedItems(r);
+        const assigned = counted.filter(isItemAssigned).length;
+        const excluded = excludedIds.has(r.id);
+        return (
+          <button
+            key={r.id}
+            className={`card tap-card${excluded ? " card-todo" : ""}`}
+            onClick={() => go({ screen: "receipt", tripId, receiptId: r.id })}
+          >
+            <span className="row" style={{ alignItems: "flex-start" }}>
+              <span style={{ minWidth: 0 }}>
+                <b>{r.storeName || "Receipt"}</b>
+                <span className="label" style={{ display: "block" }}>
+                  {payerDiscs(r)}
+                  {r.date}
+                </span>
+              </span>
+              <span className="money-2">{formatCents(r.printedTotal, trip.currency)}</span>
+            </span>
+            {/* Rule 3 — the same track and fraction as the assign footer and the trip summary. */}
+            <span className="row" style={{ marginTop: 8, gap: "var(--s3)" }}>
+              {/* An excluded receipt never goes green, however well its items are assigned: a
+                  full green bar beside "not counted" says finished next to something that
+                  contributes nothing. Amber means there is work left, and there is. */}
+              <span
+                className={`track${
+                  !excluded && counted.length > 0 && assigned === counted.length
+                    ? " done"
+                    : excluded || assigned === 0
+                      ? " none"
+                      : ""
+                }`}
+                style={{ flex: 1 }}
+              >
+                <span style={{ width: counted.length === 0 ? "0%" : `${(assigned / counted.length) * 100}%` }} />
+              </span>
+              <span className="micro" style={excluded ? { color: "var(--note)" } : undefined}>{badge(r)}</span>
+            </span>
+          </button>
+        );
+      })}
 
       {scanState === "error" && (
         <div className="banner-warn">

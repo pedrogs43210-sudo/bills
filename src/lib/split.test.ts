@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { receiptShares, roundLargestRemainder, isItemAssigned, isFullyAssigned } from "./split";
+import {
+  countedItems,
+  countedItemsTotal,
+  receiptShares,
+  roundLargestRemainder,
+  isItemAssigned,
+  isFullyAssigned,
+} from "./split";
+import { splitEvenly } from "./payments";
 import type { Item, Person, Receipt, Assignment } from "../types";
 
 const people: Person[] = [
@@ -13,11 +21,86 @@ function item(lineTotal: number, assignment: Assignment, quantity = 1): Item {
   return { id: `i${n++}`, name: `item${n}`, quantity, lineTotal, assignment };
 }
 
-function receipt(items: Item[], printedTotal: number, paidBy = "pedro"): Receipt {
-  return { id: "r1", storeName: "Lidl", date: "2026-07-08", paidBy, items, printedTotal, status: "assigning" };
+/** Deterministic RNG so a rare failure is reproducible. */
+function makeRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
 }
 
+function receipt(items: Item[], printedTotal: number, paidBy = "pedro"): Receipt {
+  return {
+    id: "r1", storeName: "Lidl", date: "2026-07-08",
+    payments: [{ personId: paidBy, amount: printedTotal }],
+    items, printedTotal, status: "assigning",
+  };
+}
+
+describe("informational lines", () => {
+  /** Continente: the 4.00 already has the 0.50 off, so counting the bracket charges 3.50. */
+  const continenteReceipt = () =>
+    receipt(
+      [
+        item(400, { kind: "everyone" }),
+        { ...item(-50, { kind: "unassigned" }), informational: true },
+      ],
+      400
+    );
+
+  it("leaves an informational line out of the split", () => {
+    const shares = receiptShares(continenteReceipt(), people);
+    expect(shares).toEqual({ pedro: 134, ana: 133, bruno: 133 });
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(400);
+  });
+
+  it("counts a discount that is a separate line", () => {
+    // Pingo Doce: 4.50 printed, 0.50 off, 4.00 paid — the discount is real and must count
+    const r = receipt([item(450, { kind: "everyone" }), item(-50, { kind: "everyone" })], 400);
+    expect(Object.values(receiptShares(r, people)).reduce((s, v) => s + v, 0)).toBe(400);
+  });
+
+  it("ignores a stale assignment on an informational line", () => {
+    // the line inherited "everyone" before the convention was worked out
+    const r = receipt(
+      [item(400, { kind: "everyone" }), { ...item(-50, { kind: "everyone" }), informational: true }],
+      400
+    );
+    expect(receiptShares(r, people)).toEqual({ pedro: 134, ana: 133, bruno: 133 });
+  });
+
+  it("does not ask for an informational line to be assigned", () => {
+    expect(isFullyAssigned(continenteReceipt())).toBe(true);
+  });
+
+  it("still requires the real items to be assigned", () => {
+    const r = receipt(
+      [item(400, { kind: "unassigned" }), { ...item(-50, { kind: "unassigned" }), informational: true }],
+      400
+    );
+    expect(isFullyAssigned(r)).toBe(false);
+  });
+
+  it("excludes informational lines from the total the receipt should match", () => {
+    expect(countedItemsTotal(continenteReceipt())).toBe(400);
+    expect(countedItems(continenteReceipt())).toHaveLength(1);
+  });
+});
+
 describe("receiptShares", () => {
+  it("treats everyone as a live rule and an explicit list as fixed", () => {
+    // Intentional asymmetry: "everyone" picks up a friend who joins the trip later,
+    // while "everyone except Bruno" stays with the people who were chosen.
+    const later = [...people, { id: "carla", name: "Carla", color: "#eee" }];
+    const everyone = receipt([item(300, { kind: "everyone" })], 300);
+    const exceptBruno = receipt([item(300, { kind: "people", personIds: ["pedro", "ana"] })], 300);
+
+    expect(receiptShares(everyone, later)).toEqual({ pedro: 75, ana: 75, bruno: 75, carla: 75 });
+    // Carla joined after the fact, so she owes nothing on the fixed list
+    expect(receiptShares(exceptBruno, later)).toEqual({ pedro: 150, ana: 150, bruno: 0, carla: 0 });
+  });
+
   it("gives a solo item entirely to its person", () => {
     const r = receipt([item(249, { kind: "people", personIds: ["pedro"] })], 249);
     expect(receiptShares(r, people)).toEqual({ pedro: 249, ana: 0, bruno: 0 });
@@ -71,12 +154,13 @@ describe("receiptShares", () => {
   });
 
   it("shares always sum to printedTotal (random receipts)", () => {
+    const random = makeRandom(20260806);
     for (let run = 0; run < 200; run++) {
       const items: Item[] = [];
       let sum = 0;
-      const count = 1 + Math.floor(Math.random() * 8);
+      const count = 1 + Math.floor(random() * 8);
       for (let k = 0; k < count; k++) {
-        const cents = Math.floor(Math.random() * 2000) + 1;
+        const cents = Math.floor(random() * 2000) + 1;
         sum += cents;
         const kinds: Assignment[] = [
           { kind: "everyone" },
@@ -84,10 +168,23 @@ describe("receiptShares", () => {
           { kind: "people", personIds: ["bruno"] },
           { kind: "units", shares: { pedro: 1, ana: 2 } },
         ];
-        const a = kinds[Math.floor(Math.random() * kinds.length)];
+        const a = kinds[Math.floor(random() * kinds.length)];
         items.push(item(cents, a, a.kind === "units" ? 3 : 1));
       }
-      const r = receipt(items, sum);
+      // Randomised payments among 1-2 members. Every fourth run pays exact coverage
+      // (the everyday case) via splitEvenly; the rest deliberately don't sum to `sum`,
+      // exercising the absorber for both shortfalls and overshoots.
+      const memberIds = people.map((p) => p.id);
+      const start = Math.floor(random() * memberIds.length);
+      const payerCount = 1 + Math.floor(random() * 2);
+      const payerIds = Array.from({ length: payerCount }, (_, k) => memberIds[(start + k) % memberIds.length]);
+      const payments =
+        run % 4 === 0 ? splitEvenly(sum, payerIds) : payerIds.map((id) => ({ personId: id, amount: Math.floor(random() * (sum * 2 + 1)) }));
+
+      const r: Receipt = {
+        id: "r1", storeName: "Lidl", date: "2026-07-08",
+        payments, items, printedTotal: sum, status: "assigning",
+      };
       const shares = receiptShares(r, people);
       const total = Object.values(shares).reduce((x, y) => x + y, 0);
       expect(total).toBe(sum);
@@ -118,5 +215,41 @@ describe("assignment completeness", () => {
   it("isFullyAssigned requires every item assigned", () => {
     const r = receipt([item(100, { kind: "everyone" }), item(50, { kind: "unassigned" })], 150);
     expect(isFullyAssigned(r)).toBe(false);
+  });
+});
+
+describe("shares with several payers", () => {
+  it("still sums exactly to the printed total", () => {
+    const r: Receipt = {
+      id: "r1", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "ana", amount: 200 }, { personId: "pedro", amount: 100 }],
+      items: [item(100, { kind: "everyone" })],
+      printedTotal: 300, status: "assigning",
+    };
+    const s = receiptShares(r, people);
+    expect(s.pedro + s.ana + s.bruno).toBe(300);
+  });
+
+  it("the biggest payer absorbs the difference", () => {
+    const r: Receipt = {
+      id: "r1", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "ana", amount: 250 }, { personId: "pedro", amount: 50 }],
+      items: [item(100, { kind: "people", personIds: ["bruno"] })],
+      printedTotal: 300, status: "assigning",
+    };
+    const s = receiptShares(r, people);
+    expect(s.bruno).toBe(100);
+    expect(s.ana).toBe(200); // biggest payer takes the 200 difference
+    expect(s.pedro).toBe(0);
+  });
+
+  it("never invents a key for a non-member payer", () => {
+    const r: Receipt = {
+      id: "r1", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "ghost", amount: 300 }],
+      items: [item(300, { kind: "everyone" })],
+      printedTotal: 300, status: "assigning",
+    };
+    expect(Object.keys(receiptShares(r, people)).sort()).toEqual(["ana", "bruno", "pedro"]);
   });
 });

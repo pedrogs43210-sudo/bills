@@ -21,7 +21,7 @@ describe("settings screen", () => {
   it("imports a trip from an export file", async () => {
     const trip: Trip = {
       id: "t9", name: "Madeira", emoji: "⛰️", currency: "EUR",
-      people: [], receipts: [], createdAt: "", schemaVersion: 1,
+      people: [], groups: [], receipts: [], createdAt: "", schemaVersion: 1,
     };
     const file = new File([exportTrip(trip)], "madeira.bills.json", { type: "application/json" });
     const user = userEvent.setup();

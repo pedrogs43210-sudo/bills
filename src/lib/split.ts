@@ -1,4 +1,19 @@
 import type { Item, Person, Receipt } from "../types";
+import { primaryPayerId } from "./payments";
+
+/**
+ * The lines that take part in the money. One definition, used by the split maths, the
+ * "items match the total" check and the assign screen's outstanding count, so those three
+ * can never disagree about which lines count.
+ */
+export function countedItems(receipt: Receipt): Item[] {
+  return receipt.items.filter((i) => !i.informational);
+}
+
+/** Sum of the lines that count, which is what a receipt's total should match. */
+export function countedItemsTotal(receipt: Receipt): number {
+  return countedItems(receipt).reduce((s, i) => s + i.lineTotal, 0);
+}
 
 export function isItemAssigned(item: Item): boolean {
   const a = item.assignment;
@@ -12,7 +27,9 @@ export function isItemAssigned(item: Item): boolean {
 }
 
 export function isFullyAssigned(receipt: Receipt): boolean {
-  return receipt.items.every(isItemAssigned);
+  // An informational line has nobody to assign, so requiring it would make the receipt
+  // impossible to finish.
+  return countedItems(receipt).every(isItemAssigned);
 }
 
 /** Exact (possibly fractional) cent shares of a receipt's assigned items. */
@@ -25,7 +42,10 @@ function exactShares(receipt: Receipt, people: Person[]): Map<string, number> {
     shares.set(id, (shares.get(id) ?? 0) + amount);
   };
 
-  for (const item of receipt.items) {
+  // Skip informational lines explicitly rather than relying on them being unassigned: a
+  // discount line can carry an assignment inherited before it was marked informational, and
+  // that stale assignment would otherwise credit a discount that was already in the prices.
+  for (const item of countedItems(receipt)) {
     const a = item.assignment;
     if (a.kind === "everyone") {
       for (const p of people) add(p.id, item.lineTotal / people.length);
@@ -71,13 +91,18 @@ export function roundLargestRemainder(
 
 /**
  * Integer-cent share per person for one receipt. Sums exactly to printedTotal:
- * assigned items are rounded with largest-remainder, and the payer absorbs any
- * difference between the item sum and the printed total (spec §8).
+ * assigned items are rounded with largest-remainder, and the biggest payer absorbs
+ * any difference between the item sum and the printed total (spec §6).
+ * A receipt with no payments, or whose biggest payer is not a trip member, has no
+ * absorber and so does not sum to printedTotal; such receipts are excluded from
+ * trip maths by `countableReceipts` in settle.ts.
  */
 export function receiptShares(receipt: Receipt, people: Person[]): Record<string, number> {
-  const rounded = roundLargestRemainder(exactShares(receipt, people), receipt.paidBy);
+  const payer = primaryPayerId(receipt);
+  const isMember = payer !== null && people.some((p) => p.id === payer);
+  const rounded = roundLargestRemainder(exactShares(receipt, people), isMember ? payer : undefined);
   const assignedSum = [...rounded.values()].reduce((s, v) => s + v, 0);
   const diff = receipt.printedTotal - assignedSum;
-  rounded.set(receipt.paidBy, (rounded.get(receipt.paidBy) ?? 0) + diff);
+  if (isMember) rounded.set(payer, (rounded.get(payer) ?? 0) + diff);
   return Object.fromEntries(rounded);
 }

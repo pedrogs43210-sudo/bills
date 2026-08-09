@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { balances, settle, paidTotals, shareTotals } from "./settle";
+import { balances, excludedReceipts, exclusionReason, settle, paidTotals, shareTotals } from "./settle";
 import type { Person, Receipt, Trip } from "../types";
 
 const people: Person[] = [
@@ -11,13 +11,23 @@ const people: Person[] = [
 function trip(receipts: Receipt[]): Trip {
   return {
     id: "t1", name: "Algarve", emoji: "🏖️", currency: "EUR",
-    people, receipts, createdAt: "2026-07-08T00:00:00Z", schemaVersion: 1,
+    people, groups: [], receipts, createdAt: "2026-07-08T00:00:00Z", schemaVersion: 1,
+  };
+}
+
+/** Deterministic RNG so a rare failure is reproducible. */
+function makeRandom(seed: number) {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
   };
 }
 
 function everyoneReceipt(total: number, paidBy: string): Receipt {
   return {
-    id: `r-${paidBy}-${total}`, storeName: "Lidl", date: "2026-07-08", paidBy,
+    id: `r-${paidBy}-${total}`, storeName: "Lidl", date: "2026-07-08",
+    payments: [{ personId: paidBy, amount: total }],
     items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: total, assignment: { kind: "everyone" } }],
     printedTotal: total, status: "done",
   };
@@ -52,7 +62,8 @@ describe("balances", () => {
 
   it("stays zero-sum even when a receipt contains a non-member assignment id", () => {
     const ghostReceipt: Receipt = {
-      id: "rg", storeName: "Lidl", date: "2026-07-08", paidBy: "pedro",
+      id: "rg", storeName: "Lidl", date: "2026-07-08",
+      payments: [{ personId: "pedro", amount: 300 }],
       items: [{ id: "i1", name: "stuff", quantity: 2, lineTotal: 300, assignment: { kind: "units", shares: { ghost: 1, ana: 1 } } }],
       printedTotal: 300, status: "done",
     };
@@ -79,11 +90,12 @@ describe("settle", () => {
   });
 
   it("zeroes out any balance set (random)", () => {
+    const random = makeRandom(20260806);
     for (let run = 0; run < 100; run++) {
       const b: Record<string, number> = {};
       let sum = 0;
       for (const id of ["a", "b", "c", "d"]) {
-        const v = Math.floor(Math.random() * 4000) - 2000;
+        const v = Math.floor(random() * 4000) - 2000;
         b[id] = v;
         sum += v;
       }
@@ -99,5 +111,132 @@ describe("settle", () => {
       // never more transfers than people-1
       expect(transfers.length).toBeLessThanOrEqual(4);
     }
+  });
+});
+
+describe("multiple payers", () => {
+  function twoPayerReceipt(): Receipt {
+    return {
+      id: "r-multi", storeName: "Lidl", date: "2026-08-06",
+      payments: [{ personId: "pedro", amount: 200 }, { personId: "ana", amount: 100 }],
+      items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 300, assignment: { kind: "everyone" } }],
+      printedTotal: 300, status: "done",
+    };
+  }
+
+  it("credits each payer their own amount", () => {
+    const t = trip([twoPayerReceipt()]);
+    expect(paidTotals(t)).toEqual({ pedro: 200, ana: 100, bruno: 0 });
+  });
+
+  it("keeps balances zero-sum with several payers", () => {
+    const b = balances(trip([twoPayerReceipt()]));
+    expect(Object.values(b).reduce((x, y) => x + y, 0)).toBe(0);
+    expect(b).toEqual({ pedro: 100, ana: 0, bruno: -100 });
+  });
+
+  it("settles a two-payer receipt", () => {
+    const transfers = settle(balances(trip([twoPayerReceipt()])));
+    expect(transfers).toEqual([{ from: "bruno", to: "pedro", amount: 100 }]);
+  });
+
+  it("credits the biggest payer when payments fall short of the total", () => {
+    // deliberately unequal so the primary payer is unambiguous (equal amounts tie-break on id)
+    const short: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 150 }, { personId: "ana", amount: 50 }] };
+    const t = trip([short]);
+    expect(paidTotals(t)).toEqual({ pedro: 250, ana: 50, bruno: 0 }); // pedro absorbs the missing 100
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("excludes a receipt when any payment is from a non-member", () => {
+    const ghost: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 200 }, { personId: "ghost", amount: 100 }] };
+    const t = trip([ghost]);
+    expect(paidTotals(t)).toEqual({ pedro: 0, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("excludes a receipt with no payments at all", () => {
+    const orphan: Receipt = { ...twoPayerReceipt(), payments: [] };
+    const t = trip([orphan]);
+    expect(paidTotals(t)).toEqual({ pedro: 0, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("excludes a receipt containing a negative payment amount", () => {
+    const negative: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 400 }, { personId: "ana", amount: -100 }] };
+    const t = trip([negative]);
+    expect(paidTotals(t)).toEqual({ pedro: 0, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("keeps the books balanced when payers overpay (primary payer's credit goes negative)", () => {
+    // 200 + 200 on a 300 receipt: the shortfall is negative, so the primary payer's
+    // credit is reduced. Equal amounts also exercise the tie-break on this path.
+    const over: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 200 }, { personId: "ana", amount: 200 }] };
+    const t = trip([over]);
+    const paid = paidTotals(t);
+    expect(Object.values(paid).reduce((x, y) => x + y, 0)).toBe(300); // contributes exactly printedTotal
+    expect(paid).toEqual({ pedro: 200, ana: 100, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("counts the good receipts in a trip that also has excluded ones", () => {
+    const good: Receipt = { ...twoPayerReceipt(), id: "r-good" };                                  // pedro 200 + ana 100
+    const empty: Receipt = { ...twoPayerReceipt(), id: "r-empty", payments: [] };
+    const ghost: Receipt = { ...twoPayerReceipt(), id: "r-ghost", payments: [{ personId: "ghost", amount: 300 }] };
+    const t = trip([good, empty, ghost]);
+    expect(paidTotals(t)).toEqual({ pedro: 200, ana: 100, bruno: 0 });                             // only the good one counts
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+
+  it("credits a stale single payment as the full printed total", () => {
+    const stale: Receipt = { ...twoPayerReceipt(), payments: [{ personId: "pedro", amount: 100 }] }; // total is 300
+    const t = trip([stale]);
+    expect(paidTotals(t)).toEqual({ pedro: 300, ana: 0, bruno: 0 });
+    expect(Object.values(balances(t)).reduce((x, y) => x + y, 0)).toBe(0);
+  });
+});
+
+function exclusionFixture(): Receipt {
+  return {
+    id: "r1", storeName: "Lidl", date: "2026-08-06",
+    payments: [{ personId: "pedro", amount: 300 }],
+    items: [], printedTotal: 300, status: "done",
+  };
+}
+
+describe("exclusionReason", () => {
+  const base = exclusionFixture;
+
+  it("is null for a receipt that counts fine", () => {
+    const t = trip([base()]);
+    expect(exclusionReason(t.receipts[0], t)).toBeNull();
+  });
+
+  it("is no-payer for an empty payments list", () => {
+    const r: Receipt = { ...base(), payments: [] };
+    const t = trip([r]);
+    expect(exclusionReason(r, t)).toBe("no-payer");
+  });
+
+  it("is unknown-payer when a payment is from a non-member", () => {
+    const r: Receipt = { ...base(), payments: [{ personId: "ghost", amount: 300 }] };
+    const t = trip([r]);
+    expect(exclusionReason(r, t)).toBe("unknown-payer");
+  });
+
+  it("is negative-amount when a payment amount is negative", () => {
+    const r: Receipt = { ...base(), payments: [{ personId: "pedro", amount: -50 }] };
+    const t = trip([r]);
+    expect(exclusionReason(r, t)).toBe("negative-amount");
+  });
+});
+
+describe("excludedReceipts", () => {
+  it("returns only the receipts that don't count, regardless of id collisions", () => {
+    const good: Receipt = { ...exclusionFixture(), id: "dup" };
+    const orphan: Receipt = { ...exclusionFixture(), id: "dup", payments: [] }; // same id as `good` on purpose
+    const t = trip([good, orphan]);
+    expect(excludedReceipts(t)).toEqual([orphan]);
   });
 });

@@ -24,14 +24,16 @@ vi.mock("@anthropic-ai/sdk", () => {
 });
 
 import Anthropic from "@anthropic-ai/sdk";
-import { scanReceipt, verifyApiKey, ScanError } from "./scan";
+import { scanReceipt, scanTotals, verifyApiKey, ScanError } from "./scan";
+import { discountConvention } from "./discounts";
 
 const goodOutput = {
   storeName: "Lidl",
   date: "2026-07-08",
   currency: "EUR",
-  items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450 }],
-  printedTotal: 450,
+  items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450, kind: "item" }],
+  paidTotal: 450,
+  preDiscountTotal: null,
 };
 
 beforeEach(() => {
@@ -46,7 +48,7 @@ describe("scanReceipt", () => {
     expect(result.items[0].name).toBe("Sumo laranja");
     // sends the image and asks the right model
     const req = parseMock.mock.calls[0][0];
-    expect(req.model).toBe("claude-opus-4-8");
+    expect(req.model).toBe("claude-haiku-4-5");
     expect(req.messages[0].content[0]).toMatchObject({ type: "image" });
   });
 
@@ -80,6 +82,89 @@ describe("scanReceipt", () => {
     await expect(scanReceipt("sk", "img")).rejects.toMatchObject({
       reason: "network",
       message: expect.stringContaining("online"),
+    });
+  });
+});
+
+describe("discount lines from a scan", () => {
+  /** Continente prints the discount unsigned; the app must not depend on the model's sign. */
+  it("forces a discount line negative however the receipt printed it", async () => {
+    parseMock.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: {
+        ...goodOutput,
+        items: [
+          { name: "Sumo laranja", quantity: 1, lineTotal: 400, kind: "item" },
+          { name: "Desconto", quantity: 1, lineTotal: 50, kind: "discount" }, // unsigned
+        ],
+        paidTotal: 400,
+      },
+    });
+    const result = await scanReceipt("sk", "img");
+    expect(result.items[1].lineTotal).toBe(-50);
+  });
+
+  it("leaves an already-negative discount alone", async () => {
+    parseMock.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: {
+        ...goodOutput,
+        items: [
+          { name: "Sumo laranja", quantity: 1, lineTotal: 450, kind: "item" },
+          { name: "Desconto", quantity: 1, lineTotal: -50, kind: "discount" },
+        ],
+        paidTotal: 400,
+      },
+    });
+    const result = await scanReceipt("sk", "img");
+    expect(result.items[1].lineTotal).toBe(-50);
+  });
+
+  it("never flips the sign of a normal item line", async () => {
+    // a refund or a corrected line can legitimately be negative and is not a discount
+    parseMock.mockResolvedValue({
+      stop_reason: "end_turn",
+      parsed_output: {
+        ...goodOutput,
+        items: [{ name: "Devolução", quantity: 1, lineTotal: -200, kind: "item" }],
+        paidTotal: -200,
+      },
+    });
+    const result = await scanReceipt("sk", "img");
+    expect(result.items[0].lineTotal).toBe(-200);
+  });
+});
+
+describe("scanTotals", () => {
+  const totalsOf = (items: { lineTotal: number; kind: "item" | "discount" }[], paidTotal: number) =>
+    scanTotals({ ...goodOutput, items: items.map((i) => ({ name: "x", quantity: 1, ...i })), paidTotal });
+
+  it("separates the item sum from the discount sum", () => {
+    expect(totalsOf([
+      { lineTotal: 249, kind: "item" },
+      { lineTotal: 450, kind: "item" },
+      { lineTotal: -50, kind: "discount" },
+    ], 649)).toEqual({ itemsTotal: 699, discountsTotal: -50, paidTotal: 649 });
+  });
+
+  it("feeds the Pingo Doce verdict", () => {
+    expect(discountConvention(totalsOf([
+      { lineTotal: 249, kind: "item" },
+      { lineTotal: 450, kind: "item" },
+      { lineTotal: -50, kind: "discount" },
+    ], 649))).toBe("discounts-separate");
+  });
+
+  it("feeds the Continente verdict", () => {
+    expect(discountConvention(totalsOf([
+      { lineTotal: 400, kind: "item" },
+      { lineTotal: -50, kind: "discount" },
+    ], 400))).toBe("discounts-included");
+  });
+
+  it("reports zero discounts on a receipt with none", () => {
+    expect(totalsOf([{ lineTotal: 450, kind: "item" }], 450)).toEqual({
+      itemsTotal: 450, discountsTotal: 0, paidTotal: 450,
     });
   });
 });
