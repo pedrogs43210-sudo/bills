@@ -7,6 +7,8 @@ import { AssignScreen } from "./screens/AssignScreen";
 import { SettleScreen } from "./screens/SettleScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { PaywallScreen } from "./screens/PaywallScreen";
+import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { hasOnboarded } from "./lib/onboarding";
 import { lastKnownQuota } from "./lib/scan";
 
 export type View =
@@ -19,7 +21,12 @@ export type View =
 
 function Router() {
   const [view, setView] = useState<View>({ screen: "trips" });
+  // Only ever for someone with nothing yet: an existing user who has cleared their trips has
+  // still been introduced, and a returning user must never be taught the app twice.
   const { data } = useStore();
+  const [showIntro, setShowIntro] = useState(() => !hasOnboarded() && data.trips.length === 0);
+
+  if (showIntro) return <OnboardingScreen onDone={() => setShowIntro(false)} />;
 
   if (view.screen === "trips") return <TripListScreen go={setView} />;
   if (view.screen === "settings") return <SettingsScreen go={setView} />;

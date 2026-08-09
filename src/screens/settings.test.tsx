@@ -4,8 +4,14 @@ import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { loadApiKey, exportTrip } from "../lib/storage";
 import type { Trip } from "../types";
+import { setOnboarded } from "../lib/onboarding";
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  // These tests start from an empty app, which is exactly when the first-run introduction
+  // appears. Mark it seen so they exercise the screens they are about.
+  setOnboarded();
+});
 
 describe("settings screen", () => {
   it("saves the API key locally", async () => {

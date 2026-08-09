@@ -4,8 +4,14 @@ import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { saveData } from "../lib/storage";
 import type { Trip } from "../types";
+import { setOnboarded } from "../lib/onboarding";
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  // These tests start from an empty app, which is exactly when the first-run introduction
+  // appears. Mark it seen so they exercise the screens they are about.
+  setOnboarded();
+});
 
 describe("the trip list", () => {
   function tripNamed(id: string, name: string, createdAt: string): Trip {
