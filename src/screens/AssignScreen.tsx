@@ -6,6 +6,7 @@ import { receiptSummaryText } from "../lib/summary";
 import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
 import type { Assignment, Item, Person } from "../types";
+import { ActionChip, GroupChip, PersonChip } from "../components/chips";
 
 /** Order-insensitive set comparison, for highlighting a group chip that matches the assignment. */
 function sameMembers(a: string[], b: string[]): boolean {
@@ -54,6 +55,11 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
     if (follows) setAssignment(next.id, assignment);
   }
 
+  /** Trip members for a list of ids, in trip order, so a group's discs read consistently. */
+  function membersOf(personIds: string[]): Person[] {
+    return trip!.people.filter((p) => personIds.includes(p.id));
+  }
+
   function togglePerson(item: Item, personId: string) {
     const a = item.assignment;
     // "Everyone" shows every name highlighted, so untapping one has to mean
@@ -74,7 +80,9 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
     assign(item, Object.keys(shares).length === 0 ? { kind: "unassigned" } : { kind: "units", shares });
   }
 
+  const countedTotal = countedItems(receipt).length;
   const unassignedCount = countedItems(receipt).filter((i) => !isItemAssigned(i)).length;
+  const assignedCount = countedTotal - unassignedCount;
 
   return (
     <div>
@@ -112,19 +120,19 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
         // Shown because it is on the paper, but there is nobody to assign it to.
         if (item.informational) {
           return (
-            <div key={item.id} className="card">
+            <div key={item.id} className="card card-inactive">
               <span className="row" style={{ display: "flex" }}>
-                <span>{item.name}</span>
-                <b>{formatCents(item.lineTotal, trip.currency)}</b>
+                <span className="label">{item.name}</span>
+                <span className="money-2 label">{formatCents(item.lineTotal, trip.currency)}</span>
               </span>
-              <span className="muted" style={{ display: "block" }}>
+              <span className="micro" style={{ display: "block", marginTop: 2 }}>
                 Already in the prices above — not counted
               </span>
             </div>
           );
         }
         return (
-          <div key={item.id} className="card" style={!isItemAssigned(item) ? { outline: "2px dashed #ffb347" } : undefined}>
+          <div key={item.id} className={`card${!isItemAssigned(item) ? " card-todo" : ""}`}>
             <button
               style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}
               aria-label={`${item.quantity > 1 ? `${item.quantity}× ` : ""}${item.name}, ${formatCents(item.lineTotal, trip.currency)}`}
@@ -133,54 +141,61 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
                 setUnitsMode(false);
               }}
             >
-              <span className="row" style={{ display: "flex" }}>
-                <span>{item.quantity > 1 ? `${item.quantity}× ` : ""}<span>{item.name}</span></span>
-                <b>{formatCents(item.lineTotal, trip.currency)}</b>
+              <span className="row" style={{ display: "flex", alignItems: "flex-start" }}>
+                <span style={{ minWidth: 0 }}>{item.name}</span>
+                <span className="money-2">{formatCents(item.lineTotal, trip.currency)}</span>
               </span>
-              <span className="muted" style={{ display: "block" }}>{assignmentSummary(item, trip.people)}</span>
+              <span className="row" style={{ display: "flex", alignItems: "flex-start", marginTop: 2 }}>
+                <span className="muted" style={{ minWidth: 0 }}>{assignmentSummary(item, trip.people)}</span>
+                {item.quantity > 1 && (
+                  <span className="muted">
+                    ×{item.quantity} · {formatCents(Math.round(item.lineTotal / item.quantity), trip.currency)} each
+                  </span>
+                )}
+              </span>
             </button>
 
             {open && !unitsMode && (
               <div style={{ marginTop: 8 }}>
-                {trip.people.map((p) => {
+                {trip.people.map((p) => (
                   // Everyone highlights every name, so a group or Everyone tap can be
                   // narrowed to "all except them" by untapping one.
-                  const selected = a.kind === "everyone" || (a.kind === "people" && a.personIds.includes(p.id));
-                  return (
-                    <button key={p.id} className={`chip ${selected ? "selected" : ""}`} style={{ background: p.color }}
-                      onClick={() => togglePerson(item, p.id)}>
-                      {p.name}
-                    </button>
-                  );
-                })}
+                  <PersonChip
+                    key={p.id}
+                    person={p}
+                    selected={a.kind === "everyone" || (a.kind === "people" && a.personIds.includes(p.id))}
+                    onClick={() => togglePerson(item, p.id)}
+                  />
+                ))}
                 {trip.groups
                   .filter((g) => g.personIds.length > 0)
-                  .map((g) => {
-                    const selected = a.kind === "people" && sameMembers(a.personIds, g.personIds);
-                    return (
-                      <button
-                        key={g.id}
-                        className={`chip ${selected ? "selected" : ""}`}
-                        onClick={() => {
-                          // Copy, so later edits to the group can never rewrite this assignment.
-                          // The panel stays open: the members light up, so dropping one of them
-                          // ("Breakfast except Ana") is the next tap rather than a fresh start.
-                          assign(item, { kind: "people", personIds: [...g.personIds] });
-                        }}
-                      >
-                        👥 {g.name}
-                      </button>
-                    );
-                  })}
-                <button className={`chip ${a.kind === "everyone" ? "selected" : ""}`}
+                  .map((g) => (
+                    <GroupChip
+                      key={g.id}
+                      label={g.name}
+                      members={membersOf(g.personIds)}
+                      selected={a.kind === "people" && sameMembers(a.personIds, g.personIds)}
+                      onClick={() => {
+                        // Copy, so later edits to the group can never rewrite this assignment.
+                        // The panel stays open: the members light up, so dropping one of them
+                        // ("Breakfast except Ana") is the next tap rather than a fresh start.
+                        assign(item, { kind: "people", personIds: [...g.personIds] });
+                      }}
+                    />
+                  ))}
+                {/* Everyone is a collective noun too, so it takes the group shape and shows
+                    the whole trip's faces rather than a generic emoji. */}
+                <GroupChip
+                  label="Everyone"
+                  members={trip.people}
+                  selected={a.kind === "everyone"}
                   onClick={() => {
                     // Stays open so a name can be untapped for "everyone except them".
                     assign(item, a.kind === "everyone" ? { kind: "unassigned" } : { kind: "everyone" });
-                  }}>
-                  👥 Everyone
-                </button>
+                  }}
+                />
                 {item.quantity > 1 && (
-                  <button className="chip" onClick={() => setUnitsMode(true)}>🔢 Split units</button>
+                  <ActionChip onClick={() => setUnitsMode(true)}>🔢 Split units</ActionChip>
                 )}
               </div>
             )}
@@ -213,7 +228,11 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
       })}
 
       <div className="footerbar">
-        <div className="muted" style={{ textAlign: "center", marginBottom: 6 }}>
+        {/* Rule 3 — the same track and the same fraction as the receipt row and the trip. */}
+        <div className={`track${unassignedCount === 0 ? " done" : assignedCount === 0 ? " none" : ""}`}>
+          <span style={{ width: countedTotal === 0 ? "0%" : `${(assignedCount / countedTotal) * 100}%` }} />
+        </div>
+        <div className="muted" style={{ textAlign: "center", margin: "6px 0" }}>
           {unassignedCount === 0
             ? "All assigned 🎉"
             : `${unassignedCount} of ${receipt.items.length} items unassigned`}

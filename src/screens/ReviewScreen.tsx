@@ -15,7 +15,7 @@ function MoneyInput({ cents, onChange, label }: { cents: number; onChange: (c: n
     <input
       aria-label={label}
       inputMode="decimal"
-      style={{ width: 90, textAlign: "right" }}
+      className="money-field"
       value={text}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
@@ -242,26 +242,38 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
 
       <div className="card">
         {receipt.items.map((item) => (
-          <div key={item.id} className="item-row row" style={item.informational ? { opacity: 0.72 } : undefined}>
+          // Two lines rather than four columns: a real item name is "Pecorino sardo stagionato
+          // 24 mesi", which had about 90px to live in. The name gets the width; the numbers and
+          // the bin sit underneath, where the price can be right-aligned and tabular.
+          <div key={item.id} className={`item-row${item.informational ? " item-inactive" : ""}`}>
             <input
               placeholder="Item name"
               aria-label={`${item.name || "new item"} name`}
               value={item.name}
               onChange={(e) => updateItem({ ...item, name: e.target.value })}
             />
-            <QuantityInput
-              label={`${item.name} quantity`}
-              quantity={item.quantity}
-              onChange={(q) => updateItem({ ...item, quantity: q, assignment: { kind: "unassigned" } })}
-            />
-            <MoneyInput label={`${item.name} price`} cents={item.lineTotal} onChange={(c) => updateItem({ ...item, lineTotal: c })} />
-            <button
-              className="btn btn-ghost"
-              aria-label="Remove item"
-              onClick={() => update({ ...receipt, items: receipt.items.filter((i) => i.id !== item.id) })}
-            >
-              🗑
-            </button>
+            <div className="row" style={{ marginTop: 6 }}>
+              <QuantityInput
+                label={`${item.name} quantity`}
+                quantity={item.quantity}
+                onChange={(q) => updateItem({ ...item, quantity: q, assignment: { kind: "unassigned" } })}
+              />
+              <div className="row" style={{ gap: 0 }}>
+                <MoneyInput label={`${item.name} price`} cents={item.lineTotal} onChange={(c) => updateItem({ ...item, lineTotal: c })} />
+                <button
+                  className="btn btn-ghost"
+                  aria-label="Remove item"
+                  onClick={() => update({ ...receipt, items: receipt.items.filter((i) => i.id !== item.id) })}
+                >
+                  🗑
+                </button>
+              </div>
+            </div>
+            {item.informational && (
+              <span className="micro" style={{ display: "block", marginTop: 2 }}>
+                Not counted — already in the prices above
+              </span>
+            )}
           </div>
         ))}
         <button className="btn" style={{ width: "100%", marginTop: 8 }} onClick={addItem}>＋ Add item</button>

@@ -165,7 +165,7 @@ describe("assign screen", () => {
     render(<App />);
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
-    await user.click(screen.getByRole("button", { name: "👥 Breakfast" }));
+    await user.click(screen.getByRole("button", { name: "Breakfast" }));
     expect(screen.getByText("Ana, Bruno")).toBeInTheDocument();
   });
 
@@ -177,11 +177,11 @@ describe("assign screen", () => {
     render(<App />);
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
-    const chip = screen.getByRole("button", { name: "👥 Breakfast" });
+    const chip = screen.getByRole("button", { name: "Breakfast" });
     expect(chip.className).not.toContain("selected");
     await user.click(chip);
     // the chips stay open after a group tap, so the group chip is still there to check
-    expect(screen.getByRole("button", { name: "👥 Breakfast" }).className).toContain("selected");
+    expect(screen.getByRole("button", { name: "Breakfast" }).className).toContain("selected");
   });
 
   it("shows a group's members as highlighted names, so one can be untapped", async () => {
@@ -192,7 +192,7 @@ describe("assign screen", () => {
     render(<App />);
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
-    await user.click(screen.getByRole("button", { name: "👥 Breakfast" }));
+    await user.click(screen.getByRole("button", { name: "Breakfast" }));
 
     expect(screen.getByRole("button", { name: "Ana" }).className).toContain("selected");
     expect(screen.getByRole("button", { name: "Bruno" }).className).toContain("selected");
@@ -201,7 +201,7 @@ describe("assign screen", () => {
     // untap Ana: the item is now Bruno's alone, and the group chip no longer matches
     await user.click(screen.getByRole("button", { name: "Ana" }));
     expect(screen.getByText("Bruno", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "👥 Breakfast" }).className).not.toContain("selected");
+    expect(screen.getByRole("button", { name: "Breakfast" }).className).not.toContain("selected");
   });
 
   it("highlights every name after an Everyone tap, so one person can be dropped", async () => {
@@ -209,7 +209,7 @@ describe("assign screen", () => {
     render(<App />);
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
-    await user.click(screen.getByRole("button", { name: "👥 Everyone" }));
+    await user.click(screen.getByRole("button", { name: "Everyone" }));
 
     for (const name of ["Pedro", "Ana", "Bruno"]) {
       expect(screen.getByRole("button", { name }).className).toContain("selected");
@@ -218,7 +218,7 @@ describe("assign screen", () => {
     // drop Bruno — "everyone except Bruno", not "Bruno alone"
     await user.click(screen.getByRole("button", { name: "Bruno" }));
     expect(screen.getByText("Pedro, Ana", { selector: "span" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "👥 Everyone" }).className).not.toContain("selected");
+    expect(screen.getByRole("button", { name: "Everyone" }).className).not.toContain("selected");
     expect(screen.getByRole("button", { name: "Bruno" }).className).not.toContain("selected");
   });
 
@@ -234,7 +234,7 @@ describe("assign screen", () => {
     render(<App />);
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
-    await user.click(screen.getByRole("button", { name: "👥 Everyone" }));
+    await user.click(screen.getByRole("button", { name: "Everyone" }));
     await user.click(screen.getByRole("button", { name: "Bruno" })); // everyone except Bruno
 
     // the discount must land on the same people, or it would be credited to the wrong pockets

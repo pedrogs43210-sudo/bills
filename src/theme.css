@@ -130,6 +130,11 @@ h3 { font-size: 15.5px; }
   margin-bottom: var(--s3);
 }
 
+/* Still to do: an amber left edge, so a glance down the list finds the gaps. */
+.card-todo { border-left: 4px solid var(--note-line); }
+/* On the paper, but not part of the maths — present, and visibly inactive. */
+.card-inactive { background: var(--sunken); box-shadow: none; border-style: dashed; }
+
 .row { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
 
 .topbar { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s4); }
@@ -147,6 +152,17 @@ h3 { font-size: 15.5px; }
 
 .item-row { padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
 .item-row:last-child { border-bottom: none; }
+/* On the paper, not in the maths. Dimmed and struck rather than hidden. */
+.item-inactive input { color: var(--ink-3); text-decoration: line-through; }
+
+/* Money inputs read as money: tabular, right-aligned, and only as wide as they need. */
+.money-field {
+  font-family: var(--brand);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  width: 100px;
+  flex: none;
+}
 
 /* ---------- Buttons ---------- */
 
@@ -220,7 +236,15 @@ h3 { font-size: 15.5px; }
 .chip.selected::after {
   content: "✓";
   font-weight: 700;
-  color: var(--ink);
+  /* Follows the label, so it stays legible on a person's solid fill as well as on a light one. */
+  color: currentColor;
+}
+/* A group or Everyone fills solid too, in ink — the same "it's on" signal as a person's colour,
+   without borrowing a colour that belongs to one of the members. */
+.chip-group.selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
 }
 
 /* The disc that carries a person's initial. Derived colour — see lib/personColor.ts. */
