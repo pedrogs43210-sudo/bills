@@ -411,7 +411,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       </button>
 
       <div className="footerbar">
-        <label className="btn btn-primary" style={{ display: "block", textAlign: "center", opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
+        <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
           {scanState === "busy" ? "🧾✨ Reading receipt…" : "📸 Scan receipt"}
           <input
             hidden

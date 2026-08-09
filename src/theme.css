@@ -192,6 +192,12 @@ h3 { font-size: 15.5px; }
 /* ---------- Buttons ---------- */
 
 .btn {
+  /* Centres in both axes, and not only for <button>: the scan control is a <label> wrapping a
+     hidden file input, and a block label left its text sitting at the top of the 44px box. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
   min-height: var(--tap);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-md);
