@@ -1,0 +1,21 @@
+name = "bills-scan-proxy"
+main = "src/worker.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Origins allowed to call the proxy. Add the Capacitor origins once the native build exists
+# (capacitor://localhost on iOS, https://localhost on Android).
+[vars]
+ALLOWED_ORIGINS = "https://pedrogs43210-sudo.github.io,http://localhost:5173"
+FREE_SCANS = "5"
+
+# Created with: npx wrangler d1 create bills
+# Then paste the id printed by that command here.
+[[d1_databases]]
+binding = "DB"
+database_name = "bills"
+database_id = "PASTE_DATABASE_ID_HERE"
+
+# Secrets are NOT set here — they would end up in git. Set them once, per environment:
+#   npx wrangler secret put ANTHROPIC_API_KEY
+#   npx wrangler secret put APP_TOKEN
