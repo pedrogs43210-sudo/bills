@@ -1,0 +1,67 @@
+name: Native builds
+
+# Proves the iOS and Android projects actually compile. Neither can be built on the Windows
+# machine this is developed on — Android needs a JDK and the Android SDK, iOS needs macOS and
+# Xcode — so this workflow is the only place we find out before submission day.
+#
+# Neither build is signed. Signing needs the store accounts, and an unsigned build still catches
+# everything that matters at this stage: a broken project file, a missing asset, a plugin that
+# does not compile.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # The native bundle deliberately has no service worker: the assets are already inside the
+      # app, and a stale cache would survive a store update.
+      - run: npm run build:native
+      - run: npx cap sync android
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug --no-daemon
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bills-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:native
+      - run: npx cap sync ios
+      - name: Build for simulator, unsigned
+        run: |
+          xcodebuild \
+            -project App.xcodeproj \
+            -scheme App \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+        working-directory: ios/App

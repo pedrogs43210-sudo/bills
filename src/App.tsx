@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StoreProvider, useStore } from "./state/StoreProvider";
 import { TripListScreen } from "./screens/TripListScreen";
 import { TripScreen } from "./screens/TripScreen";
@@ -10,6 +10,8 @@ import { PaywallScreen } from "./screens/PaywallScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { hasOnboarded } from "./lib/onboarding";
 import { lastKnownQuota } from "./lib/scan";
+import { back, initialNav, navigate } from "./lib/history";
+import { exitApp, onHardwareBack } from "./lib/nativeBack";
 
 export type View =
   | { screen: "trips" }
@@ -20,11 +22,30 @@ export type View =
   | { screen: "settings" };
 
 function Router() {
-  const [view, setView] = useState<View>({ screen: "trips" });
+  const [nav, setNav] = useState(() => initialNav());
+  const view = nav.current;
+  const setView = useCallback((next: View) => setNav((n) => navigate(n, next)), []);
   // Only ever for someone with nothing yet: an existing user who has cleared their trips has
   // still been introduced, and a returning user must never be taught the app twice.
   const { data } = useStore();
   const [showIntro, setShowIntro] = useState(() => !hasOnboarded() && data.trips.length === 0);
+
+  // Android's hardware back button. Without this it closes the app from any screen, which is
+  // both wrong and something Play reviewers look for. On the web this does nothing at all.
+  useEffect(
+    () =>
+      onHardwareBack(() =>
+        setNav((n) => {
+          const previous = back(n);
+          if (previous) {
+            return previous;
+          }
+          void exitApp();
+          return n;
+        })
+      ),
+    []
+  );
 
   if (showIntro) return <OnboardingScreen onDone={() => setShowIntro(false)} />;
 

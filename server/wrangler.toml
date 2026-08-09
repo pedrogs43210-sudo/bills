@@ -6,7 +6,10 @@ compatibility_flags = ["nodejs_compat"]
 # Origins allowed to call the proxy. Add the Capacitor origins once the native build exists
 # (capacitor://localhost on iOS, https://localhost on Android).
 [vars]
-ALLOWED_ORIGINS = "https://pedrogs43210-sudo.github.io,http://localhost:5173"
+# The two localhost entries are the native shells, not a mistake: Capacitor serves the bundled
+# app from capacitor://localhost on iOS and https://localhost on Android. Without them every
+# scan from the phone apps is refused by CORS.
+ALLOWED_ORIGINS = "https://pedrogs43210-sudo.github.io,http://localhost:5173,capacitor://localhost,https://localhost"
 FREE_SCANS = "5"
 
 # Created with: npx wrangler d1 create bills
