@@ -5,11 +5,13 @@ import { newId } from "../lib/ids";
 import { formatCents } from "../lib/money";
 import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
+import { currencyOptions } from "../lib/currencies";
 import { Disc } from "../components/chips";
 import { ScanProgressScreen } from "./ScanProgressScreen";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
-import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanQuota } from "../lib/scan";
+import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanFailure, type ScanQuota } from "../lib/scan";
+import { ScanFailedScreen } from "./ScanFailedScreen";
 import { countsDiscountLines, discountConvention } from "../lib/discounts";
 import type { View } from "../App";
 import type { Person, Receipt } from "../types";
@@ -23,6 +25,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [editName, setEditName] = useState("");
   const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
+  const [scanFailure, setScanFailure] = useState<ScanFailure | null>(null);
   const [groupForm, setGroupForm] = useState<{ id: string | null; name: string; personIds: string[] } | null>(null);
   const [quota, setQuota] = useState<ScanQuota | null>(lastKnownQuota());
   const lastPhoto = useRef<File | null>(null);
@@ -64,6 +67,33 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
 
   // The scan takes five to twenty seconds. It gets a screen of its own rather than a button
   // whose label changed, which reads as a hang on the app's one impressive moment.
+  // A failure gets its own screen for the same reason the wait does: a banner under a trip list
+  // says what broke, but not what to do about it, and "try again" is the wrong advice for a photo
+  // the model could not read.
+  if (scanState === "error") {
+    return (
+      <ScanFailedScreen
+        reason={scanFailure}
+        message={scanMessage}
+        canRetry={lastPhoto.current !== null}
+        onRetry={() => {
+          const photo = lastPhoto.current;
+          setScanState("idle");
+          if (photo) void handlePhoto(photo);
+        }}
+        onAddByHand={() => {
+          setScanState("idle");
+          addManualReceipt();
+        }}
+        onSettings={() => {
+          setScanState("idle");
+          go({ screen: "settings" });
+        }}
+        onBack={() => setScanState("idle")}
+      />
+    );
+  }
+
   if (scanState === "busy") {
     return (
       <ScanProgressScreen
@@ -142,12 +172,10 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         return;
       }
       setScanState("error");
+      setScanFailure(err instanceof ScanError ? err.reason : null);
       setScanMessage(
         err instanceof ScanError ? err.message : "Something went wrong reading the photo."
       );
-      if (err instanceof ScanError && err.reason === "bad-key") {
-        setScanMessage("The API key was rejected — check it in Settings.");
-      }
     }
   }
 
@@ -253,6 +281,25 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trips" })}>←</button>
         <h1 className="screen-title">{trip.emoji} {trip.name}</h1>
+      </div>
+
+      {/* Sits with the rest of the trip's setup rather than in Settings: currency belongs to a
+          trip, not to the phone, and the same person's next holiday may be somewhere else.
+          One row tall, because it is set once and then never touched. */}
+      <div className="card row">
+        <label className="micro" htmlFor="currency">Currency</label>
+        <select
+          id="currency"
+          style={{ width: "auto", flex: "0 1 auto" }}
+          value={trip.currency}
+          onChange={(e) => dispatch({ type: "setCurrency", tripId, currency: e.target.value })}
+        >
+          {currencyOptions(trip.currency).map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.code} — {c.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="card">
@@ -436,15 +483,6 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         );
       })}
 
-      {scanState === "error" && (
-        <div className="banner-warn">
-          ⚠️ {scanMessage}{" "}
-          <button className="btn btn-ghost" onClick={() => lastPhoto.current && handlePhoto(lastPhoto.current)}>
-            Try again
-          </button>
-        </div>
-      )}
-
       <button
         className="btn btn-ghost"
         style={{ width: "100%", color: "var(--warn)" }}
@@ -470,22 +508,48 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             📸 Scan receipt
           </button>
         ) : (
-          <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
-            {/* The busy state is a whole screen now, so this label has only one job. */}
-            📸 Scan receipt
-            <input
-              hidden
-              type="file"
-              accept="image/*"
-              aria-label="Scan receipt"
-              disabled={trip.people.length === 0}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handlePhoto(f);
-                e.target.value = "";
-              }}
-            />
-          </label>
+          <>
+            {/* capture="environment" is what actually opens the rear camera. Without it the
+                browser shows a generic file picker, which on Android lands in the gallery — so
+                "scan a receipt" meant hunting for a photo you had not taken yet. */}
+            <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
+              📸 Scan receipt
+              <input
+                hidden
+                type="file"
+                accept="image/*"
+                capture="environment"
+                aria-label="Scan receipt"
+                disabled={trip.people.length === 0}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handlePhoto(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {/* Kept as its own control rather than replaced: capture forces the camera and hides
+                the gallery on some browsers, and photographing the receipt later — or someone
+                sending you theirs — is a normal way to use this. */}
+            <label
+              className="btn"
+              style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8, width: "100%" }}
+            >
+              🖼 Choose a photo instead
+              <input
+                hidden
+                type="file"
+                accept="image/*"
+                aria-label="Choose a photo of a receipt"
+                disabled={trip.people.length === 0}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handlePhoto(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </>
         )}
         {/* Only ever shown when there is a real number to show: no proxy means no counter, and
             a subscriber has no cap to count against. */}

@@ -37,7 +37,8 @@ export const SCAN_IMAGE_MAX_EDGE = 2576;
 export const ScanResultSchema = z.object({
   storeName: z.string(),
   date: z.string().nullable(),
-  currency: z.string(),
+  /** ISO 4217 as printed, or null when the receipt shows no currency at all. */
+  currency: z.string().nullable(),
   items: z.array(
     z.object({
       name: z.string(),
@@ -67,35 +68,54 @@ export type ScanItem = ScanResult["items"][number];
 
 export const PROMPT = `Read this grocery receipt photo.
 
+The receipt may be in ANY language, script or currency — Portuguese, Spanish, Italian, French,
+German, English, Greek, Turkish, Japanese, Arabic, anything. Every word list below is a set of
+EXAMPLES, never the whole set. Identify each line by what it MEANS and WHERE it sits on the
+receipt, not by matching a word you have seen before. When a label is in a language or wording not
+listed, apply the same rule you would to its English equivalent.
+
 The "items" array is ONLY the shopping: the lines for things bought, and the discount lines that
 apply to them. It is NOT a transcript of the receipt.
 
-NEVER put a total in "items". No line whose printed label is a total, subtotal or payment belongs
-there, however it is worded, including: TOTAL, SUBTOTAL, TOTAL A PAGAR, VALOR A PAGAR, A PAGAR,
-TOTAL COMPRA, TOTAL EUR, IVA, TROCO, CARTAO, MULTIBANCO, CONTACTLESS, NUMERARIO, DINHEIRO,
-ARREDONDAMENTO. Those figures belong in "paidTotal" and "preDiscountTotal" and nowhere else. If
-you are unsure whether a line is an item or a total, leave it out — a missing item is easy for the
-person to add, a duplicated total silently multiplies what everybody owes.
+NEVER put a total, subtotal, tax line, payment line or change line in "items". Those are the
+figures printed after the shopping, usually with a rule above them, and they belong in
+"paidTotal" and "preDiscountTotal" and nowhere else. Examples across languages, non-exhaustive:
+TOTAL / SUBTOTAL / TOTAL DUE / AMOUNT DUE / BALANCE / CHANGE / CASH / CARD / VAT / TAX (English),
+TOTAL A PAGAR / VALOR A PAGAR / A PAGAR / TROCO / IVA / NUMERARIO / MULTIBANCO (Portuguese),
+TOTAL A PAGAR / IMPORTE / EFECTIVO / TARJETA / CAMBIO (Spanish), TOTALE / DA PAGARE / CONTANTI /
+RESTO (Italian), MONTANT / ESPECES / CARTE / RENDU (French), SUMME / GESAMT / ZU ZAHLEN /
+BAR / RUCKGELD / MWST (German), 合計 / 小計 / お預り / お釣り (Japanese). If you are unsure
+whether a line is an item or a total, leave it out — a missing item is easy for the person to add,
+a duplicated total silently multiplies what everybody owes.
 
 For each shopping line, in the order they appear:
-- "name": the printed name, lightly cleaned up but kept in its original language.
+- "name": the printed name, kept in its ORIGINAL language and script. Do not translate it: the
+  person reading it knows what they bought and needs to recognise it on the paper. Lightly clean
+  up obvious scanning noise only.
 - "quantity": integer number of units on the line (1 for weight-priced lines).
-- "lineTotal": the amount printed on that line, in integer cents.
+- "lineTotal": the amount printed on that line, in integer cents of the receipt's own currency.
+  Receipts write decimals as either "1,19" or "1.19", and some group thousands the other way
+  round ("1.234,56" or "1,234.56") — read the number the way that receipt writes numbers. For a
+  currency with no minor unit (such as JPY), multiply the printed figure by 100.
 - "kind": "item" for something bought, "discount" for a discount applied to the line above it.
-  Discount lines are usually indented and often in brackets, with wording like "Desconto",
-  "Poupança", "Cartão", "Talão desconto". Report the amount as printed, whether or not the
-  receipt shows a minus sign — do not decide the sign yourself.
-  Bottle deposits and bag fees are "item", not "discount". A refund or corrected line is an
-  "item" with a negative lineTotal.
+  A discount line is typically indented under its item, often in brackets, and reduces what was
+  paid. Examples, non-exhaustive: DESCONTO / POUPANCA / CARTAO / TALAO DESCONTO (Portuguese),
+  DESCUENTO / AHORRO (Spanish), SCONTO (Italian), REMISE / REDUCTION (French), RABATT (German),
+  DISCOUNT / SAVINGS / COUPON / OFFER / PROMO (English), 割引 (Japanese).
+  Report the amount as printed, whether or not the receipt shows a minus sign — do not decide the
+  sign yourself. Bottle deposits and bag fees are "item", not "discount". A refund or corrected
+  line is an "item" with a negative lineTotal.
 - "paidTotal": the amount ACTUALLY PAID, in integer cents. Many receipts print two totals: a
-  pre-discount subtotal (often "TOTAL") and the amount paid (often "VALOR A PAGAR",
-  "TOTAL A PAGAR", "A PAGAR"). Always report the amount paid here, never the pre-discount one.
+  pre-discount subtotal and the amount finally due after discounts. Always report the amount
+  finally due, never the pre-discount one. When only one total is printed, that is the amount paid.
 - "preDiscountTotal": the pre-discount subtotal, in integer cents, only when the receipt prints
   one as a separate figure from the amount paid. Otherwise null.
-- "currency": ISO 4217 code of the printed currency. A "€" sign, a "EUR" suffix, or prices
-  written as "1,19" with a comma is "EUR". Only report something else if the receipt clearly
-  shows another currency's symbol or code.
-- "date": purchase date as YYYY-MM-DD if printed, else null.
+- "currency": ISO 4217 code of the currency actually printed on the receipt, read from its symbol
+  or code (€ EUR, £ GBP, $ USD, CHF, zł PLN, kr SEK/NOK/DKK, ¥ JPY, ₺ TRY, and so on). If no
+  currency is shown anywhere, use null rather than guessing.
+- "date": purchase date as YYYY-MM-DD if printed, else null. Receipts write dates in many orders
+  (DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD) — use the shop's own convention where the digits make it
+  unambiguous, and prefer DD/MM when they do not.
 Do not invent lines. Read the printed digits — never round, estimate, or carry a figure across
 from another line. Before you answer, check that no entry in "items" is a total, and that the
 items plausibly add up to either "paidTotal" or "preDiscountTotal".`;
