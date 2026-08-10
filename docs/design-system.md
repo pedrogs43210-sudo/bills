@@ -176,6 +176,12 @@ as hit area too.
   edge. Without it the buttons pack left and 🗑 floats in the middle of the row.
 - **Icon-only actions in a topbar, with an `aria-label`.** "✏️ Edit items" beside two icon buttons
   read as a third kind of control and pushed the title off centre.
+- **Hold to pick several.** A long press (500ms, 10px of slop) on an item selects it; tapping adds
+  more. The bottom bar becomes the assign panel — the *same* chips a single item shows, from one
+  `chipPanel(items)`, so the two can never drift apart. A chip lights up only when every picked
+  item has that assignment; when they disagree the panel says so in words rather than picking one
+  of the two truths. Back — the topbar's ✕ and Android's hardware button, via `lib/backIntercept.ts`
+  — clears the selection before it means "leave the receipt".
 - **A `<select>` is sized by its longest option, not its answer.** The currency picker was a grey
   bar three quarters of the screen wide while it read "EUR — Euro (€)". `.select-compact` uses
   `field-sizing: content`, with a `max-width` for browsers that lack it.

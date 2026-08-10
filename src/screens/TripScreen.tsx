@@ -422,6 +422,17 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         </div>
       )}
 
+      {/* Named, like Friends and Groups. Each receipt is its own tappable card, so the heading
+          sits above them rather than inside a card of its own. */}
+      <h3 className="section-title">Receipts</h3>
+      {trip.receipts.length === 0 && (
+        <p className="muted" style={{ marginTop: 0 }}>
+          {trip.people.length === 0
+            ? "Add the people you are splitting with first, then scan a receipt."
+            : "Nothing yet. Scan one with the camera, or add the items by hand."}
+        </p>
+      )}
+
       {trip.receipts.map((r) => {
         const counted = countedItems(r);
         const assigned = counted.filter(isItemAssigned).length;
@@ -511,11 +522,15 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             📸 Scan receipt
           </button>
         ) : (
-          <>
+          /* One row, not two full-width buttons. Taking the photo is the thing you came to do, so
+             it keeps the primary button; picking one you already have is the rarer path and only
+             needs a 44px square beside it. They cannot be one control: capture forces the camera
+             and hides the gallery on some browsers. */
+          <div className="row" style={{ marginBottom: 8, gap: "var(--s2)" }}>
             {/* capture="environment" is what actually opens the rear camera. Without it the
                 browser shows a generic file picker, which on Android lands in the gallery — so
                 "scan a receipt" meant hunting for a photo you had not taken yet. */}
-            <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
+            <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, flex: 1 }}>
               📸 Scan receipt
               <input
                 hidden
@@ -531,14 +546,12 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                 }}
               />
             </label>
-            {/* Kept as its own control rather than replaced: capture forces the camera and hides
-                the gallery on some browsers, and photographing the receipt later — or someone
-                sending you theirs — is a normal way to use this. */}
             <label
-              className="btn"
-              style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8, width: "100%" }}
+              className="btn btn-square"
+              title="Choose a photo you already have"
+              style={{ opacity: trip.people.length === 0 ? 0.45 : 1 }}
             >
-              🖼 Choose a photo instead
+              <span aria-hidden="true">🖼</span>
               <input
                 hidden
                 type="file"
@@ -552,7 +565,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                 }}
               />
             </label>
-          </>
+          </div>
         )}
         {/* Only ever shown when there is a real number to show: no proxy means no counter, and
             a subscriber has no cap to count against. */}

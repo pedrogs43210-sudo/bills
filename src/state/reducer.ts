@@ -12,6 +12,10 @@ export type Action =
   | { type: "updateReceipt"; tripId: string; receipt: Receipt }
   | { type: "deleteReceipt"; tripId: string; receiptId: string }
   | { type: "setAssignment"; tripId: string; receiptId: string; itemId: string; assignment: Assignment }
+  /* Several items to the same people in one go. One action rather than a loop of the single
+     one, so the whole selection lands in a single state change and a single save — and so
+     that a half-applied selection is not a state the app can be interrupted in. */
+  | { type: "setAssignments"; tripId: string; receiptId: string; itemIds: string[]; assignment: Assignment }
   | { type: "setReceiptStatus"; tripId: string; receiptId: string; status: ReceiptStatus }
   | { type: "setCurrency"; tripId: string; currency: string }
   | { type: "importTrip"; trip: Trip }
@@ -103,6 +107,16 @@ export function reducer(data: AppData, action: Action): AppData {
           items: r.items.map((i) => (i.id === action.itemId ? { ...i, assignment: action.assignment } : i)),
         }))
       );
+    case "setAssignments": {
+      const ids = new Set(action.itemIds);
+      if (ids.size === 0) return data;
+      return mapTrip(data, action.tripId, (t) =>
+        mapReceipt(t, action.receiptId, (r) => ({
+          ...r,
+          items: r.items.map((i) => (ids.has(i.id) ? { ...i, assignment: action.assignment } : i)),
+        }))
+      );
+    }
     case "setReceiptStatus":
       return mapTrip(data, action.tripId, (t) =>
         mapReceipt(t, action.receiptId, (r) => ({ ...r, status: action.status }))

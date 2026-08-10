@@ -13,6 +13,7 @@ import { hasOnboarded } from "./lib/onboarding";
 import { lastKnownQuota } from "./lib/scan";
 import { back, initialNav, navigate } from "./lib/history";
 import { exitApp, onHardwareBack } from "./lib/nativeBack";
+import { runBackIntercept } from "./lib/backIntercept";
 
 export type View =
   | { screen: "trips" }
@@ -36,7 +37,10 @@ function Router() {
   // both wrong and something Play reviewers look for. On the web this does nothing at all.
   useEffect(
     () =>
-      onHardwareBack(() =>
+      onHardwareBack(() => {
+        // A screen can be in a state that back should leave first — a selection of items on the
+        // assign screen. Only if nobody wants it does back mean "go back".
+        if (runBackIntercept()) return;
         setNav((n) => {
           const previous = back(n);
           if (previous) {
@@ -44,8 +48,8 @@ function Router() {
           }
           void exitApp();
           return n;
-        })
-      ),
+        });
+      }),
     []
   );
 

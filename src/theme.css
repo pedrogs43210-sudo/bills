@@ -125,6 +125,11 @@ h1, h2, h3 {
 h1, .screen-title { font-size: 19px; }
 h3 { font-size: 15.5px; }
 
+/* A heading for a run of cards, where an h3 inside a card cannot go: the receipts are each their
+   own tappable card, so their name has to sit above them. Same type as an h3 in a card, with the
+   space a section break needs. */
+.section-title { font-size: 15.5px; margin: var(--s5) 0 var(--s2); }
+
 .label { font: 500 12.5px/1.4 var(--text); color: var(--ink-2); }
 .muted { font: 500 12.5px/1.4 var(--text); color: var(--ink-3); }
 .micro {
@@ -261,6 +266,9 @@ h3 { font-size: 15.5px; }
   min-height: var(--tap);
 }
 .btn:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+/* A 44px square for a secondary action that sits beside a primary one — the gallery next to the
+   camera. Two full-width buttons made picking an old photo look as important as taking one. */
+.btn-square { width: var(--tap); padding: 0; flex: none; font-size: 18px; }
 
 /* ---------- Rule 4 — a person, a group and a verb look different ---------- */
 
@@ -290,6 +298,37 @@ h3 { font-size: 15.5px; }
   display: block;
   width: 100%;
   min-height: var(--tap);
+  /* Holding a card must not raise the text-selection handles over the selection being made. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* The chips in the selection bar. A trip with eight people and three groups is four rows of
+   44px chips, which would leave less of the screen for the items than for the panel. */
+.chip-scroll { max-height: 26vh; overflow-y: auto; overscroll-behavior: contain; }
+
+/* An item held and picked out, to be assigned along with the others.
+   Not colour alone: the border thickens, the card lifts off the page, and a tick appears — the
+   same three signals a selected chip uses. */
+.card-picked {
+  position: relative;
+  border: 2px solid var(--accent);
+  box-shadow: var(--sh-2);
+}
+.card-tick {
+  position: absolute;
+  top: -9px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-pill);
+  /* Same pairing as the note dots: the strong ink as the fill, the surface as the glyph, so it
+     reads in both themes rather than being white-on-coral in one of them. */
+  background: var(--accent-ink);
+  color: var(--surface);
+  font: 700 14px/24px var(--text);
+  text-align: center;
 }
 
 /* A button inside a chip is as tall as the chip.
