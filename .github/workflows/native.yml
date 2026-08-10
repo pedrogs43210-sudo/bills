@@ -28,6 +28,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      # Capacitor 8 targets compileSdk 36, which a runner will not install by itself: Gradle can
+      # download a platform but not accept its licence, so the build dies at the APK step.
+      - uses: android-actions/setup-android@v3
+      - name: Install the SDK this project compiles against
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
       - run: npm ci
       - run: npm run typecheck
       - run: npm test

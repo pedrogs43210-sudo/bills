@@ -135,7 +135,10 @@ describe("scan flow", () => {
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
     await user.upload(screen.getByLabelText(/scan receipt/i), photo);
-    await user.click(screen.getByRole("button", { name: /back/i })); // leave mid-scan
+    // Leaving mid-scan is now two steps, because the wait has a screen of its own: stop
+    // waiting, then leave the trip.
+    await user.click(screen.getByRole("button", { name: /cancel and add by hand/i }));
+    await user.click(screen.getByRole("button", { name: /back/i }));
     resolveScan({
       storeName: "Lidl", date: null, currency: "EUR",
       items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }], paidTotal: 119, preDiscountTotal: null,

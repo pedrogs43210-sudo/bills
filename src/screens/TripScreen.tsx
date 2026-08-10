@@ -6,6 +6,7 @@ import { formatCents } from "../lib/money";
 import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
 import { Disc } from "../components/chips";
+import { ScanProgressScreen } from "./ScanProgressScreen";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
 import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanQuota } from "../lib/scan";
@@ -25,6 +26,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [groupForm, setGroupForm] = useState<{ id: string | null; name: string; personIds: string[] } | null>(null);
   const [quota, setQuota] = useState<ScanQuota | null>(lastKnownQuota());
   const lastPhoto = useRef<File | null>(null);
+  // Set when the user cancels the wait: the receipt is still saved, but the navigation is not.
+  const abandoned = useRef(false);
   const alive = useRef(true);
   // Asked for on arrival rather than on tap: the scan control is a file input, so the camera
   // opens the instant it is touched. Knowing the answer beforehand is what makes it possible to
@@ -59,6 +62,21 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   }, [trip?.people, trip?.groups]);
   if (!trip) return null;
 
+  // The scan takes five to twenty seconds. It gets a screen of its own rather than a button
+  // whose label changed, which reads as a hang on the app's one impressive moment.
+  if (scanState === "busy") {
+    return (
+      <ScanProgressScreen
+        onCancel={() => {
+          // The request carries on — its result is still stored if it lands — but the user is
+          // no longer held on a screen whose only content is a moving light.
+          abandoned.current = true;
+          setScanState("idle");
+        }}
+      />
+    );
+  }
+
   async function handlePhoto(file: File) {
     lastPhoto.current = file;
     const apiKey = loadApiKey();
@@ -68,6 +86,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       go({ screen: "settings" });
       return;
     }
+    abandoned.current = false;
     setScanState("busy");
     try {
       const base64 = await downscaleToBase64Jpeg(file).catch(() => {
@@ -108,6 +127,9 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       if (!alive.current) return; // user left this screen — keep the data, skip the navigation
       setScanState("idle");
       setQuota(lastKnownQuota());
+      // Same reasoning as leaving the screen: they asked to stop waiting, so the receipt is
+      // kept and listed, but they are not dragged into it.
+      if (abandoned.current) return;
       go({ screen: "receipt", tripId, receiptId: receipt.id });
     } catch (err) {
       if (!alive.current) return;
@@ -449,13 +471,14 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           </button>
         ) : (
           <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, marginBottom: 8 }}>
-            {scanState === "busy" ? "🧾✨ Reading receipt…" : "📸 Scan receipt"}
+            {/* The busy state is a whole screen now, so this label has only one job. */}
+            📸 Scan receipt
             <input
               hidden
               type="file"
               accept="image/*"
               aria-label="Scan receipt"
-              disabled={trip.people.length === 0 || scanState === "busy"}
+              disabled={trip.people.length === 0}
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (f) void handlePhoto(f);

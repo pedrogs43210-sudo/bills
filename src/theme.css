@@ -387,3 +387,56 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
 /* No ✓ here — the emoji is the label, and a tick beside it would crowd a 52px box. */
 .chip-emoji.selected::after { content: none; }
 .chip-emoji.selected { background: var(--ink); border-color: var(--ink); }
+
+/* ---------- Reading a receipt ---------- */
+
+/* A receipt with a light passing down it. The proportions are a phone-sized till roll, and the
+   torn bottom edge is a zigzag mask rather than an image, so it takes the theme with it. */
+.scanning {
+  position: relative;
+  width: 180px;
+  padding: var(--s4) var(--s4) var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+  /* torn edge */
+  -webkit-mask: linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
+    repeating-linear-gradient(135deg, #000 0 5px, transparent 5px 10px) bottom/100% 8px repeat-x;
+  mask: linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
+    repeating-linear-gradient(135deg, #000 0 5px, transparent 5px 10px) bottom/100% 8px repeat-x;
+}
+.scanning-line { height: 7px; border-radius: 999px; background: var(--line); }
+.scanning-line.short { align-self: flex-end; background: var(--line-strong); }
+
+/* The sweep: a soft band of the app's own sunset, travelling top to bottom for ever. */
+.scanning-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 54px;
+  top: -54px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--sunset-2) 55%, transparent),
+    color-mix(in srgb, var(--sunset-1) 40%, transparent),
+    transparent
+  );
+  animation: scan-sweep 1.9s ease-in-out infinite;
+}
+
+@keyframes scan-sweep {
+  0% { top: -54px; }
+  100% { top: 100%; }
+}
+
+/* A sweep that runs for twenty seconds is a genuine problem for anyone who asked the system to
+   stop moving things. The receipt stays; the light simply rests near the top. */
+@media (prefers-reduced-motion: reduce) {
+  .scanning-sweep { animation: none; top: 18%; opacity: 0.75; }
+}
