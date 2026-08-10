@@ -48,7 +48,11 @@ export async function scanReceipt(apiKey: string, imageBase64: string): Promise<
   try {
     response = await client.messages.parse({
       model: SCAN_MODEL,
-      max_tokens: 8192,
+      // Sonnet 5 thinks by default, and max_tokens caps thinking + output together: a long
+      // receipt could spend the budget reasoning and truncate mid-list. Transcribing a receipt
+      // needs no deliberation, so it is off, and the ceiling is generous for a 60-item shop.
+      thinking: { type: "disabled" },
+      max_tokens: 16000,
       messages: [
         {
           role: "user",

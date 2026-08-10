@@ -119,10 +119,10 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         status: "review",
         discountConvention: convention,
       };
-      const currency = /^[A-Za-z]{3}$/.test(result.currency) ? result.currency.toUpperCase() : "";
-      if (trip!.receipts.length === 0 && currency) {
-        dispatch({ type: "setCurrency", tripId, currency });
-      }
+      // The scanner's currency guess is deliberately ignored. Trips are created in EUR, a
+      // misread "USD" turned a Portuguese holiday's money into dollars, and a wrong currency is
+      // both alarming and invisible — the digits still look right. If the trip is ever not in
+      // euros that is the user's call to make, not a guess from a photograph.
       dispatch({ type: "addReceipt", tripId, receipt });
       if (!alive.current) return; // user left this screen — keep the data, skip the navigation
       setScanState("idle");

@@ -27,10 +27,17 @@ export interface Env {
   APP_TOKEN: string;
   /** Optional override, so the free allowance can be tuned without a deploy. */
   FREE_SCANS?: string;
+  /** Optional override, to try a different scanning model without shipping a build. */
+  SCAN_MODEL?: string;
 }
 
-/** A downscaled 1568px JPEG lands around 200 KB; this is generous and still bounded. */
-const MAX_IMAGE_BYTES = 1_500_000;
+/**
+ * Base64 length cap. A 2576px JPEG at quality 0.9 — what the app now sends, matching the model's
+ * resolution ceiling — runs to a couple of megabytes once base64 inflates it by a third. Sized
+ * above that and still well under Anthropic's 5MB-per-image limit, so a real receipt is never
+ * rejected for being legible.
+ */
+const MAX_IMAGE_BYTES = 4_000_000;
 /** Two scans a second is a script, not a person photographing a receipt. */
 const MIN_SCAN_INTERVAL_MS = 2000;
 
@@ -168,8 +175,12 @@ async function handleScan(
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
     const response = await client.messages.parse(
       {
-        model: SCAN_MODEL,
-        max_tokens: 8192,
+        model: env.SCAN_MODEL || SCAN_MODEL,
+        // Sonnet 5 thinks by default, and max_tokens caps thinking + output together: a long
+        // receipt could spend the budget reasoning and truncate mid-list. Transcribing a receipt
+        // needs no deliberation, so it is off, and the ceiling is generous for a 60-item shop.
+        thinking: { type: "disabled" },
+        max_tokens: 16000,
         messages: [
           {
             role: "user",

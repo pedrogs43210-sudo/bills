@@ -48,7 +48,11 @@ describe("scanReceipt", () => {
     expect(result.items[0].name).toBe("Sumo laranja");
     // sends the image and asks the right model
     const req = parseMock.mock.calls[0][0];
-    expect(req.model).toBe("claude-haiku-4-5");
+    expect(req.model).toBe("claude-sonnet-5");
+    // Sonnet 5 thinks by default; max_tokens caps thinking + output together, so a long
+    // receipt could burn the budget reasoning and truncate mid-list.
+    expect(req.thinking).toEqual({ type: "disabled" });
+    expect(req.max_tokens).toBeGreaterThanOrEqual(16000);
     expect(req.messages[0].content[0]).toMatchObject({ type: "image" });
   });
 
