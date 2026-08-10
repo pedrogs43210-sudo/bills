@@ -41,8 +41,26 @@ jobs:
       - run: npm run build:native
       - run: npx cap sync android
       - name: Assemble debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee "$RUNNER_TEMP/gradle.log"
         working-directory: android
+      # Raw job logs need admin rights on the repository, which the person debugging this may not
+      # have. Annotations are readable through the public API, so the failure is republished as
+      # annotations rather than left somewhere only an owner can look.
+      - name: Republish the failure where it can be read
+        if: failure()
+        run: |
+          log="$RUNNER_TEMP/gradle.log"
+          [ -f "$log" ] || { echo "::error::gradle produced no log"; exit 0; }
+          grep -nE "FAILURE:|What went wrong|error:|Caused by|^> |Execution failed|Could not (find|resolve|determine)" "$log" \
+            | tail -n 25 > "$RUNNER_TEMP/interesting.txt" || true
+          if [ ! -s "$RUNNER_TEMP/interesting.txt" ]; then
+            tail -n 25 "$log" > "$RUNNER_TEMP/interesting.txt"
+          fi
+          while IFS= read -r line; do
+            printf '::error::%s\n' "${line//$'\r'/}"
+          done < "$RUNNER_TEMP/interesting.txt"
       - uses: actions/upload-artifact@v4
         with:
           name: bills-debug-apk
