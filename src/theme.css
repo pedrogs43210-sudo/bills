@@ -45,25 +45,30 @@
   --tap: 44px;
 }
 
-/* Evening on the same holiday. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #241a17;
-    --surface: #2f221d;
-    --sunken: #3a2a23;
-    --line: #4a362d;
-    --line-strong: #5c4437;
-    --ink: #fbeee2;
-    --ink-2: #c4a895;
-    --ink-3: #7d6555;
-    --accent: #ff8f73;
-    --good: #4fcb92;
-    --good-bg: #1e3b2c;
-    --note: #f0c070;
-    --note-bg: #3d2c16;
-    --note-line: #6b4e1e;
-    --sh-1: 0 2px 10px -4px rgba(0, 0, 0, 0.5);
-  }
+/*
+ * Evening on the same holiday.
+ *
+ * Keyed off data-theme rather than prefers-color-scheme so there is exactly ONE dark block: the
+ * choice (auto / light / dark) is resolved in JS and written to the root element, and an inline
+ * script in index.html applies it before first paint. Two blocks — a media query plus an override
+ * — would be sixteen colours duplicated and waiting to drift apart.
+ */
+:root[data-theme="dark"] {
+  --bg: #241a17;
+  --surface: #2f221d;
+  --sunken: #3a2a23;
+  --line: #4a362d;
+  --line-strong: #5c4437;
+  --ink: #fbeee2;
+  --ink-2: #c4a895;
+  --ink-3: #7d6555;
+  --accent: #ff8f73;
+  --good: #4fcb92;
+  --good-bg: #1e3b2c;
+  --note: #f0c070;
+  --note-bg: #3d2c16;
+  --note-line: #6b4e1e;
+  --sh-1: 0 2px 10px -4px rgba(0, 0, 0, 0.5);
 }
 
 * { box-sizing: border-box; }
@@ -245,7 +250,7 @@ h3 { font-size: 15.5px; }
   text-align: left;
 }
 
-/* A person is a noun: fully round, their tint, their disc. */
+/* A person is a noun: fully round, their tint, their disc. Colours below. */
 .chip-person { border-radius: var(--r-pill); }
 
 /* A group is a collective noun: squarer, with a stack of member discs. */
@@ -272,6 +277,57 @@ h3 { font-size: 15.5px; }
 }
 /* A group or Everyone fills solid too, in ink — the same "it's on" signal as a person's colour,
    without borrowing a colour that belongs to one of the members. */
+
+/* ---------- A person's chip, in both themes ----------
+ *
+ * The stored pastels are light, which is why this cannot be one rule. In light mode the pastel is
+ * the fill and the ink is dark. In dark mode a pastel fill with the theme's near-white ink was
+ * white-on-pale-yellow — unreadable, and the brightest thing on the screen, so an *unselected*
+ * person looked more active than a selected one.
+ *
+ * So each theme uses the person's colour where it reads best, and in both themes the SELECTED
+ * state is the higher-contrast, more saturated one. Never colour alone: the border thickens, the
+ * label bolds and a ✓ appears regardless.
+ */
+
+/* Light: pale fill, dark text. Selected fills with the deep colour and goes white. */
+.chip-person {
+  background: var(--person);
+  border-color: transparent;
+  /* Fixed rather than var(--ink): the fill is a light pastel in either theme, so the text on it
+     must not follow a theme whose ink turns white. */
+  color: #3d2b24;
+}
+.chip-person.selected {
+  background: var(--person-ink);
+  /* 2px, not the 1.5px the other chips use: at dpr 1 a 1.5px border rounds to 1px and the
+     "selected" signal disappears into the unselected one. Selection has to survive a glance in a
+     kitchen, so it carries four signals — the fill flips, the border thickens, the label bolds,
+     and a ✓ appears. */
+  border: 2px solid var(--person-ink);
+  color: #fff;
+}
+
+/* Dark: a dim wash of the person's colour, light text. Selected takes the full pastel, which is
+   the brightest state available and unmistakably "on". */
+:root[data-theme="dark"] .chip-person {
+  background: color-mix(in srgb, var(--person) 20%, var(--surface));
+  border-color: color-mix(in srgb, var(--person) 35%, var(--surface));
+  color: var(--ink);
+}
+:root[data-theme="dark"] .chip-person.selected {
+  background: var(--person);
+  /* White against the dark surface: the fill is already the brightest thing available, so the
+     border's job here is to separate it from the background rather than to add colour. */
+  border: 2px solid #fff;
+  color: #3d2b24;
+}
+/* The selected chip is the pastel itself here, so the disc keeps its own deep colour. */
+:root[data-theme="dark"] .chip-person.selected .disc-inverted {
+  background: var(--person-ink);
+  color: #fff;
+}
+
 .chip-group.selected {
   background: var(--ink);
   border-color: var(--ink);
@@ -288,8 +344,12 @@ h3 { font-size: 15.5px; }
   align-items: center;
   justify-content: center;
   font: 700 12.5px/1 var(--text);
+  background: var(--person-ink);
   color: #fff;
 }
+/* On a chip that has been filled with the person's own deep colour, the disc would vanish into
+   it — so it flips to white with the colour as its letter. */
+.disc-inverted { background: #fff; color: var(--person-ink); }
 .disc-sm { width: 22px; height: 22px; font-size: 11px; }
 /* Overlapping discs, for a group's members. */
 .disc-stack { display: inline-flex; }

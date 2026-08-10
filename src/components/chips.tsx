@@ -13,8 +13,8 @@ export function Disc({ person, small, inverted }: { person: Person; small?: bool
   return (
     <span
       aria-hidden="true"
-      className={`disc${small ? " disc-sm" : ""}`}
-      style={inverted ? { background: "#fff", color: fill } : { background: fill }}
+      className={`disc${small ? " disc-sm" : ""}${inverted ? " disc-inverted" : ""}`}
+      style={{ ["--person-ink" as string]: fill }}
     >
       {personInitial(person.name)}
     </span>
@@ -27,6 +27,20 @@ export function Disc({ person, small, inverted }: { person: Person; small?: bool
  * which existed only because a fill could not be made legible across eight pastels. The disc
  * inverts so it stays visible against its own colour.
  */
+/**
+ * The two colours a person's chip needs, handed to CSS rather than applied here.
+ *
+ * The stylesheet decides how to *use* them, because the right answer differs by theme: the stored
+ * pastels are light, so in dark mode a pastel fill with the theme's near-white ink was white text
+ * on pale yellow. An inline background could not know that; a custom property can.
+ */
+export function personVars(person: Person): React.CSSProperties {
+  return {
+    ["--person" as string]: person.color,
+    ["--person-ink" as string]: personDisc(person.color),
+  };
+}
+
 export function PersonChip({
   person,
   selected,
@@ -36,17 +50,12 @@ export function PersonChip({
   selected: boolean;
   onClick: () => void;
 }) {
-  const fill = personDisc(person.color);
   return (
     <button
       type="button"
       className={`chip chip-person${selected ? " selected" : ""}`}
       aria-pressed={selected}
-      style={
-        selected
-          ? { background: fill, borderColor: fill, color: "#fff" }
-          : { background: person.color, borderColor: "transparent" }
-      }
+      style={personVars(person)}
       onClick={onClick}
     >
       <Disc person={person} inverted={selected} />

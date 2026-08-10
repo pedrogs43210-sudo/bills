@@ -9,6 +9,21 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icon.svg" />
   </head>
+  <script>
+      // Applied before first paint so the app never flashes the wrong theme. Mirrors
+      // resolveTheme() in src/lib/theme.ts; kept tiny and failure-tolerant on purpose.
+      try {
+        var c = localStorage.getItem("bills.theme.v1");
+        document.documentElement.dataset.theme =
+          c === "light" || c === "dark"
+            ? c
+            : matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
+      } catch (e) {
+        document.documentElement.dataset.theme = "light";
+      }
+    </script>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

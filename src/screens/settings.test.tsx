@@ -47,3 +47,32 @@ describe("settings screen", () => {
     expect(await screen.findByText(/isn't a bills trip/i)).toBeInTheDocument();
   });
 });
+
+describe("appearance and the API key card", () => {
+  it("offers light, dark and follow-the-phone", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /settings/i }));
+    expect(screen.getByRole("button", { name: /follow phone/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /light/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /dark/i })).toBeInTheDocument();
+  });
+
+  it("applies a chosen theme where the stylesheet reads it, and remembers it", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /settings/i }));
+    await user.click(screen.getByRole("button", { name: /dark/i }));
+
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(screen.getByRole("button", { name: /dark/i })).toHaveAttribute("aria-pressed", "true");
+    expect(localStorage.getItem("bills.theme.v1")).toBe("dark");
+  });
+
+  it("shows the API key card while the app still scans with the user's own key", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: /settings/i }));
+    expect(screen.getByPlaceholderText(/sk-ant/i)).toBeInTheDocument();
+  });
+});

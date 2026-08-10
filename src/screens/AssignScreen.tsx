@@ -6,7 +6,7 @@ import { receiptSummaryText } from "../lib/summary";
 import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
 import type { Assignment, Item, Person } from "../types";
-import { ActionChip, GroupChip, PersonChip } from "../components/chips";
+import { ActionChip, GroupChip, PersonChip, personVars } from "../components/chips";
 
 /** Order-insensitive set comparison, for highlighting a group chip that matches the assignment. */
 function sameMembers(a: string[], b: string[]): boolean {
@@ -211,7 +211,7 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
                   const units = a.kind === "units" ? a.shares[p.id] ?? 0 : 0;
                   return (
                     <div key={p.id} className="row" style={{ padding: "4px 0" }}>
-                      <span className="chip" style={{ background: p.color, cursor: "default" }}>{p.name}</span>
+                      <span className="chip chip-person" style={{ ...personVars(p), cursor: "default" }}>{p.name}</span>
                       <span>
                         <button className="chip" aria-label={`Fewer units for ${p.name}`} onClick={() => bumpUnits(item, p.id, -1)}>−</button>
                         <b style={{ margin: "0 8px" }}>{units}</b>

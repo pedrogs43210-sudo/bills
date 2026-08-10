@@ -10,6 +10,12 @@ import "@fontsource/nunito/latin-500.css";
 import "@fontsource/nunito/latin-600.css";
 import "@fontsource/nunito/latin-800.css";
 import "./theme.css";
+import { applyTheme, watchSystemTheme } from "./lib/theme";
+
+// index.html already applied the theme before first paint; this re-applies for safety and keeps
+// "follow phone" honest when the phone flips at sunset.
+applyTheme();
+watchSystemTheme();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

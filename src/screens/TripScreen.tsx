@@ -6,7 +6,7 @@ import { formatCents } from "../lib/money";
 import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
 import { currencyOptions } from "../lib/currencies";
-import { Disc } from "../components/chips";
+import { Disc, personVars } from "../components/chips";
 import { ScanProgressScreen } from "./ScanProgressScreen";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
@@ -321,7 +321,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                 onBlur={() => commitRename(p.id)}
               />
             ) : (
-              <span key={p.id} className="chip chip-person" style={{ background: p.color, borderColor: "transparent", cursor: "default" }}>
+              <span key={p.id} className="chip chip-person" style={{ ...personVars(p), cursor: "default" }}>
                 <Disc person={p} />
                 <button
                   style={{ all: "unset", cursor: "pointer" }}
@@ -410,8 +410,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                   return (
                     <button
                       key={p.id}
-                      className={`chip ${on ? "selected" : ""}`}
-                      style={{ background: p.color }}
+                      className={`chip chip-person ${on ? "selected" : ""}`}
+                      style={personVars(p)}
                       aria-label={`${on ? "Remove" : "Add"} ${p.name} ${on ? "from" : "to"} group`}
                       onClick={() => toggleGroupPerson(p.id)}
                     >

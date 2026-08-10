@@ -156,3 +156,30 @@ describe("scanning with a proxy and no API key of your own", () => {
     expect(screen.queryByPlaceholderText(/sk-ant/i)).toBeNull();
   });
 });
+
+describe("Settings once the app scans on the user's behalf", () => {
+  it("stops mentioning API keys entirely", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_SCAN_PROXY_URL", PROXY);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() =>
+      Promise.resolve(new Response(JSON.stringify({ used: 0, left: 5, limit: 5, month: "2026-08", subscribed: false }), { status: 200 }))
+    ));
+    const { saveData } = await import("../lib/storage");
+    const { setOnboarded } = await import("../lib/onboarding");
+    localStorage.clear();
+    setOnboarded();
+    saveData({ schemaVersion: 2, trips: [seedTrip()] });
+    const App = (await import("../App")).default;
+    render(<App />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: /settings/i }));
+
+    // the whole card is gone: no key field, no "Test key", no talk of Anthropic keys
+    expect(screen.queryByPlaceholderText(/sk-ant/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /test key/i })).toBeNull();
+    expect(screen.queryByText(/your own Anthropic API key/i)).toBeNull();
+    // and the things that still matter are still there
+    expect(screen.getByRole("heading", { name: /appearance/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /backup/i })).toBeInTheDocument();
+  });
+});

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { exportTrip, importTrip, loadApiKey, saveApiKey } from "../lib/storage";
-import { verifyApiKey } from "../lib/scan";
+import { usingProxy, verifyApiKey } from "../lib/scan";
+import { setThemeChoice, themeChoice, type ThemeChoice } from "../lib/theme";
 import type { View } from "../App";
 
 type KeyStatus = "idle" | "saved" | "checking" | "ok" | "bad" | "unknown";
@@ -20,6 +21,7 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
   const [key, setKey] = useState(loadApiKey());
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle");
   const [importError, setImportError] = useState("");
+  const [theme, setTheme] = useState<ThemeChoice>(themeChoice);
 
   async function testKey() {
     setKeyStatus("checking");
@@ -57,6 +59,35 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
         <h1 className="screen-title">Settings</h1>
       </div>
 
+      {/* Light and dark both exist; this is the choice between them. "Auto" follows the phone,
+          which is right most of the time and wrong at a sunny kitchen table. */}
+      <div className="card">
+        <h3>Appearance</h3>
+        <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
+          {([
+            ["auto", "Follow phone"],
+            ["light", "☀️ Light"],
+            ["dark", "🌙 Dark"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              className={`chip chip-group${theme === value ? " selected" : ""}`}
+              aria-pressed={theme === value}
+              onClick={() => {
+                setTheme(value);
+                setThemeChoice(value);
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Hidden entirely once a scan proxy is configured: from then on the app scans on the
+          user's behalf and an API key is not a thing they should ever have to know exists. This
+          card is the old self-serve arrangement, kept only while that is still how it works. */}
+      {!usingProxy() && (
       <div className="card">
         <h3>Scanning</h3>
         <p className="label" style={{ marginTop: 0 }}>
@@ -99,6 +130,7 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
         </div>
         {keyStatus !== "idle" && <p className="muted">{KEY_STATUS_TEXT[keyStatus]}</p>}
       </div>
+      )}
 
       <div className="card">
         <h3>Backup</h3>
