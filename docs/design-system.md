@@ -167,6 +167,12 @@ as hit area too.
   `fonts.googleapis.com` would break offline use and add a third-party request on every launch.
 - The dark theme ships with the tokens, via `prefers-color-scheme`.
 - `PERSON_COLORS` must not change. The disc colour is derived, not stored.
+- **A section's name goes inside its box.** Friends, Groups, Receipts, Trip settings, To settle,
+  Appearance — every section on every screen is a card with its `h3` inside it. That is why the
+  receipts are rows in a Receipts card (`.receipt-row`) rather than cards of their own under a
+  heading that floated outside: one section reading differently from its neighbours is the thing
+  you notice. A row reaches the card's edges through a negative margin, so its separator and its
+  amber "not counted" edge line up with the box rather than floating inside it.
 - **A fixed bottom bar reserves its own space.** `components/Footerbar.tsx` measures itself and
   publishes `--footer-h`, which the page padding is derived from. The stylesheet used to reserve a
   hard-coded 140px while the trip screen's bar measured 172px, so "Delete trip" and the last

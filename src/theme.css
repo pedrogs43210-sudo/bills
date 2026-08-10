@@ -125,11 +125,6 @@ h1, h2, h3 {
 h1, .screen-title { font-size: 19px; }
 h3 { font-size: 15.5px; }
 
-/* A heading for a run of cards, where an h3 inside a card cannot go: the receipts are each their
-   own tappable card, so their name has to sit above them. Same type as an h3 in a card, with the
-   space a section break needs. */
-.section-title { font-size: 15.5px; margin: var(--s5) 0 var(--s2); }
-
 .label { font: 500 12.5px/1.4 var(--text); color: var(--ink-2); }
 .muted { font: 500 12.5px/1.4 var(--text); color: var(--ink-3); }
 .micro {
@@ -177,6 +172,33 @@ h3 { font-size: 15.5px; }
   font: inherit;
   color: inherit;
 }
+
+/* A receipt inside the Receipts card: a row, not a card of its own, so the section reads like
+   Friends and Groups do — heading inside the box. Still one whole tap target, and still 44px.
+   The negative margin lets the row (and its separator) reach the card's edges, which is why the
+   left padding is short by the width of the marker border. */
+.receipt-row {
+  display: block;
+  /* A button shrink-wraps its content even as a block, so the width is spelled out: the card's
+     padding box, which is what makes the row and its separator reach the card's edges. */
+  width: calc(100% + var(--s4) * 2);
+  margin: 0 calc(-1 * var(--s4));
+  padding: var(--s3) var(--s4) var(--s3) calc(var(--s4) - 4px);
+  min-height: var(--tap);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  /* Reserved even when there is nothing to flag, so a receipt does not shift sideways when its
+     state changes. */
+  border-left: 4px solid transparent;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.receipt-row:last-child { border-bottom: none; padding-bottom: 0; }
+/* Not counted yet — the amber edge a glance down the list looks for. */
+.receipt-row-todo { border-left-color: var(--note-line); }
 
 /* Still to do: an amber left edge, so a glance down the list finds the gaps. */
 .card-todo { border-left: 4px solid var(--note-line); }

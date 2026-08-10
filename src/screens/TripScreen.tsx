@@ -422,59 +422,64 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         </div>
       )}
 
-      {/* Named, like Friends and Groups. Each receipt is its own tappable card, so the heading
-          sits above them rather than inside a card of its own. */}
-      <h3 className="section-title">Receipts</h3>
-      {trip.receipts.length === 0 && (
-        <p className="muted" style={{ marginTop: 0 }}>
-          {trip.people.length === 0
-            ? "Add the people you are splitting with first, then scan a receipt."
-            : "Nothing yet. Scan one with the camera, or add the items by hand."}
-        </p>
-      )}
-
-      {trip.receipts.map((r) => {
-        const counted = countedItems(r);
-        const assigned = counted.filter(isItemAssigned).length;
-        const excluded = excludedIds.has(r.id);
-        return (
-          <button
-            key={r.id}
-            className={`card tap-card${excluded ? " card-todo" : ""}`}
-            onClick={() => go({ screen: "receipt", tripId, receiptId: r.id })}
-          >
-            <span className="row" style={{ alignItems: "flex-start" }}>
-              <span style={{ minWidth: 0 }}>
-                <b>{r.storeName || "Receipt"}</b>
-                <span className="label" style={{ display: "block" }}>
-                  {payerDiscs(r)}
-                  {r.date}
-                </span>
-              </span>
-              <span className="money-2">{formatCents(r.printedTotal, trip.currency)}</span>
-            </span>
-            {/* Rule 3 — the same track and fraction as the assign footer and the trip summary. */}
-            <span className="row" style={{ marginTop: 8, gap: "var(--s3)" }}>
-              {/* An excluded receipt never goes green, however well its items are assigned: a
-                  full green bar beside "not counted" says finished next to something that
-                  contributes nothing. Amber means there is work left, and there is. */}
-              <span
-                className={`track${
-                  !excluded && counted.length > 0 && assigned === counted.length
-                    ? " done"
-                    : excluded || assigned === 0
-                      ? " none"
-                      : ""
-                }`}
-                style={{ flex: 1 }}
+      {/* One box with its name inside it, like Friends, Groups and Trip settings. The receipts
+          were cards of their own under a heading that sat outside — the only section on the screen
+          that read differently. They are rows in this card now, each still a whole tap target. */}
+      <div className="card">
+        <h3>Receipts</h3>
+        {trip.receipts.length === 0 ? (
+          <p className="muted" style={{ margin: 0 }}>
+            {trip.people.length === 0
+              ? "Add the people you are splitting with first, then scan a receipt."
+              : "Nothing yet. Scan one with the camera, or add the items by hand."}
+          </p>
+        ) : (
+          trip.receipts.map((r) => {
+            const counted = countedItems(r);
+            const assigned = counted.filter(isItemAssigned).length;
+            const excluded = excludedIds.has(r.id);
+            return (
+              <button
+                key={r.id}
+                /* The amber edge that used to be the card's is now the row's, reaching the box's
+                   own edge, so a glance down the list still finds the receipts with work left. */
+                className={`receipt-row${excluded ? " receipt-row-todo" : ""}`}
+                onClick={() => go({ screen: "receipt", tripId, receiptId: r.id })}
               >
-                <span style={{ width: counted.length === 0 ? "0%" : `${(assigned / counted.length) * 100}%` }} />
-              </span>
-              <span className="micro" style={excluded ? { color: "var(--note)" } : undefined}>{badge(r)}</span>
-            </span>
-          </button>
-        );
-      })}
+                <span className="row" style={{ alignItems: "flex-start" }}>
+                  <span style={{ minWidth: 0 }}>
+                    <b>{r.storeName || "Receipt"}</b>
+                    <span className="label" style={{ display: "block" }}>
+                      {payerDiscs(r)}
+                      {r.date}
+                    </span>
+                  </span>
+                  <span className="money-2">{formatCents(r.printedTotal, trip.currency)}</span>
+                </span>
+                {/* Rule 3 — the same track and fraction as the assign footer and the trip summary. */}
+                <span className="row" style={{ marginTop: 8, gap: "var(--s3)" }}>
+                  {/* An excluded receipt never goes green, however well its items are assigned: a
+                      full green bar beside "not counted" says finished next to something that
+                      contributes nothing. Amber means there is work left, and there is. */}
+                  <span
+                    className={`track${
+                      !excluded && counted.length > 0 && assigned === counted.length
+                        ? " done"
+                        : excluded || assigned === 0
+                          ? " none"
+                          : ""
+                    }`}
+                    style={{ flex: 1 }}
+                  >
+                    <span style={{ width: counted.length === 0 ? "0%" : `${(assigned / counted.length) * 100}%` }} />
+                  </span>
+                  <span className="micro" style={excluded ? { color: "var(--note)" } : undefined}>{badge(r)}</span>
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
 
       {/* Currency belongs to a trip rather than to the phone — the same person's next holiday may
           be somewhere else — but it is set once and then never touched, so it sits down here with
