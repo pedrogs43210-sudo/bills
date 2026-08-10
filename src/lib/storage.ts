@@ -1,6 +1,9 @@
 import { SCHEMA_VERSION, type Trip } from "../types";
 import { migrateTrip } from "./migrate";
 
+/* The app is called Billy now, and these keys are not. They must never be renamed: the key IS
+   where the data lives, so a tidier prefix would make every existing trip disappear on the next
+   launch, with the old ones still sitting there unread. */
 const DATA_KEY = "bills.data.v1";
 const API_KEY_KEY = "bills.apiKey";
 
@@ -80,7 +83,7 @@ export function importTrip(json: string): Trip {
   const parsed = JSON.parse(json) as { trip?: unknown; schemaVersion?: unknown };
   const claimed = [parsed?.schemaVersion, (parsed?.trip as { schemaVersion?: unknown } | undefined)?.schemaVersion];
   if (claimed.some((v) => typeof v === "number" && v > SCHEMA_VERSION)) {
-    throw new Error("This file was made by a newer version of Bills");
+    throw new Error("This file was made by a newer version of Billy");
   }
   // migrateTrip validates the shape and upgrades v1 export files.
   return migrateTrip(parsed?.trip);

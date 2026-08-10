@@ -79,7 +79,7 @@ export function HelpScreen({ go }: { go: (v: View) => void }) {
       <div className="card">
         <h3>About</h3>
         <p className="label" style={{ marginTop: 0 }}>
-          Bills version {__APP_VERSION__}
+          Billy version {__APP_VERSION__}
         </p>
         <p className="label">
           Made by Pedro Santos. Questions, or something wrong with the numbers?{" "}

@@ -143,7 +143,7 @@ describe("scan flow", () => {
       storeName: "Lidl", date: null, currency: "EUR",
       items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }], paidTotal: 119, preDiscountTotal: null,
     });
-    expect(await screen.findByPlaceholderText(/trip name/i)).toBeInTheDocument(); // still on trip list
+    expect(await screen.findByRole("heading", { name: "Billy" })).toBeInTheDocument(); // still on the trip list
     expect(screen.queryByText(/check the receipt/i)).toBeNull(); // no surprise navigation
     await user.click(screen.getByText(/algarve/i));
     expect(await screen.findByText(/lidl/i)).toBeInTheDocument(); // data was kept

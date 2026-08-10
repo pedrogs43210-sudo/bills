@@ -44,7 +44,7 @@ describe("settings screen", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: /settings/i }));
     await user.upload(screen.getByLabelText(/import trip/i), file);
-    expect(await screen.findByText(/isn't a bills trip/i)).toBeInTheDocument();
+    expect(await screen.findByText(/isn't a Billy trip/i)).toBeInTheDocument();
   });
 });
 

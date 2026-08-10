@@ -22,6 +22,10 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
   const { data, dispatch } = useStore();
   const [name, setName] = useState("");
   const [emoji, setEmoji] = useState(EMOJIS[0]);
+  /* The form used to sit above the trips, so opening the app meant looking at an empty field
+     before your own holidays. It lives behind the ＋ now — and opens by itself for someone with
+     no trips, who has nothing else to look at and one obvious thing to do. */
+  const [adding, setAdding] = useState(data.trips.length === 0);
 
   function create() {
     const trimmed = name.trim();
@@ -29,43 +33,68 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
     const id = newId();
     dispatch({ type: "createTrip", id, name: trimmed, emoji });
     setName("");
+    setAdding(false);
     go({ screen: "trip", tripId: id });
   }
 
   return (
     <div>
+      {/* The app's own name and mark, and the two things the header is for: start a trip, or go
+          to settings. The same file the phone uses as the app icon, so there is one mark. */}
       <div className="topbar">
-        <h1 className="screen-title">Bills 🧾</h1>
+        <img
+          className="app-mark"
+          src={`${import.meta.env.BASE_URL}icon.svg`}
+          alt=""
+          width={30}
+          height={30}
+        />
+        <h1 className="screen-title">Billy</h1>
+        <button
+          className="btn btn-ghost"
+          aria-label={adding ? "Close the new trip form" : "New trip"}
+          title="New trip"
+          onClick={() => setAdding(!adding)}
+        >
+          {adding ? "✕" : "＋"}
+        </button>
         <button className="btn btn-ghost" aria-label="Settings" onClick={() => go({ screen: "settings" })}>
           ⚙️
         </button>
       </div>
 
-      <div className="card">
-        <h3>New trip</h3>
-        <input
-          placeholder="Trip name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && create()}
-        />
-        <div style={{ margin: "10px 0" }}>
-          {EMOJIS.map((e) => (
-            <button
-              key={e}
-              className={`chip chip-emoji${e === emoji ? " selected" : ""}`}
-              aria-label={`Use ${e}`}
-              aria-pressed={e === emoji}
-              onClick={() => setEmoji(e)}
-            >
-              {e}
-            </button>
-          ))}
+      {adding && (
+        <div className="card">
+          <h3>New trip</h3>
+          <input
+            placeholder="Trip name"
+            autoFocus={data.trips.length > 0}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && create()}
+          />
+          <div style={{ margin: "10px 0" }}>
+            {EMOJIS.map((e) => (
+              <button
+                key={e}
+                className={`chip chip-emoji${e === emoji ? " selected" : ""}`}
+                aria-label={`Use ${e}`}
+                aria-pressed={e === emoji}
+                onClick={() => setEmoji(e)}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={create}>
+            Create trip
+          </button>
         </div>
-        <button className="btn btn-primary" onClick={create}>
-          Create trip
-        </button>
-      </div>
+      )}
+
+      {data.trips.length === 0 && !adding && (
+        <p className="muted">No trips yet — tap ＋ to start one.</p>
+      )}
 
       {newestFirst(data.trips).map((t) => (
         <button

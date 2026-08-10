@@ -106,7 +106,7 @@ export function migrateTrip(raw: unknown): Trip {
     !Array.isArray((raw as Trip).people) ||
     !Array.isArray((raw as Trip).receipts)
   ) {
-    throw new Error("Not a Bills trip");
+    throw new Error("Not a Billy trip");
   }
   const trip = raw as Trip & { groups?: unknown };
   return {

@@ -8,8 +8,8 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * upload.
  */
 const config: CapacitorConfig = {
-  appId: "app.bills.split",
-  appName: "Bills",
+  appId: "app.billy.split",
+  appName: "Billy",
   webDir: "dist",
   // The web assets are bundled into the app, so the served origin is capacitor://localhost on
   // iOS and https://localhost on Android. Both need adding to ALLOWED_ORIGINS on the scan proxy

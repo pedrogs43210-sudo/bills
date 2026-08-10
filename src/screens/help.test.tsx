@@ -53,7 +53,7 @@ describe("help and about", () => {
 
   it("shows the version, so a bug report can name it", async () => {
     await openHelp();
-    expect(screen.getByText(/Bills version \d+\.\d+\.\d+/)).toBeInTheDocument();
+    expect(screen.getByText(/Billy version \d+\.\d+\.\d+/)).toBeInTheDocument();
   });
 
   it("shows the install reference, which is the only way to ask for the scan count to be deleted", async () => {

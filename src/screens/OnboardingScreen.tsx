@@ -45,7 +45,8 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   return (
     <div>
       <div className="topbar">
-        <h1 className="screen-title">Bills 🧾</h1>
+        <img className="app-mark" src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={30} height={30} />
+        <h1 className="screen-title">Billy</h1>
         {/* Available from the very first panel: someone who already knows what this is should
             never have to tap through three screens to get started. */}
         <button className="btn btn-ghost" onClick={finish}>

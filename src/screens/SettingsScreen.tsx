@@ -48,7 +48,7 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
       dispatch({ type: "importTrip", trip: importTrip(await file.text()) });
       setImportError("");
     } catch {
-      setImportError("That file isn't a Bills trip export.");
+      setImportError("That file isn't a Billy trip export.");
     }
   }
 

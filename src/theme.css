@@ -221,6 +221,10 @@ h3 { font-size: 15.5px; }
 }
 
 .topbar { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s4); }
+/* The app's mark, in the header, from the same file the phone uses as the icon. Its own tear is
+   part of the drawing, so it needs no frame — and no radius here, or the corners would be cut
+   twice. */
+.app-mark { display: block; flex: none; }
 /* The title takes the slack, which pushes the right-hand action to the right edge. Without this
    the buttons packed left and 🗑 or 📤 floated in the middle of the row, next to the title. */
 .topbar .screen-title { flex: 1; min-width: 0; margin: 0; }

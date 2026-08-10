@@ -47,13 +47,26 @@ describe("the trip list", () => {
     expect(shown[0]).toContain("Last added"); // most recently added still comes first
   });
 
-  it("shows the new-trip box above the trips", () => {
+  it("shows your trips first, with the new-trip form behind the ＋", async () => {
+    // It used to be the other way round, so opening the app meant looking at an empty field
+    // before your own holidays.
     saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
+    const user = userEvent.setup();
     render(<App />);
-    const newTripBox = screen.getByPlaceholderText(/trip name/i);
+    expect(screen.queryByPlaceholderText(/trip name/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Algarve/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "New trip" }));
+    const form = screen.getByPlaceholderText(/trip name/i);
     const tripRow = screen.getByRole("button", { name: /Algarve/ });
-    // DOCUMENT_POSITION_FOLLOWING: the trip row comes after the box in the document
-    expect(newTripBox.compareDocumentPosition(tripRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // DOCUMENT_POSITION_FOLLOWING: opened, the form goes above the trips it is adding to
+    expect(form.compareDocumentPosition(tripRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("opens the form by itself for someone with no trips", () => {
+    // Nothing else to look at, and exactly one thing to do.
+    render(<App />);
+    expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
   });
 });
 
