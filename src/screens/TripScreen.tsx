@@ -7,6 +7,7 @@ import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
 import { currencyOptions } from "../lib/currencies";
 import { Disc, personVars } from "../components/chips";
+import { Footerbar } from "../components/Footerbar";
 import { ScanProgressScreen } from "./ScanProgressScreen";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
@@ -283,25 +284,6 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         <h1 className="screen-title">{trip.emoji} {trip.name}</h1>
       </div>
 
-      {/* Sits with the rest of the trip's setup rather than in Settings: currency belongs to a
-          trip, not to the phone, and the same person's next holiday may be somewhere else.
-          One row tall, because it is set once and then never touched. */}
-      <div className="card row">
-        <label className="micro" htmlFor="currency">Currency</label>
-        <select
-          id="currency"
-          style={{ width: "auto", flex: "0 1 auto" }}
-          value={trip.currency}
-          onChange={(e) => dispatch({ type: "setCurrency", tripId, currency: e.target.value })}
-        >
-          {currencyOptions(trip.currency).map((c) => (
-            <option key={c.code} value={c.code}>
-              {c.code} — {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
       <div className="card">
         <h3>Friends</h3>
         <div>
@@ -324,7 +306,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
               <span key={p.id} className="chip chip-person" style={{ ...personVars(p), cursor: "default" }}>
                 <Disc person={p} />
                 <button
-                  style={{ all: "unset", cursor: "pointer" }}
+                  className="chip-inline"
                   aria-label={`Rename ${p.name}`}
                   onClick={() => {
                     setEditingPersonId(p.id);
@@ -335,8 +317,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
                 </button>
                 {!personHasEntries(trip, p.id) && (
                   <button
+                    className="chip-inline chip-inline-end"
                     aria-label={`Remove ${p.name}`}
-                    style={{ border: "none", background: "none", cursor: "pointer", padding: "8px 10px", margin: "-8px -6px -8px 4px", fontSize: 16 }}
                     onClick={() => dispatch({ type: "removePerson", tripId, personId: p.id })}
                   >
                     ×
@@ -483,20 +465,41 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         );
       })}
 
-      <button
-        className="btn btn-ghost"
-        style={{ width: "100%", color: "var(--warn)" }}
-        onClick={() => {
-          if (window.confirm(`Delete trip "${trip.name}" and all its receipts? This can't be undone.`)) {
-            dispatch({ type: "deleteTrip", tripId });
-            go({ screen: "trips" });
-          }
-        }}
-      >
-        🗑 Delete trip
-      </button>
+      {/* Currency belongs to a trip rather than to the phone — the same person's next holiday may
+          be somewhere else — but it is set once and then never touched, so it sits down here with
+          the other trip-level settings instead of being the first thing above the receipts. */}
+      <div className="card">
+        <h3>Trip settings</h3>
+        <div className="row">
+          <label className="micro" htmlFor="currency">Currency</label>
+          <select
+            id="currency"
+            className="select-compact"
+            value={trip.currency}
+            onChange={(e) => dispatch({ type: "setCurrency", tripId, currency: e.target.value })}
+          >
+            {currencyOptions(trip.currency).map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} — {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          className="btn btn-ghost"
+          style={{ width: "100%", marginTop: "var(--s3)", color: "var(--warn)" }}
+          onClick={() => {
+            if (window.confirm(`Delete trip "${trip.name}" and all its receipts? This can't be undone.`)) {
+              dispatch({ type: "deleteTrip", tripId });
+              go({ screen: "trips" });
+            }
+          }}
+        >
+          🗑 Delete trip
+        </button>
+      </div>
 
-      <div className="footerbar">
+      <Footerbar>
         {/* Out of scans means a button, not a file input: a file input opens the camera the
             moment it is touched, and the paywall has to come first. */}
         {outOfScans ? (
@@ -568,7 +571,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             💸 Settle up
           </button>
         </div>
-      </div>
+      </Footerbar>
     </div>
   );
 }

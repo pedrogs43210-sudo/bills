@@ -4,6 +4,7 @@ import { balances, excludedReceipts, exclusionReason, paidTotals, settle, shareT
 import { isFullyAssigned } from "../lib/split";
 import { formatCents, formatCentsParts } from "../lib/money";
 import { Disc } from "../components/chips";
+import { Footerbar } from "../components/Footerbar";
 import { settledMessage, summaryText } from "../lib/summary";
 import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
@@ -43,7 +44,7 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
       body:
         `${listed}${excluded.length > 3 ? `; and ${excluded.length - 3} more` : ""}. ` +
         `Open ${excluded.length === 1 ? "it" : "them"} from the trip screen and fix the warning at the bottom ` +
-        `(tap ✏️ Edit items first if the receipt opens on the assigning screen).`,
+        `(tap the ✏️ button at the top first if the receipt opens on the assigning screen).`,
     });
   }
   if (hasUnassigned) {
@@ -148,9 +149,9 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
 
       {feedback === "copied" && <div className="banner-good">Copied to clipboard ✓</div>}
       {feedback === "failed" && <div className="banner-warn">Couldn't share on this device.</div>}
-      <div className="footerbar">
+      <Footerbar>
         <button className="btn btn-primary" onClick={share}>📤 Share summary</button>
-      </div>
+      </Footerbar>
     </div>
   );
 }

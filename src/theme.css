@@ -12,11 +12,23 @@
   --ink-2: #6e574a;
   --ink-3: #7d6555;
   --accent: #e8492f;
+  /* The brand accent is tuned for fills, focus rings and dots, where 3:1 is the bar; as 15px text
+     it measures 3.67:1. Accent-coloured words use this darker one instead — same hue, legible.
+     Dark enough for the palest note field too (4.9:1), since ghost buttons sit inside notes. */
+  --accent-ink: #b83e1a;
+  /* Deleting is the one irreversible thing in the app, so it gets its own colour. Four screens
+     already asked for --warn; until now the token did not exist, so the declarations were dropped
+     and "Delete trip" was the same colour as everything else. */
+  --warn: #b3261e;
   --sunset-1: #ff7059;
   --sunset-2: #ffb347;
   --good: #2e9e6b;
   --good-bg: #e4f2ea;
   --note: #b7791f;
+  /* The dot is a filled 20px disc with a character in it, so it needs a fill a white glyph can
+     sit on: the accents above are tuned for borders and lines, where 3:1 is the bar. */
+  --note-strong: #94600f;
+  --good-strong: #1f7a52;
   --note-bg: #fdf0dc;
   --note-line: #f0ce92;
 
@@ -61,13 +73,24 @@
   --line-strong: #5c4437;
   --ink: #fbeee2;
   --ink-2: #c4a895;
-  --ink-3: #7d6555;
+  /* Lightened from the light-mode #7d6555, which was left behind here: on the dark surfaces it
+     measured 2.83:1, so every .muted and .micro line — the badges, the "each" prices, the field
+     labels — was below the 4.5:1 floor. This measures 4.67:1 on the sunken fill, the worst case,
+     and stays a clear step dimmer than --ink-2 so the hierarchy is unchanged. */
+  --ink-3: #a89383;
   --accent: #ff8f73;
+  /* Pale on dark: the accent reads 6.1:1 as text here, so words and rings share one colour. */
+  --accent-ink: var(--accent);
+  --warn: #ff9b8d;
   --good: #4fcb92;
   --good-bg: #1e3b2c;
   --note: #f0c070;
   --note-bg: #3d2c16;
   --note-line: #6b4e1e;
+  /* Dark mode inverts the dot — a pale disc with the dark page colour as the glyph — and that
+     already measures 7.9:1 and 6.0:1, so the accents themselves are the strong colours here. */
+  --note-strong: var(--note);
+  --good-strong: var(--good);
   --sh-1: 0 2px 10px -4px rgba(0, 0, 0, 0.5);
 }
 
@@ -84,7 +107,10 @@ body {
 #root {
   max-width: 480px;
   margin: 0 auto;
-  padding: var(--s4) var(--s4) calc(140px + env(safe-area-inset-bottom));
+  /* Reserves whatever the fixed action bar actually measures — see components/Footerbar.tsx.
+     The old hard-coded 140px was smaller than the trip screen's 172px bar, which left Delete trip
+     and the last receipt permanently underneath it. */
+  padding: var(--s4) var(--s4) calc(var(--footer-h, 24px) + var(--s6) + env(safe-area-inset-bottom));
   min-height: 100vh;
 }
 
@@ -168,6 +194,9 @@ h3 { font-size: 15.5px; }
 }
 
 .topbar { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s4); }
+/* The title takes the slack, which pushes the right-hand action to the right edge. Without this
+   the buttons packed left and 🗑 or 📤 floated in the middle of the row, next to the title. */
+.topbar .screen-title { flex: 1; min-width: 0; margin: 0; }
 
 .footerbar {
   position: fixed;
@@ -216,15 +245,18 @@ h3 { font-size: 15.5px; }
 .btn-primary {
   border: 0;
   background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
-  color: #fff;
+  /* Not white. White measured 2.72:1 on the red end of the sunset and 1.78:1 on the amber end —
+     the most important label in the app, on its brightest button, was the least legible thing on
+     the screen. This deep cocoa reads 5.2:1 at the red end and 7.9:1 at the amber one, so the
+     gradient survives untouched and the words can be read in daylight. */
+  color: #4a1f10;
   width: 100%;
   box-shadow: var(--sh-2);
-  text-shadow: 0 1px 1px rgba(120, 40, 20, 0.25);
 }
 .btn-ghost {
   background: transparent;
   border-color: transparent;
-  color: var(--accent);
+  color: var(--accent-ink);
   padding: 0 var(--s2);
   min-height: var(--tap);
 }
@@ -248,6 +280,36 @@ h3 { font-size: 15.5px; }
   max-width: 100%;
   overflow-wrap: anywhere;
   text-align: left;
+}
+
+/* A whole card that happens to be a button: no button look at all, but a full-width, 44px-tall
+   tap area, so a one-line item is as easy to hit as a two-line one. */
+.tap-block {
+  all: unset;
+  cursor: pointer;
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+}
+
+/* A button inside a chip is as tall as the chip.
+   The rename button was the bare name — 14px tall inside a 44px pill, so most of what looks
+   like one tap target did nothing at all. Stretching it costs no layout: the chip already sets
+   the height, and these only grow to fill it. */
+.chip-inline {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  min-height: var(--tap);
+}
+/* The × sits against the chip's right edge, so it takes that padding as hit area too. */
+.chip-inline-end {
+  padding-right: var(--s3);
+  margin-right: calc(-1 * var(--s3));
+  padding-left: var(--s2);
+  font-size: 16px;
 }
 
 /* A person is a noun: fully round, their tint, their disc. Colours below. */
@@ -366,7 +428,10 @@ h3 { font-size: 15.5px; }
   border-radius: var(--r-md);
   padding: var(--s3);
   margin-bottom: var(--s3);
-  color: var(--note);
+  /* The body is ink, not the accent colour. Amber-on-cream measured 3.24:1 and green-on-mint
+     2.92:1 in light mode — a note nobody can read is worse than no note. The colour still carries
+     the meaning, through the dot and the border. */
+  color: var(--ink);
   font: 500 13px/1.5 var(--text);
 }
 .note-dot {
@@ -374,8 +439,8 @@ h3 { font-size: 15.5px; }
   width: 20px;
   height: 20px;
   border-radius: var(--r-pill);
-  background: var(--note);
-  color: var(--note-bg);
+  background: var(--note-strong);
+  color: var(--surface);
   font: 700 13px/20px var(--text);
   text-align: center;
 }
@@ -383,9 +448,8 @@ h3 { font-size: 15.5px; }
 .note-good {
   background: var(--good-bg);
   border-color: color-mix(in srgb, var(--good) 35%, transparent);
-  color: var(--good);
 }
-.note-good .note-dot { background: var(--good); color: var(--good-bg); }
+.note-good .note-dot { background: var(--good-strong); color: var(--surface); }
 
 /* Kept so existing markup keeps working while screens move over one at a time. */
 .banner-warn,
@@ -396,8 +460,9 @@ h3 { font-size: 15.5px; }
   margin-bottom: var(--s3);
   border: 1px solid transparent;
 }
-.banner-warn { background: var(--note-bg); border-color: var(--note-line); color: var(--note); }
-.banner-good { background: var(--good-bg); border-color: var(--good); color: var(--good); }
+/* Ink bodies, for the same reason as .note above. */
+.banner-warn { background: var(--note-bg); border-color: var(--note-line); color: var(--ink); }
+.banner-good { background: var(--good-bg); border-color: var(--good); color: var(--ink); }
 
 /* ---------- Rule 3 — progress is one bar and one fraction ---------- */
 
@@ -431,6 +496,18 @@ input, select {
 input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* A select sized by its answer, not by its longest option.
+   The currency picker was a grey bar three quarters of the screen wide, because a select's
+   natural width is that of "South Korean won (₩)" even while it reads "EUR — Euro (€)".
+   field-sizing shrinks it to the chosen option; the max-width caps browsers that lack it, and
+   the ellipsis keeps a long name from being cut mid-letter. */
+.select-compact {
+  width: auto;
+  max-width: 62%;
+  field-sizing: content;
+  text-overflow: ellipsis;
 }
 
 /* A trip's name, in the brand face — the one place a name is the headline. */

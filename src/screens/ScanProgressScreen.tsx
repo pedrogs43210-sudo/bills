@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Footerbar } from "../components/Footerbar";
 import { AdSlot } from "../components/AdSlot";
 
 /**
@@ -58,13 +59,13 @@ export function ScanProgressScreen({ onCancel }: { onCancel: () => void }) {
           here must never hold the user once the items are ready. */}
       <AdSlot placement="scan-progress" />
 
-      <div className="footerbar">
+      <Footerbar>
         {/* A way out. A scan that has gone wrong should never trap someone on a screen whose
             only content is a moving light. */}
         <button className="btn" style={{ width: "100%" }} onClick={onCancel}>
           Cancel and add by hand
         </button>
-      </div>
+      </Footerbar>
     </div>
   );
 }

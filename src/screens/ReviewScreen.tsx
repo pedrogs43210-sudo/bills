@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Footerbar } from "../components/Footerbar";
 import { useStore } from "../state/StoreProvider";
 import { newId } from "../lib/ids";
 import { formatCents, parseToCents } from "../lib/money";
@@ -332,7 +333,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         <div className="banner-warn">⚠️ Someone who paid isn't in this trip any more — pick who paid.</div>
       )}
 
-      <div className="footerbar">
+      <Footerbar>
         <button
           className="btn btn-primary"
           disabled={receipt.items.length === 0 || !covered || negativeTotal}
@@ -343,7 +344,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         >
           Looks right →
         </button>
-      </div>
+      </Footerbar>
     </div>
   );
 }

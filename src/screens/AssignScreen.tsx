@@ -7,6 +7,7 @@ import { shareOrCopy } from "../lib/share";
 import type { View } from "../App";
 import type { Assignment, Item, Person } from "../types";
 import { ActionChip, GroupChip, PersonChip, personVars } from "../components/chips";
+import { Footerbar } from "../components/Footerbar";
 
 /** Order-insensitive set comparison, for highlighting a group chip that matches the assignment. */
 function sameMembers(a: string[], b: string[]): boolean {
@@ -89,14 +90,18 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trip", tripId })}>←</button>
         <h1 className="screen-title">Who got what?</h1>
+        {/* Icon only, like Back and Share either side of it: an emoji with a word beside it
+            read as a third kind of button in a row of two, and pushed the title off centre. */}
         <button
           className="btn btn-ghost"
+          aria-label="Edit items"
+          title="Edit items"
           onClick={() => {
             dispatch({ type: "setReceiptStatus", tripId, receiptId, status: "review" });
             go({ screen: "receipt", tripId, receiptId });
           }}
         >
-          ✏️ Edit items
+          ✏️
         </button>
         <button
           className="btn btn-ghost"
@@ -134,7 +139,7 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
         return (
           <div key={item.id} className={`card${!isItemAssigned(item) ? " card-todo" : ""}`}>
             <button
-              style={{ all: "unset", cursor: "pointer", display: "block", width: "100%" }}
+              className="tap-block"
               aria-label={`${item.quantity > 1 ? `${item.quantity}× ` : ""}${item.name}, ${formatCents(item.lineTotal, trip.currency)}`}
               onClick={() => {
                 setOpenItemId(open ? null : item.id);
@@ -227,7 +232,7 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
         );
       })}
 
-      <div className="footerbar">
+      <Footerbar>
         {/* Rule 3 — the same track and the same fraction as the receipt row and the trip. */}
         <div className={`track${unassignedCount === 0 ? " done" : assignedCount === 0 ? " none" : ""}`}>
           <span style={{ width: countedTotal === 0 ? "0%" : `${(assignedCount / countedTotal) * 100}%` }} />
@@ -247,7 +252,7 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
         >
           Done → Settle up
         </button>
-      </div>
+      </Footerbar>
     </div>
   );
 }

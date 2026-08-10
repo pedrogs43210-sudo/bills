@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Footerbar } from "../components/Footerbar";
 import { setOnboarded } from "../lib/onboarding";
 
 /**
@@ -72,7 +73,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      <div className="footerbar">
+      <Footerbar>
         {/* The dots are decoration: the button already says where you are. */}
         <div aria-hidden="true" style={{ display: "flex", gap: "var(--s2)", justifyContent: "center", marginBottom: "var(--s3)" }}>
           {STEPS.map((s, i) => (
@@ -91,7 +92,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         <button className="btn btn-primary" onClick={() => (last ? finish() : setStep(step + 1))}>
           {last ? "Start splitting" : "Next"}
         </button>
-      </div>
+      </Footerbar>
     </div>
   );
 }
