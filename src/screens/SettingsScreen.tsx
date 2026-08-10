@@ -131,6 +131,17 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
         />
         {importError && <div className="banner-warn">{importError}</div>}
       </div>
+
+      <div className="card">
+        <h3>Help &amp; about</h3>
+        <p className="label" style={{ marginTop: 0 }}>
+          How the splitting works, why a share can be a cent different, and what happens to a
+          photo of a receipt.
+        </p>
+        <button className="btn" style={{ width: "100%" }} onClick={() => go({ screen: "help" })}>
+          Open help
+        </button>
+      </div>
     </div>
   );
 }

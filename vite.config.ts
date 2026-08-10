@@ -2,6 +2,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
+import pkg from "./package.json" with { type: "json" };
 
 /**
  * The native builds ship the web assets inside the app, so a service worker there caches a copy
@@ -13,6 +14,8 @@ const forNative = process.env.BILLS_NATIVE === "1";
 
 export default defineConfig({
   base: "./",
+  // Shown on the Help screen, so a bug report can name the version it came from.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [
     react(),
     ...(forNative

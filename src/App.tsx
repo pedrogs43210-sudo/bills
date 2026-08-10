@@ -8,6 +8,7 @@ import { SettleScreen } from "./screens/SettleScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { PaywallScreen } from "./screens/PaywallScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { HelpScreen } from "./screens/HelpScreen";
 import { hasOnboarded } from "./lib/onboarding";
 import { lastKnownQuota } from "./lib/scan";
 import { back, initialNav, navigate } from "./lib/history";
@@ -19,7 +20,8 @@ export type View =
   | { screen: "receipt"; tripId: string; receiptId: string }
   | { screen: "settle"; tripId: string }
   | { screen: "paywall"; tripId: string }
-  | { screen: "settings" };
+  | { screen: "settings" }
+  | { screen: "help" };
 
 function Router() {
   const [nav, setNav] = useState(() => initialNav());
@@ -51,6 +53,7 @@ function Router() {
 
   if (view.screen === "trips") return <TripListScreen go={setView} />;
   if (view.screen === "settings") return <SettingsScreen go={setView} />;
+  if (view.screen === "help") return <HelpScreen go={setView} />;
 
   const trip = data.trips.find((t) => t.id === view.tripId);
   if (!trip) return <TripListScreen go={setView} />; // trip was deleted
