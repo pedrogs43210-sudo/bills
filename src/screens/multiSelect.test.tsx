@@ -102,6 +102,19 @@ describe("holding an item to pick several", () => {
     expect(screen.getByRole("button", { name: /Everyone/ })).toBeInTheDocument();
   });
 
+  it("keeps the selection's bar on screen while you scroll for the next item", async () => {
+    // The count, Select all and the way out all live up there, and all three used to scroll away.
+    // jsdom cannot scroll, so what is asserted is the sticky treatment; the behaviour itself is
+    // measured in a real browser.
+    render(<App />);
+    await openAssign();
+    vi.useFakeTimers();
+
+    expect(document.querySelector(".topbar")).not.toHaveClass("topbar-sticky");
+    hold(row(/Fries/));
+    expect(document.querySelector(".topbar")).toHaveClass("topbar-sticky");
+  });
+
   it("does not open the held item's own panel as well", async () => {
     render(<App />);
     await openAssign();

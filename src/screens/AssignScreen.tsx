@@ -194,7 +194,9 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
       {/* While items are picked the bar belongs to the selection: leaving it is the first thing
           back should do, and editing or sharing the receipt mid-selection means nothing. */}
       {picking ? (
-        <div className="topbar">
+        /* Sticky, because everything on it is needed while you are scrolling for the next item to
+           pick: how many you have, Select all, and the way out. */
+        <div className="topbar topbar-sticky">
           <button className="btn btn-ghost" aria-label="Cancel selection" onClick={() => setPicked([])}>✕</button>
           <h1 className="screen-title">{picked.length} selected</h1>
           <button

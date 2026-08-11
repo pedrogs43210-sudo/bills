@@ -29,6 +29,18 @@ beforeEach(() => {
 });
 
 describe("settle screen", () => {
+  it("offers a way back to the trip, for the next shop", async () => {
+    // Settling up is rarely the end of the holiday, and the topbar's arrow is in the far corner.
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByText(/algarve/i));
+    await user.click(screen.getByRole("button", { name: /settle up/i }));
+    await user.click(screen.getByRole("button", { name: /back to the trip/i }));
+    // back on the trip screen, where receipts get added
+    expect(screen.getByRole("heading", { name: /Algarve/ })).toBeInTheDocument();
+    expect(screen.getByLabelText(/scan receipt/i)).toBeInTheDocument();
+  });
+
   it("shows per-person totals and transfers", async () => {
     const user = userEvent.setup();
     render(<App />);

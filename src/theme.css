@@ -144,7 +144,10 @@ h3 { font-size: 15.5px; }
   letter-spacing: -0.012em;
   white-space: nowrap;
 }
-.hero { font-size: 44px; line-height: 1.05; display: block; }
+/* Centred, unlike the money in a list: right-alignment is for a column of figures, and this is a
+   figure on its own in a centred card. It was sitting hard against the card's right edge with
+   190px of nothing to its left, while the line under it was properly centred. */
+.hero { font-size: 44px; line-height: 1.05; display: block; text-align: center; }
 .money-1 { font-size: 25px; }
 .money-2 { font-size: 15px; }
 /* The hero's currency symbol steps back so the digits carry the weight. */
@@ -221,6 +224,21 @@ h3 { font-size: 15.5px; }
 }
 
 .topbar { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s4); }
+/* A bar that has to stay on screen: while items are picked it carries the count, Select all and the
+   way out, and all three used to scroll away up the page as soon as you went looking for the next
+   item to pick. The negative margin lets it reach the screen's edges, so nothing slides past it in
+   the 16px gutters, and the safe-area padding keeps it clear of the status bar in the installed
+   app, where the page starts at the very top of the glass. */
+.topbar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: 0 calc(-1 * var(--s4)) var(--s4);
+  padding: var(--s2) var(--s4);
+  padding-top: calc(var(--s2) + env(safe-area-inset-top));
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
 /* The app's mark, in the header, from the same file the phone uses as the icon. Its own tear is
    part of the drawing, so it needs no frame — and no radius here, or the corners would be cut
    twice. */

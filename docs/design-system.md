@@ -56,6 +56,11 @@ The palette above is unchanged: what changed is *which* token gets used for word
 | `.btn-ghost` label | `--accent` | **3.67:1**, and 4.25:1 inside a note | `--accent-ink` → 4.9:1 worst case |
 | `.muted` / `.micro` in dark | `--ink-3` `#7D6555` | **2.83:1** | `#A89383` → 4.67:1 |
 
+The hero is the one piece of money that is **centred**, not right-aligned: right-alignment is for a
+column of figures, and the hero is a lone figure in a centred card. It inherited `text-align: right`
+from the shared money rule and sat hard against its card's right edge with 190px of nothing to its
+left.
+
 Two rules come out of this:
 
 1. **A fill colour is not a text colour.** The brand accent, the amber and the green are tuned for
@@ -173,6 +178,13 @@ as hit area too.
   heading that floated outside: one section reading differently from its neighbours is the thing
   you notice. A row reaches the card's edges through a negative margin, so its separator and its
   amber "not counted" edge line up with the box rather than floating inside it.
+- **A bar that holds a mode sticks.** While items are picked, the top bar carries the count,
+  Select all and the way out — and every one of those is needed *while scrolling to find the next
+  item*, so `.topbar-sticky` pins it at the top with an opaque background and negative margins that
+  reach the screen's edges. A mode's exit that scrolls away is a mode you cannot leave.
+- **The way on is at the bottom, not only in the corner.** The settle screen's arrow back to the
+  trip is duplicated as a full button beside Share, because settling up is rarely the end of the
+  holiday and the topbar's far corner is not where a thumb is.
 - **One round button in the bottom-right corner** for the single thing a screen is for — adding a
   trip, on the trip list. 56px, the sunset gradient, and a *drawn* plus: a typed ＋ at 30px puts
   only 16px of ink inside the circle, and how much depends on which font managed to load. The

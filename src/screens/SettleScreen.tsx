@@ -150,7 +150,17 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
       {feedback === "copied" && <div className="banner-good">Copied to clipboard ✓</div>}
       {feedback === "failed" && <div className="banner-warn">Couldn't share on this device.</div>}
       <Footerbar>
-        <button className="btn btn-primary" onClick={share}>📤 Share summary</button>
+        {/* Settling up is rarely the end of the holiday: there is usually another shop tomorrow.
+            The topbar has a back arrow, but it is in the far corner, and this is the screen where
+            somebody decides to carry on rather than stop. */}
+        <div className="row">
+          <button className="btn" style={{ flex: 1 }} onClick={() => go({ screen: "trip", tripId })}>
+            ← Back to the trip
+          </button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={share}>
+            📤 Share
+          </button>
+        </div>
       </Footerbar>
     </div>
   );

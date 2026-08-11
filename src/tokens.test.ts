@@ -80,6 +80,26 @@ describe("the design tokens", () => {
     expect(block).not.toMatch(/color:\s*(#fff|#ffffff|white)\b/i);
   });
 
+  it("centres the hero rather than right-aligning it with the rest of the money", () => {
+    // Right-alignment is for a column of figures. As a lone figure in a centred card it sat hard
+    // against the card's right edge, 190px of nothing to its left.
+    // Anchored at the start of a line, or this finds the grouped money rule — which contains the
+    // text ".hero {" and is legitimately right-aligned.
+    const hero = css.match(/^\.hero \{[^}]*\}/m);
+    expect(hero, "no standalone .hero rule").not.toBeNull();
+    expect(hero![0]).toMatch(/text-align:\s*center/);
+  });
+
+  it("keeps the selection's top bar sticky", () => {
+    // Everything on that bar is needed while scrolling: the count, Select all, and the way out.
+    const bar = css.slice(css.indexOf(".topbar-sticky {"));
+    const block = bar.slice(0, bar.indexOf("}"));
+    expect(block).toMatch(/position:\s*sticky/);
+    expect(block).toMatch(/top:\s*0/);
+    // Opaque, or the items would scroll through it.
+    expect(block).toMatch(/background:\s*var\(--bg\)/);
+  });
+
   it("keeps note bodies in ink rather than in the accent colour", () => {
     // Amber-on-cream measured 3.24:1 and green-on-mint 2.92:1.
     const note = css.slice(css.indexOf(".note {"));
