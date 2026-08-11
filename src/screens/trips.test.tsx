@@ -56,7 +56,11 @@ describe("the trip list", () => {
     expect(screen.queryByPlaceholderText(/trip name/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Algarve/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "New trip" }));
+    // The round button in the corner, not a ＋ in the header: the header's far corner is the
+    // hardest place to reach one-handed.
+    const fab = screen.getByRole("button", { name: "New trip" });
+    expect(fab).toHaveClass("fab");
+    await user.click(fab);
     const form = screen.getByPlaceholderText(/trip name/i);
     const tripRow = screen.getByRole("button", { name: /Algarve/ });
     // DOCUMENT_POSITION_FOLLOWING: opened, the form goes above the trips it is adding to
@@ -67,6 +71,17 @@ describe("the trip list", () => {
     // Nothing else to look at, and exactly one thing to do.
     render(<App />);
     expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
+    // No round button while the form is open: one control, not two that both close it.
+    expect(screen.queryByRole("button", { name: "New trip" })).not.toBeInTheDocument();
+  });
+
+  it("reserves room for the round button, so the last trip is never under it", async () => {
+    saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
+    render(<App />);
+    // jsdom lays nothing out, so the height is 0 — what this proves is that the button publishes
+    // the reservation at all, and that the page padding is derived from it rather than guessed.
+    // The arithmetic is measured in a real browser.
+    expect(document.documentElement.style.getPropertyValue("--footer-h")).toBe("16px");
   });
 });
 

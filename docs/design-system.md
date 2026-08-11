@@ -173,8 +173,17 @@ as hit area too.
   heading that floated outside: one section reading differently from its neighbours is the thing
   you notice. A row reaches the card's edges through a negative margin, so its separator and its
   amber "not counted" edge line up with the box rather than floating inside it.
-- **A fixed bottom bar reserves its own space.** `components/Footerbar.tsx` measures itself and
-  publishes `--footer-h`, which the page padding is derived from. The stylesheet used to reserve a
+- **One round button in the bottom-right corner** for the single thing a screen is for — adding a
+  trip, on the trip list. 56px, the sunset gradient, and a *drawn* plus: a typed ＋ at 30px puts
+  only 16px of ink inside the circle, and how much depends on which font managed to load. The
+  slot is centred on the app's 480px column exactly as the bottom bar is, so on a wide screen the
+  button sits beside the content instead of drifting to the window's edge, and it takes no pointer
+  events so the list scrolls under it. It replaced a ＋ in the header, which is the hardest corner
+  of a phone to reach one-handed.
+- **A fixed bottom bar reserves its own space.** `lib/useReservedBottom.ts` measures the
+  fixed thing — the bar or the round button — and publishes `--footer-h`, which the page padding is
+  derived from. One publisher per screen: everything fixed at the bottom is either the bar or the
+  button, never both. The stylesheet used to reserve a
   hard-coded 140px while the trip screen's bar measured 172px, so "Delete trip" and the last
   receipt sat under it at every scroll position. A number in a stylesheet cannot know how tall a
   bar is on six different screens.

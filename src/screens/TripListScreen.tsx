@@ -4,6 +4,7 @@ import { newId } from "../lib/ids";
 import type { View } from "../App";
 import type { Trip } from "../types";
 import { Disc } from "../components/chips";
+import { Fab } from "../components/Fab";
 
 const EMOJIS = ["🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
 
@@ -50,14 +51,6 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           height={30}
         />
         <h1 className="screen-title">Billy</h1>
-        <button
-          className="btn btn-ghost"
-          aria-label={adding ? "Close the new trip form" : "New trip"}
-          title="New trip"
-          onClick={() => setAdding(!adding)}
-        >
-          {adding ? "✕" : "＋"}
-        </button>
         <button className="btn btn-ghost" aria-label="Settings" onClick={() => go({ screen: "settings" })}>
           ⚙️
         </button>
@@ -65,7 +58,15 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
 
       {adding && (
         <div className="card">
-          <h3>New trip</h3>
+          <div className="row">
+            <h3 style={{ margin: 0 }}>New trip</h3>
+            {/* The round button opens this; closing it belongs here, next to what it closes. */}
+            {data.trips.length > 0 && (
+              <button className="btn btn-ghost" aria-label="Close the new trip form" onClick={() => setAdding(false)}>
+                ✕
+              </button>
+            )}
+          </div>
           <input
             placeholder="Trip name"
             autoFocus={data.trips.length > 0}
@@ -93,7 +94,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
       )}
 
       {data.trips.length === 0 && !adding && (
-        <p className="muted">No trips yet — tap ＋ to start one.</p>
+        <p className="muted">No trips yet — tap the ＋ button to start one.</p>
       )}
 
       {newestFirst(data.trips).map((t) => (
@@ -132,6 +133,26 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           )}
         </button>
       ))}
+
+      {/* Last in the tree, so it is last in the tab order and a screen reader reaches the trips
+          first. It is fixed, so where it sits in the DOM has nothing to do with where it appears. */}
+      {!adding && (
+        <Fab
+          label="New trip"
+          onClick={() => {
+            setAdding(true);
+            // The form appears under the header. From half way down a long list that would be
+            // off-screen, so the tap takes you to it.
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          {/* Drawn, not typed. A ＋ at 30px puts only 16px of ink inside a 56px circle, and how
+              much depends on which font loaded; this is 24px of stroke, exactly centred. */}
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
+          </svg>
+        </Fab>
+      )}
     </div>
   );
 }

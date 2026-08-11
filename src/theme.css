@@ -240,6 +240,42 @@ h3 { font-size: 15.5px; }
   background: linear-gradient(transparent, var(--bg) 35%);
 }
 
+/* The round button in the bottom-right corner — see components/Fab.tsx.
+   The slot is centred on the app's column exactly as the bar is, so the button sits beside the
+   content on a wide screen instead of drifting to the window's edge. It is only as tall as the
+   button and takes no pointer events, so the list scrolls under it as if it were not there. */
+.fab-slot {
+  position: fixed;
+  bottom: calc(var(--s4) + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  padding: 0 var(--s4);
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.fab {
+  pointer-events: auto;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
+  /* The same cocoa as the primary button: white on the amber end of this gradient measures
+     1.78:1, and a ＋ nobody can see is not a button. */
+  color: #4a1f10;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--sh-2);
+  cursor: pointer;
+}
+.fab:active { transform: scale(0.94); }
+@media (prefers-reduced-motion: no-preference) {
+  .fab { transition: transform 0.12s ease; }
+}
+
 .item-row { padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
 .item-row:last-child { border-bottom: none; }
 /* On the paper, not in the maths. Dimmed and struck rather than hidden. */
