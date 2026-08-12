@@ -192,6 +192,14 @@ as hit area too.
   button sits beside the content instead of drifting to the window's edge, and it takes no pointer
   events so the list scrolls under it. It replaced a ＋ in the header, which is the hardest corner
   of a phone to reach one-handed.
+
+  **Placement.** 16px from the trailing edge, which lines its right edge up with the cards. At the
+  bottom, `16px + max(env(safe-area-inset-bottom), 26px)`. Material's 16dp is measured from the
+  *content* area, and on Android that sits above a 24–48dp navigation bar — so a native FAB has the
+  bar's worth of space beneath it. A web page has none, and a literal 16px hugged the corner. The
+  `max()` supplies what the system bar would have: 50px on an installed iPhone, of which 34 is the
+  home indicator, so 16px above it; 42px everywhere else. The gap lives in the slot's padding, not
+  in `bottom`, so the space the page reserves is measured from the slot's box rather than guessed.
 - **A fixed bottom bar reserves its own space.** `lib/useReservedBottom.ts` measures the
   fixed thing — the bar or the round button — and publishes `--footer-h`, which the page padding is
   derived from. One publisher per screen: everything fixed at the bottom is either the bar or the
