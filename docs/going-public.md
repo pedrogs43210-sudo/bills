@@ -21,24 +21,29 @@ So the real choice is between **paying a small amount per scan** and **doing the
 
 ### Option A — a cheap AI model (recommended)
 
-The app currently uses Claude Opus, which is the most expensive option and far more model than reading a receipt needs. **Claude Haiku 4.5 is the right tool** at $1 per million input tokens and $5 per million output.
+**Superseded — the app runs on `claude-sonnet-5`.** The original recommendation here was Haiku 4.5 at $1/$5 per million tokens, and it was tried. It failed: Haiku downscales images to **1568px on the long edge**, which is not enough resolution for a supermarket till roll, and it misread most real receipts — it repeated the printed total as an item several times over, so the sum came out enormous. Sonnet 5 reads to **2576px**, which fixed it. The cheapest model that cannot read the receipt costs infinity per useful scan.
 
-Rough cost of one receipt scan (a downscaled photo, ~30 items returned as structured data):
+Rough cost of one receipt scan — one 2576px photo (up to 4,784 image tokens), a ~1,160-token
+instruction prompt, and ~900 tokens of items back:
 
 | Model | Per scan | Per 1,000 scans |
 |---|---|---|
-| **Haiku 4.5** | **~$0.01** | **~$10** |
-| Sonnet 5 | ~$0.03 | ~$30 |
-| Opus 5 / 4.8 (what it uses now) | ~$0.05 | ~$50 |
+| **Sonnet 5** (what it runs on) | **~$0.02** intro · **~$0.03** standard | **~$22** · **~$32** |
+| Haiku 4.5 | ~$0.01 — but see above; it cannot read the receipt | ~$10 |
+| Opus 5 / 4.8 | ~$0.05 | ~$50 |
 
-Switching the scanner from Opus to Haiku cuts the cost roughly **five-fold** for a task that is "read this text and put it in a list". Worth measuring accuracy on real Pingo Doce and Continente receipts before committing — if Haiku misreads more, Sonnet is still half the cost of today.
+Sonnet 5 is $3 per million input tokens and $15 per million output, currently discounted to **$2/$10
+until 31 August 2026** — so the per-scan cost rises by about half in September. The image dominates
+the bill: 4,784 of roughly 5,950 input tokens are the photo, which is why the prompt's length barely
+matters and the resolution cap does.
 
 **Two discounts, and only one of them helps you:**
 
-- **Prompt caching** (~90% off repeated input) does not apply: the receipt photo is different every time, and the reusable part — the instructions — is smaller than the 4,096-token minimum Haiku needs before caching kicks in.
+- **Prompt caching** (~90% off repeated input) is *newly possible and still marginal.* On Haiku it was ruled out because the instructions were under its 4,096-token minimum; Sonnet 5's minimum is 1,024 and the prompt is ~1,160, so it now clears the bar. But the cacheable part is only the instructions — the photo differs every time — so a hit saves ~7% of the input bill, and at anything less than a scan every five minutes globally the cache expires before it is read. Not worth doing until there is steady traffic.
 - **Batch processing** is 50% off, but it's asynchronous: minutes to hours, not seconds. Useless for someone standing in the kitchen wanting the split now. It would only fit a "scan these overnight" feature, which nobody asked for.
 
-Plan on roughly **1 cent per scan, no discounts**.
+Plan on roughly **2–3 cents per scan, no discounts** — 2 while the introductory rate lasts, 3 after
+31 August 2026.
 
 ### Option B — free, on the phone
 
@@ -55,11 +60,16 @@ This is more code than Option A and worth doing **only once you know what scanni
 
 ### Recommendation
 
-**Ship Option A on Haiku, measure, then consider C.** Even pessimistically — 2,000 users averaging 5 scans a month — that's 10,000 scans, about **$100/month**. That number is the foundation of the pricing below, so measure it early against real receipts rather than trusting my estimate.
+**Ship Option A on Sonnet 5, measure, then consider C.** Pessimistically — 2,000 users averaging 5
+scans a month — that is 10,000 scans, about **$220/month** on the introductory rate and **$320/month**
+after it ends. (The original figure here was $100/month on Haiku; Haiku could not read the receipts,
+so the real number is roughly three times that.) Against 2,000 subscribers at €4.99 the margin still
+works comfortably, but it is thinner than this document first claimed — measure it early against real
+receipts rather than trusting the estimate.
 
 ### Not worth it for you
 
-- **Dedicated OCR APIs** (Mistral OCR at $4 per 1,000 pages, AWS Textract, etc.) cost *more* than Haiku and return text and layout rather than the clean item list you need. You'd still need a model to interpret them.
+- **Dedicated OCR APIs** (Mistral OCR at $4 per 1,000 pages, AWS Textract, etc.) return text and layout rather than the clean item list you need, so you'd still need a model to interpret them. They now undercut Sonnet 5 on the raw read (~$4 vs ~$22 per 1,000), which makes an OCR-then-cheap-model pipeline worth pricing if the scan bill ever becomes the constraint — it was not worth it against Haiku.
 
 ---
 
@@ -190,7 +200,9 @@ Ordered by whether the launch is blocked without it.
 
 ## 4. A sensible order
 
-**Done:** scanning switched to Haiku 4.5. Still needs measuring against real Pingo Doce and Continente receipts — the code change is verified, the accuracy is not.
+**Superseded:** scanning went to Haiku 4.5, then to `claude-sonnet-5` after Haiku's 1568px image cap
+made it misread real receipts. Still needs measuring against real Pingo Doce and Continente
+receipts — the code change is verified, the accuracy is not.
 
 **Next:** the design refresh (see `docs/design-brief.md`). v2 is built and waiting on this before it publishes, and it has to happen before store screenshots rather than after.
 

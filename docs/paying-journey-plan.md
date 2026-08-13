@@ -70,8 +70,44 @@ Three layers, none of which ask the user anything:
    (signed JWS transactions) and Google's Play Developer API `subscriptions.v2`. The client
    never asserts its own entitlement.
 
-A reinstall resets someone's free counter. **Accept it.** At roughly a cent a scan with Haiku,
-that abuse is far cheaper than the conversions a sign-up wall would cost.
+A reinstall resets someone's free counter. **Accept it.** A scan on `claude-sonnet-5` costs roughly
+**2–3 cents** — about 6,000 input tokens (a 2576px photo is up to 4,784 image tokens, plus the
+prompt) and around 1,000 out, at $2/$10 per million on the introductory rate and $3/$15 after it
+ends on **31 August 2026**. So a farmed reset is worth 10–15 cents, which is far cheaper than the
+conversions a sign-up wall would cost. Budget for the scan cost rising by half in September.
+
+---
+
+## What an account would buy, and what it would cost
+
+Asked directly: does anyone need to sign up in order to pay for an annual subscription? **No.** The
+subscription is tied to the buyer's Apple ID or Google account — they signed in to the phone, and
+that is the account. The store receipt *is* the credential: the app sends it to the Worker, the
+Worker verifies it against Apple's or Google's server API, and `subscriptions.install_id` records
+the result. Restore purchases moves it to a new phone; refunds and lapses arrive as server
+notifications keyed to the same `original_transaction_id`. Family sharing comes free if enabled.
+
+| | **No account** (this plan) | **Account / Google sign-in** |
+|---|---|---|
+| Onboarding | Scan a receipt in three taps; "no account, no sign-up" is on screen | A sign-up wall in front of the whole app |
+| New phone, same platform | Restore purchases | Works |
+| **Android → iPhone** | **Subscription lost** — the entitlement lives in Play, and Apple cannot receive it | Works. This is the one real thing an account buys |
+| Free-scan farming | A reinstall resets the counter (see above) | Quota follows the person |
+| Losing the phone | Trips are gone — they are local by design | Could restore them, but that is a *backup* feature, not a payment one |
+| Legal exposure | Almost no personal data; nothing to service a deletion request with | Emails mean a lawful basis, DSR handling, breach notification, a processor named in the policy |
+| Extra store rules | None | Apple requires in-app account deletion, and offering Google sign-in obliges an equivalent privacy-preserving option (Sign in with Apple). Google Play requires deletion too |
+| Build cost | Nothing | Auth, sessions, reset-or-OAuth, account deletion, a users table |
+
+**Decision: no accounts for payment.** The Android→iPhone switch is the only genuine loss, and the
+honest fix is a sentence in the paywall — *your subscription lives with your Google Play account* —
+plus a manual restore by email if anyone ever asks. Everything else on the "account" side of that
+table is either a different feature or a liability.
+
+**If accounts ever become worth it, the shape is an anonymous one.** The Worker already mints an
+install id; the addition is an optional "add an email so you can move Billy to a new phone" —
+no password, no sign-up screen, nothing blocking the front door. That buys the cross-platform
+restore *and* trip backup. The right moment for it is when people start asking to keep their trips,
+not when they start paying.
 
 ---
 
@@ -172,5 +208,5 @@ splitting a bill by hand.
   name with your details. I can't create those for you.
 - **A privacy policy that is true**, naming Anthropic as processing receipt photos. Both stores
   require it, as does the law where your users are.
-- **Haiku's accuracy and the discount tagging are still unvalidated** against real Pingo Doce
+- **Sonnet 5's accuracy and the discount tagging are still unvalidated** against real Pingo Doce
   and Continente receipts. That is worth settling before strangers rely on it.
