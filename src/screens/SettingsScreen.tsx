@@ -110,7 +110,7 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
           <span className="note-dot" aria-hidden="true">✓</span>
           <div>
             <span className="note-head">The key stays on this phone. </span>
-            It is kept in this browser's storage and sent only to Anthropic when you scan a receipt.
+            It is stored on the phone itself and sent only to Anthropic when you scan a receipt.
           </div>
         </div>
         <label className="micro" htmlFor="apikey" style={{ display: "block", marginTop: "var(--s3)" }}>
@@ -145,8 +145,8 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
       <div className="card">
         <h3>Backup</h3>
         <p className="label" style={{ marginTop: 0 }}>
-          Everything lives on this phone, so a backup is the only way it survives a lost or wiped
-          browser. Export each trip you care about.
+          Everything lives on this phone, so a backup is the only way it survives a lost or reset
+          phone. Export each trip you care about.
         </p>
         {data.trips.length === 0 && <p className="muted">No trips to export yet.</p>}
         {data.trips.map((t) => (

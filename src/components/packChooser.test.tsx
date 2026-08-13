@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PackChooser } from "./PackChooser";
-import { PACKS, displayPerScan, displayPrice, featuredPack } from "../lib/packs";
+import { PACKS, bestValuePack, displayPerScan, displayPrice, featuredPack } from "../lib/packs";
 import * as purchase from "../lib/purchase";
 
 afterEach(() => {
@@ -20,13 +20,28 @@ describe("choosing a pack", () => {
     }
   });
 
-  it("pre-selects the recommended one, and recommends only that one", () => {
+  it("pre-selects exactly one pack — the easy yes, not the biggest", () => {
     render(<PackChooser />);
-    const recommended = screen.getAllByText(/most people pick this/i);
-    expect(recommended).toHaveLength(1);
     const chosen = screen.getAllByRole("radio").filter((r) => r.getAttribute("aria-checked") === "true");
     expect(chosen).toHaveLength(1);
     expect(chosen[0]).toHaveTextContent(`${featuredPack().scans} scans`);
+  });
+
+  it('labels "Best value" on the pack that really is, and on no other', () => {
+    render(<PackChooser />);
+    const labels = screen.getAllByText(/best value/i);
+    expect(labels).toHaveLength(1);
+    expect(screen.getByRole("radio", { name: new RegExp(`${bestValuePack().scans} scans`) })).toHaveTextContent(
+      /best value/i
+    );
+  });
+
+  it("computes best value from the prices rather than trusting a flag", () => {
+    // A written-down flag survives a price change and starts quietly pointing at the wrong row.
+    const cheapestPerScan = PACKS.reduce((a, b) =>
+      a.askingPrice / a.scans <= b.askingPrice / b.scans ? a : b
+    );
+    expect(bestValuePack().id).toBe(cheapestPerScan.id);
   });
 
   it("moves the selection and the button's price together", async () => {
@@ -46,9 +61,10 @@ describe("choosing a pack", () => {
     ).toBeInTheDocument();
   });
 
-  it("promises that scans do not expire, because that is the fear", () => {
+  it("promises that scans do not expire, and does not assume a holiday", () => {
     render(<PackChooser />);
-    expect(screen.getByText(/never expire/i)).toBeInTheDocument();
+    // "your next receipt", not "your next trip" — plenty of these will be restaurant bills.
+    expect(screen.getByText(/never expire — they wait for your next receipt/i)).toBeInTheDocument();
   });
 });
 
@@ -62,7 +78,9 @@ describe("when buying is not possible", () => {
     expect(screen.getByText(displayPrice(featuredPack()))).toBeInTheDocument();
     const buy = screen.getByRole("button", { name: /Buy \d+ scans/ });
     expect(buy).toBeDisabled();
-    expect(screen.getByText(/phone app|ready to buy yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/aren't ready to buy yet/i)).toBeInTheDocument();
+    // Billy is a phone app. Nothing may mention that a web build exists.
+    expect(screen.queryByText(/web version|browser|desktop/i)).toBeNull();
   });
 });
 

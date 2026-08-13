@@ -24,9 +24,10 @@ export type PurchaseOutcome =
 /**
  * Whether buying is possible at all here.
  *
- * False in a browser, and honestly so: in-app purchases need the native shell, and a web page
- * cannot open the App Store's payment sheet. Rather than hide the prices — which are useful
- * information wherever you are — the screens show them and say plainly where buying happens.
+ * False in a browser, because a web page cannot open the App Store's payment sheet. That is a fact
+ * about the build, not something to tell anybody: Billy is a phone app, and the web version exists
+ * only so this can be developed and tested. No copy anywhere mentions it — a user reading about a
+ * "web version" would rightly wonder which app they had installed.
  */
 export function canBuy(): boolean {
   const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
@@ -43,10 +44,7 @@ const IMPLEMENTED = false;
 
 /** Why buying is not possible, in words for a person rather than a state name. */
 export function whyCannotBuy(): string {
-  const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
-  const native = typeof cap?.isNativePlatform === "function" && cap.isNativePlatform();
-  if (!native) return "Buying scans happens in the phone app — this is the web version.";
-  return "Scan packs aren't ready to buy yet. Nothing is being asked of you today.";
+  return "Scan packs aren't ready to buy yet — nothing is being asked of you today.";
 }
 
 /** Start the platform's purchase sheet for one pack. */

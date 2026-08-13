@@ -22,7 +22,7 @@ export type Pack = {
   /** What we asked the store to charge, for display before the store has answered. */
   askingPrice: number;
   currency: string;
-  /** The one that is pre-selected, and the only one that says so. */
+  /** The one that is pre-selected: the easy yes, not necessarily the cheapest per scan. */
   featured?: boolean;
 };
 
@@ -33,6 +33,21 @@ export const PACKS: Pack[] = [
 ];
 
 export const featuredPack = (): Pack => PACKS.find((p) => p.featured) ?? PACKS[0];
+
+/**
+ * The pack with the lowest price per scan.
+ *
+ * Computed rather than flagged, so the "Best value" label cannot become a lie. A hand-written flag
+ * survives a price change and quietly starts pointing at the wrong row; this one cannot, because
+ * it is derived from the same numbers the screen prints beside it.
+ *
+ * Note it is deliberately NOT the same pack as `featuredPack()`. The pre-selected option is the
+ * easy yes — the one most people will actually want — and the best value is the bigger pack that
+ * rewards someone who scans a lot. Claiming the small one is best value would be false, and this
+ * app has no business making a claim it can check and chose not to.
+ */
+export const bestValuePack = (): Pack =>
+  PACKS.reduce((best, p) => (p.askingPrice / p.scans < best.askingPrice / best.scans ? p : best));
 
 export const packById = (id: string): Pack | undefined => PACKS.find((p) => p.id === id);
 

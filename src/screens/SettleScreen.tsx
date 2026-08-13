@@ -148,7 +148,7 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
       </div>
 
       {feedback === "copied" && <div className="banner-good">Copied to clipboard ✓</div>}
-      {feedback === "failed" && <div className="banner-warn">Couldn't share on this device.</div>}
+      {feedback === "failed" && <div className="banner-warn">Couldn't share from this phone.</div>}
       <Footerbar>
         {/* Settling up is rarely the end of the holiday: there is usually another shop tomorrow.
             The topbar has a back arrow, but it is in the far corner, and this is the screen where

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PACKS, displayPerScan, displayPrice, featuredPack, type Pack } from "../lib/packs";
+import { PACKS, bestValuePack, displayPerScan, displayPrice, featuredPack, type Pack } from "../lib/packs";
 import { buyPack, canBuy, restorePurchases, whyCannotBuy, type PurchaseOutcome } from "../lib/purchase";
 
 /**
@@ -11,17 +11,19 @@ import { buyPack, canBuy, restorePurchases, whyCannotBuy, type PurchaseOutcome }
  *
  * Three deliberate choices:
  *
- * - **The middle option is pre-selected and is the only one labelled.** A row of equal options
- *   makes someone do arithmetic at the moment they least want to; one recommendation and a
- *   per-scan price beside each is enough to make the others legible as cheaper or better value.
+ * - **One option is pre-selected, and one is labelled, and they are not the same one.** A row of
+ *   equal options makes someone do arithmetic at the moment they least want to. The pre-selected
+ *   pack is the easy yes; the label goes on whichever pack genuinely costs least per scan, worked
+ *   out from the prices rather than written down, so it cannot drift into being untrue.
  * - **"Scans never expire" is stated, because it is true and it is the fear.** Nobody wants to buy
- *   twenty of something that evaporates before the next holiday.
- * - **When buying is impossible the prices still show.** They are useful information wherever you
- *   are reading them; what changes is the button, which says where buying actually happens rather
- *   than pretending to work.
+ *   twenty of something that evaporates before the next receipt.
+ * - **When buying is impossible the prices still show.** They are useful information either way;
+ *   what changes is the button, which is disabled and says plainly that packs are not ready yet
+ *   rather than pretending to work.
  */
 export function PackChooser({ onBought }: { onBought?: (scansAdded: number) => void }) {
   const [chosen, setChosen] = useState<Pack>(featuredPack());
+  const bestValue = bestValuePack();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<PurchaseOutcome | null>(null);
   const buyable = canBuy();
@@ -60,7 +62,7 @@ export function PackChooser({ onBought }: { onBought?: (scansAdded: number) => v
               <span className="row">
                 <span>
                   <b>{pack.scans} scans</b>
-                  {pack.featured && <span className="pack-tag">Most people pick this</span>}
+                  {pack.id === bestValue.id && <span className="pack-tag">Best value</span>}
                   {/* .muted, not .micro: micro is uppercased, and a shouted price — "€0.15 EACH" —
                       reads like a warning rather than like value. */}
                   <span className="muted" style={{ display: "block", marginTop: 2 }}>
@@ -75,7 +77,7 @@ export function PackChooser({ onBought }: { onBought?: (scansAdded: number) => v
       </div>
 
       <p className="muted" style={{ margin: "var(--s3) 0" }}>
-        Scans never expire — they wait for your next trip.
+        Scans never expire — they wait for your next receipt.
       </p>
 
       {buyable ? (

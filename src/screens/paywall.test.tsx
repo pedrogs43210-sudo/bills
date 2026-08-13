@@ -87,7 +87,7 @@ describe("the paywall", () => {
     // tapped into a payment sheet that does not exist here, and it says so rather than failing.
     expect(screen.getByRole("radio", { name: /20 scans/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Buy \d+ scans/ })).toBeDisabled();
-    expect(screen.getByText(/phone app|ready to buy yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/aren't ready to buy yet/i)).toBeInTheDocument();
   });
 
   it("offers the honest way out and returns to the trip", async () => {
