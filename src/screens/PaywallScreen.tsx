@@ -1,5 +1,6 @@
 import type { View } from "../App";
 import type { ScanQuota } from "../lib/scan";
+import { PackChooser } from "../components/PackChooser";
 
 /**
  * What appears when the free scans are gone.
@@ -13,8 +14,10 @@ import type { ScanQuota } from "../lib/scan";
  * costs something when the rest of the app does not, and make the free path sound like the real
  * thing it is rather than a consolation prize.
  *
- * There is no Buy button yet, on purpose. In-app purchases arrive with the native build, and a
- * button that cannot take money would be a worse experience than an honest one.
+ * The pack chooser sits above the free path rather than below it. That ordering is the honest one:
+ * this is the screen where we ask for money, and burying the ask under the alternative would be a
+ * different kind of dishonesty — the coy kind. The alternative is right underneath, described as
+ * the real thing it is.
  */
 export function PaywallScreen({
   tripId,
@@ -48,10 +51,11 @@ export function PaywallScreen({
         <div>
           <span className="note-head">Billy is free. Reading a receipt isn't. </span>
           Every photo goes off to be read by an AI service, and that costs a few cents each time —
-          so scanning is the one part that has to be paid for. Packs of scans are coming; they
-          aren't ready to buy yet, so nothing is being asked of you today.
+          so scanning is the one part that has to be paid for. Everything else stays free.
         </div>
       </div>
+
+      <PackChooser />
 
       {/* The way out has to be genuinely useful, not a consolation prize. Adding items by hand is
           the whole app minus the camera, and anyone who leaves believing otherwise never returns. */}
@@ -61,7 +65,7 @@ export function PaywallScreen({
           Type the items in yourself and the app does the rest — the splitting, the groups, the
           rounding, who owes whom. That part is free and always will be, with no limit on it.
         </p>
-        <button className="btn btn-primary" onClick={() => go({ screen: "trip", tripId })}>
+        <button className="btn" style={{ width: "100%" }} onClick={() => go({ screen: "trip", tripId })}>
           ✍️ Add a receipt by hand
         </button>
       </div>

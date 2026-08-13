@@ -607,6 +607,45 @@ h3 { font-size: 15.5px; }
 .track.none > span { background: var(--note-line); }
 .track.done > span { background: var(--good); }
 
+/* ---------- Buying scans ---------- */
+
+/* One pack, as a row you choose. Deliberately not a chip: a chip is a person or a verb (Rule 4),
+   and this is neither — it is a priced option in a list, which wants to look like a form. */
+.pack {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--s2);
+  padding: var(--s3);
+  min-height: var(--tap);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* Chosen is never colour alone: the border thickens and the fill warms, so it survives a glance
+   and a colour-blind reader alike. */
+.pack-selected {
+  border: 2px solid var(--accent);
+  background: var(--sunken);
+  padding: calc(var(--s3) - 1px);
+}
+/* The recommendation, said once. A row of equally-shouted options is arithmetic homework at the
+   moment somebody least wants it. */
+.pack-tag {
+  display: inline-block;
+  margin-left: var(--s2);
+  padding: 2px var(--s2);
+  border-radius: var(--r-pill);
+  background: var(--good-bg);
+  color: var(--ink);
+  font: 700 10.5px/1.5 var(--text);
+  letter-spacing: 0.02em;
+  vertical-align: 2px;
+}
+
 /* ---------- Inputs ---------- */
 
 input, select {

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { exportTrip, importTrip, loadApiKey, saveApiKey } from "../lib/storage";
-import { usingProxy, verifyApiKey } from "../lib/scan";
+import { fetchQuota, lastKnownQuota, usingProxy, verifyApiKey, type ScanQuota } from "../lib/scan";
+import { PackChooser } from "../components/PackChooser";
 import { setThemeChoice, themeChoice, type ThemeChoice } from "../lib/theme";
 import type { View } from "../App";
 
@@ -58,6 +59,15 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trips" })}>←</button>
         <h1 className="screen-title">Settings</h1>
       </div>
+
+      {/* Buying before you need it, rather than only at the wall. Someone packing for a holiday
+          knows they are about to scan a fortnight of receipts; making them hit a wall mid-trip to
+          discover they could have topped up is a worse experience and a worse conversion. */}
+      <div className="card">
+        <h3>Scans</h3>
+        <ScansSummary />
+      </div>
+      <PackChooser />
 
       {/* Light and dark both exist; this is the choice between them. "Auto" follows the phone,
           which is right most of the time and wrong at a sunny kitchen table. */}
@@ -174,6 +184,54 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
           Open help
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * How many scans are left, asked of the server rather than believed from the phone.
+ *
+ * Deliberately quiet when there is nothing to say: with no proxy configured there is no counter to
+ * report, and inventing "unlimited" would be a promise this app cannot keep.
+ */
+function ScansSummary() {
+  const [quota, setQuota] = useState<ScanQuota | null>(lastKnownQuota());
+
+  useEffect(() => {
+    let live = true;
+    void fetchQuota().then((q) => {
+      if (live && q) setQuota(q);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (!usingProxy()) {
+    return (
+      <p className="muted" style={{ margin: 0 }}>
+        This version scans with your own API key, so there is nothing to count.
+      </p>
+    );
+  }
+  if (quota === null) {
+    return (
+      <p className="muted" style={{ margin: 0 }}>
+        Counting…
+      </p>
+    );
+  }
+  if (quota.left === null) {
+    return (
+      <p className="muted" style={{ margin: 0 }}>
+        You have scans to spare.
+      </p>
+    );
+  }
+  return (
+    <div className="row">
+      <span className="micro">Scans left</span>
+      <span className="money-1">{quota.left}</span>
     </div>
   );
 }

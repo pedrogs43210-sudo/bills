@@ -80,11 +80,14 @@ describe("the paywall", () => {
     await user.click(screen.getByRole("button", { name: /scan receipt/i }));
 
     expect(screen.getByText(/Billy is free. Reading a receipt isn't./i)).toBeInTheDocument();
-    expect(screen.getByText(/aren't ready to buy yet/i)).toBeInTheDocument();
     // The free scans are a trial, not an allowance: nothing here may imply they come back.
     expect(screen.queryByText(/scanning is back|next month|this month/i)).toBeNull();
-    // no purchase button exists yet, so there is nothing to tap that cannot work
-    expect(screen.queryByRole("button", { name: /subscribe|buy|upgrade/i })).toBeNull();
+
+    // The prices are shown — they are useful wherever you read them — but the button cannot be
+    // tapped into a payment sheet that does not exist here, and it says so rather than failing.
+    expect(screen.getByRole("radio", { name: /20 scans/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Buy \d+ scans/ })).toBeDisabled();
+    expect(screen.getByText(/phone app|ready to buy yet/i)).toBeInTheDocument();
   });
 
   it("offers the honest way out and returns to the trip", async () => {
