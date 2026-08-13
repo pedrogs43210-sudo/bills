@@ -6,13 +6,18 @@ It exists because the app currently asks every user to create their own Anthropi
 credit, and paste it into Settings. No member of the public will do that — it is the whole funnel
 and it is a wall. This removes it.
 
-It is also the only place the free allowance can live. `localStorage.clear()` is otherwise an
+It is also the only place the free trial can live. `localStorage.clear()` is otherwise an
 infinite supply of free scans, and clearing site data is a normal thing for a person to do.
+
+And it is where the **daily ceiling** lives — the one thing that bounds a bad day. Everything else
+here limits a *person*; the ceiling limits the *bill*, which is the only guarantee that survives
+someone who can mint install ids.
 
 ## What it does and does not do
 
-- **Does:** scan a photo, count five scans a month per install, refuse politely when they run
-  out, refund a scan when *our* side fails.
+- **Does:** scan a photo, count a **one-off trial of three scans per install** (a lifetime count —
+  nothing resets it), stop serving anybody once the **day's ceiling** is reached, refuse politely
+  in both cases, and refund a scan when *our* side fails.
 - **Does not:** store photos, store trips, receipts, or who owes whom. Those never leave the
   phone. An outage stops scanning and nothing else — the maths is all local.
 
@@ -20,8 +25,12 @@ infinite supply of free scans, and clearing site data is a normal thing for a pe
 
 | | |
 |---|---|
-| `POST /v1/scan` | `{ imageBase64 }` → `{ result, used, left, limit }`. `402` when the allowance is gone. |
-| `GET /v1/quota` | `{ used, left, limit, month, subscribed }` — the counter, without spending a scan. |
+| `POST /v1/scan` | `{ imageBase64 }` → `{ result, used, left, limit }`. `402` when the trial is spent, `503` (`closed-today`) when the day's ceiling is reached. |
+| `GET /v1/quota` | `{ used, left, limit, subscribed }` — the counter, without spending a scan. |
+
+The two refusals are deliberately different codes and different words. `402` is the person's own
+trial running out, and a scan pack would fix it. `503` is the proxy having a busy day, which they
+can do nothing about and should not be sold anything for.
 
 Both require `X-Install-Id` (a uuid the app generates on first launch) and `X-App-Token`.
 
@@ -71,11 +80,16 @@ npx wrangler d1 execute bills --remote --command "SELECT * FROM installs"
 who wants to. It stops casual drive-by use of the endpoint and nothing more. Real assurance needs
 **App Attest (iOS)** and **Play Integrity (Android)**, which require a native build to attest —
 so it arrives with the Capacitor wrapper, not before. Until then the exposure is bounded by the
-per-install monthly cap, the two-second burst check, and the 1.5 MB image limit.
+**daily ceiling** (`MAX_SCANS_PER_DAY`, default 1000 ≈ $30 at ~3 cents a scan), the per-install
+trial, the two-second burst check, and the 4 MB image limit.
 
-**A reinstall resets someone's free allowance**, because the install id is generated fresh. This
-is deliberate: at roughly a cent a scan, that abuse costs less than the users a sign-up wall
-would turn away.
+**A reinstall resets someone's free trial**, because the install id is generated fresh. This is
+deliberate — a sign-up wall would cost more in lost users than the abuse costs in scans — and it is
+exactly why the daily ceiling exists. Someone scripting fresh install ids gets three scans each and
+then meets the ceiling, which is the difference between a nuisance and a bill you cannot pay.
+
+**Set `MAX_SCANS_PER_DAY = 0` to stop scanning entirely.** It is the emergency brake: no deploy, no
+code change, and the app degrades to "Billy is having a busy day" rather than breaking.
 
 **Nothing writes to the `subscriptions` table yet.** The proxy already reads it, so switching
 subscriptions on is an insert once in-app purchases are verified — no change to this code.

@@ -127,6 +127,19 @@ describe("when a scan fails", () => {
     expect(retry.className).toContain("btn-primary");
   });
 
+  it("says a busy day is our problem, not theirs, and never sends them to a paywall for it", async () => {
+    // The day's ceiling is the proxy protecting itself. Reporting it as "out of scans" would be a
+    // lie, and would push someone towards buying something that would not help.
+    vi.mocked(scanReceipt).mockRejectedValue(new ScanError("busy", "closed today"));
+    const user = await openTrip();
+    await user.upload(screen.getByLabelText("Scan receipt"), photo);
+
+    expect(await screen.findByText(/busy day/i)).toBeInTheDocument();
+    expect(screen.getByText(/a limit on our side, not on yours/i)).toBeInTheDocument();
+    const byHand = screen.getByRole("button", { name: /add items by hand/i });
+    expect(byHand.className).toContain("btn-primary");
+  });
+
   it("sends a rejected key to Settings rather than asking for another photo", async () => {
     vi.mocked(scanReceipt).mockRejectedValue(new ScanError("bad-key", "rejected"));
     const user = await openTrip();
@@ -138,7 +151,7 @@ describe("when a scan fails", () => {
   });
 
   it("always offers typing it in, whatever went wrong", async () => {
-    for (const reason of ["unparseable", "network", "refused", "bad-key"] as const) {
+    for (const reason of ["unparseable", "network", "refused", "bad-key", "busy"] as const) {
       localStorage.clear();
       setOnboarded();
       saveApiKey("sk-ant-test");

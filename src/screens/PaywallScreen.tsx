@@ -2,15 +2,19 @@ import type { View } from "../App";
 import type { ScanQuota } from "../lib/scan";
 
 /**
- * What appears when this month's scans are gone.
+ * What appears when the free scans are gone.
  *
  * It is shown *before* the camera opens, never after: nobody should photograph a receipt only
  * to be told the photo will be thrown away.
  *
- * There is no Subscribe button yet, on purpose. In-app purchases arrive with the native build,
- * and a button that cannot take money — or a price that cannot be paid — would be a worse
- * experience than an honest one. The job of this screen today is to say what happened, say what
- * still works, and let someone carry on.
+ * The tone is the whole design here. The free scans do not come back — they are a trial, not an
+ * allowance — so this screen cannot promise a reset, and pretending otherwise would just move the
+ * disappointment to the first of the month. What it can do is tell the truth about why scanning
+ * costs something when the rest of the app does not, and make the free path sound like the real
+ * thing it is rather than a consolation prize.
+ *
+ * There is no Buy button yet, on purpose. In-app purchases arrive with the native build, and a
+ * button that cannot take money would be a worse experience than an honest one.
  */
 export function PaywallScreen({
   tripId,
@@ -22,20 +26,19 @@ export function PaywallScreen({
   go: (v: View) => void;
 }) {
   const limit = quota?.limit ?? null;
-  const nextMonth = firstOfNextMonth(new Date());
 
   return (
     <div>
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trip", tripId })}>←</button>
-        <h1 className="screen-title">Out of scans</h1>
+        <h1 className="screen-title">Out of free scans</h1>
       </div>
 
       {quota !== null && (
         <div className="card" style={{ textAlign: "center" }}>
           <span className="hero">{quota.used}</span>
           <span className="micro">
-            {limit === null ? "scans used this month" : `of ${limit} scans used this month`}
+            {limit === null ? "scans used" : `of ${limit} free scans used`}
           </span>
         </div>
       )}
@@ -43,9 +46,10 @@ export function PaywallScreen({
       <div className="note" role="status">
         <span className="note-dot" aria-hidden="true">!</span>
         <div>
-          <span className="note-head">Scanning is back on {nextMonth}. </span>
-          Unlimited scanning is coming as a subscription — it isn't ready to buy yet, so nothing
-          is being asked of you today.
+          <span className="note-head">Billy is free. Reading a receipt isn't. </span>
+          Every photo goes off to be read by an AI service, and that costs a few cents each time —
+          so scanning is the one part that has to be paid for. Packs of scans are coming; they
+          aren't ready to buy yet, so nothing is being asked of you today.
         </div>
       </div>
 
@@ -63,14 +67,4 @@ export function PaywallScreen({
       </div>
     </div>
   );
-}
-
-/** "1 September" — the day the allowance comes back, in the reader's own language. */
-function firstOfNextMonth(now: Date): string {
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  try {
-    return new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", timeZone: "UTC" }).format(next);
-  } catch {
-    return next.toISOString().slice(0, 10);
-  }
 }

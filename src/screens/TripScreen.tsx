@@ -577,8 +577,8 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         {quota?.left !== null && quota?.left !== undefined && (
           <div className="micro" style={{ textAlign: "center", marginBottom: 8 }}>
             {quota.left === 0
-              ? "No scans left this month"
-              : `${quota.left} scan${quota.left === 1 ? "" : "s"} left this month`}
+              ? "No free scans left"
+              : `${quota.left} free scan${quota.left === 1 ? "" : "s"} left`}
           </div>
         )}
         <div className="row">

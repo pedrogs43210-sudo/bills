@@ -33,6 +33,12 @@ function adviceFor(reason: ScanFailure | null, fallback: string): Advice {
         body: "Creased paper, low light or an unusual layout will do it. A straighter, brighter photo of the whole receipt often works — or type the items in, which always does.",
         primary: "by-hand",
       };
+    case "busy":
+      return {
+        head: "Billy is having a busy day.",
+        body: "Scanning is paused until tomorrow — a limit on our side, not on yours, and nothing you can do about it from here. Typing the items in works exactly as well and is always available.",
+        primary: "by-hand",
+      };
     case "bad-key":
       return {
         head: "The API key was rejected.",

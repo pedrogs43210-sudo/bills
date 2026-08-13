@@ -8,7 +8,16 @@ import { installId } from "./installId";
 export { PROMPT, SCAN_MODEL, ScanResultSchema, normaliseDiscountSigns, scanTotals } from "./receipt";
 export type { ScanItem, ScanResult } from "./receipt";
 
-export type ScanFailure = "no-key" | "bad-key" | "refused" | "unparseable" | "network" | "out-of-scans";
+export type ScanFailure =
+  | "no-key"
+  | "bad-key"
+  | "refused"
+  | "unparseable"
+  | "network"
+  | "out-of-scans"
+  /** The proxy hit its own ceiling for the day. Nothing the person did, and nothing they can buy
+   *  their way out of — so it must never be mistaken for having run out of their own scans. */
+  | "busy";
 
 /**
  * Where scanning happens.
@@ -79,7 +88,8 @@ export async function scanReceipt(apiKey: string, imageBase64: string): Promise<
 
 /** The proxy's error codes, mapped to something the review screen can already say out loud. */
 const PROXY_ERRORS: Record<string, { reason: ScanFailure; message: string }> = {
-  "quota-exceeded": { reason: "out-of-scans", message: "That's this month's scans used up." },
+  "quota-exceeded": { reason: "out-of-scans", message: "That's your free scans used up." },
+  "closed-today": { reason: "busy", message: "Billy is having a busy day — scanning is back tomorrow." },
   refused: { reason: "refused", message: "The scan was refused — try a clearer photo" },
   unparseable: { reason: "unparseable", message: "Could not read the receipt — try again or enter items by hand" },
   "image-too-large": { reason: "unparseable", message: "That photo was too big to read — try again." },
@@ -130,7 +140,7 @@ async function scanViaProxy(imageBase64: string): Promise<ScanResult> {
   return normaliseDiscountSigns(parsed.data);
 }
 
-/** Scans left this month, straight from the server. Null when there is no proxy to ask. */
+/** Free scans left, straight from the server. Null when there is no proxy to ask. */
 export async function fetchQuota(): Promise<ScanQuota | null> {
   if (!usingProxy()) return null;
   try {

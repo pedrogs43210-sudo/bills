@@ -1,7 +1,7 @@
 const KEY = "bills.install.v1";
 
 /**
- * A random id for this install, so the server can count five scans a month against something.
+ * A random id for this install, so the server has something to count the free trial against.
  *
  * Not an account and not a person: it identifies a copy of the app, nothing else. Reinstalling
  * produces a new one and a fresh allowance, which is accepted deliberately — at about a cent a

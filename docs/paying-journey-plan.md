@@ -10,8 +10,8 @@ Where someone subscribes, where they manage it, and where they watch an ad to ke
 |---|---|
 | Platform | **Native apps for the App Store and Play**, wrapping the existing web app |
 | Server | **Cloudflare Workers + D1** |
-| Free tier | **5 scans a month**, revisit once there is usage to look at |
-| Price | **€4.99 for the first year, then €9.99/year** — a store introductory offer |
+| Free tier | **3 scans, once** — a trial, not a monthly allowance. See below |
+| Price | **Scan packs** — €2.99 for 20 as the main product. A subscription only if repeat buyers appear |
 | Accounts | **None.** See below — the stores make them unnecessary |
 | Ads | Available again on native, incl. rewarded video. Not in the first release |
 
@@ -32,16 +32,24 @@ Two useful consequences: there is no personal data to hold, and **Apple's accoun
 requirement does not apply**, because it only applies to apps that create accounts. That screen
 drops off the launch list.
 
-### The price, presented honestly
+### Why packs rather than a subscription
 
-**"€4.99 for your first year, then €9.99/year."** Both stores support this natively as an
-*introductory offer* and display it themselves as a saving against the standard price.
+**€2.99 for 20 scans.** It nets €2.07 after VAT and the store's 15%, and costs €0.57 to serve —
+3.6× cost, and it *cannot* lose money, because revenue and cost move together. An unlimited annual
+subscription at €4.99 nets €3.45 and goes underwater at 120 scans: it hands the heavy user your
+card.
 
-Deliberately *not* a permanent "was €9.99, now €4.99". Under the EU Omnibus rules (Portugal:
-DL 109-G/2021) announcing a reduction requires the prior price to have genuinely been charged, a
+Packs also match how the app is used. Splitting is episodic — a holiday, a dinner — so a recurring
+charge asks for the renewal decision at the exact moment the value is zero. And they are simpler to
+build: no renewals, no grace periods, no lapsed states, no restore edge cases.
+
+Add an annual "unlimited" (fair-use capped) **later, if repeat buyers appear.** That is evidence
+rather than a guess.
+
+If a subscription ever does ship, the price is presented as a store *introductory offer*, never as
+a permanent "was €9.99, now €4.99": under the EU Omnibus rules (Portugal: DL 109-G/2021) a
 never-charged reference price is a prohibited misleading claim, and a "limited time" offer that
-never ends is the dark pattern regulators fine. The introductory offer gets the same effect, the
-store does the advertising, and the discount is real.
+never ends is the dark pattern regulators fine.
 
 ---
 
@@ -61,8 +69,8 @@ otherwise an infinite supply of free scans and clearing site data is a normal th
 
 Three layers, none of which ask the user anything:
 
-1. **Anonymous install ID**, generated on first launch, kept in device storage. Enough to count
-   five scans a month.
+1. **Anonymous install ID**, generated on first launch, kept in device storage. Enough to count a
+   one-off trial of three scans.
 2. **App Attest (iOS) / Play Integrity (Android)**, so the server can tell a genuine install of
    your app from a script pointed at the proxy. This is the abuse that would actually cost
    money — someone burning your Anthropic credit — and it is worth stopping properly.
@@ -119,15 +127,15 @@ No sign-up, no permissions, no API key. Create a trip, add friends, scan. Onboar
 nothing about money.
 
 The counter is visible from the first scan, on the trip screen where the scan button already is:
-`4 scans left this month`. Running out is never a surprise.
+`2 free scans left`. Running out is never a surprise.
 
-### 2. The wall — scan 6
+### 2. The wall — scan 4
 
 Full screen, and it appears **before the camera opens**, never after. Nobody should photograph a
 receipt only to have it thrown away.
 
-- `You've used this month's 5 scans.`
-- `€4.99 for your first year, then €9.99/year.`
+- `That's your 3 free scans used.`
+- `20 scans, €2.99.` *(when packs ship)*
 - `Watch a short ad → one more scan now` *(when rewarded ads ship; capped 3–5/day)*
 - `Or keep splitting by hand — still free, still unlimited.`
 - `Restore purchase`

@@ -10,7 +10,12 @@ compatibility_flags = ["nodejs_compat"]
 # app from capacitor://localhost on iOS and https://localhost on Android. Without them every
 # scan from the phone apps is refused by CORS.
 ALLOWED_ORIGINS = "https://pedrogs43210-sudo.github.io,http://localhost:5173,capacitor://localhost,https://localhost"
-FREE_SCANS = "5"
+# Free scans per install, once, for the life of the install — not per month. A monthly allowance
+# is a recurring bill for every user who never pays.
+FREE_SCANS = "3"
+# The day's ceiling, across everybody. At roughly 3 cents a scan this bounds a bad day at about
+# $30. Set it to "0" to stop scanning entirely — the emergency brake, no deploy needed.
+MAX_SCANS_PER_DAY = "1000"
 
 # Created with: npx wrangler d1 create bills
 # Then paste the id printed by that command here.

@@ -1,7 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { PROMPT, SCAN_MODEL, ScanResultSchema, normaliseDiscountSigns } from "../../src/lib/receipt";
-import { decideQuota, isValidInstallId, peekQuota, FREE_SCANS_PER_MONTH, type QuotaRow } from "./quota";
+import {
+  decideQuota,
+  decideSpend,
+  isValidInstallId,
+  monthKey,
+  peekQuota,
+  FREE_TRIAL_SCANS,
+  MAX_SCANS_PER_DAY,
+  type QuotaRow,
+  type SpendRow,
+} from "./quota";
 
 /**
  * The scan proxy.
@@ -25,8 +35,10 @@ export interface Env {
    * assurance arrives with App Attest / Play Integrity once there is a native build to attest.
    */
   APP_TOKEN: string;
-  /** Optional override, so the free allowance can be tuned without a deploy. */
+  /** Optional override, so the free trial can be tuned without a deploy. */
   FREE_SCANS?: string;
+  /** Optional override for the day's ceiling, so it can be raised or dropped to zero in a hurry. */
+  MAX_SCANS_PER_DAY?: string;
   /** Optional override, to try a different scanning model without shipping a build. */
   SCAN_MODEL?: string;
 }
@@ -64,9 +76,17 @@ function json(body: Json, status: number, headers: Record<string, string>): Resp
 
 /** Reads the install's counter row. Returns null when this install has never scanned. */
 async function readRow(env: Env, installId: string): Promise<QuotaRow & { last_scan_at: number | null } | null> {
-  const row = await env.DB.prepare("SELECT month, used, last_scan_at FROM installs WHERE install_id = ?")
+  const row = await env.DB.prepare("SELECT used, last_scan_at FROM installs WHERE install_id = ?")
     .bind(installId)
-    .first<{ month: string; used: number; last_scan_at: number | null }>();
+    .first<{ used: number; last_scan_at: number | null }>();
+  return row ?? null;
+}
+
+/** Today's running total across everybody. Null before the first scan of the day. */
+async function readSpend(env: Env, day: string): Promise<SpendRow | null> {
+  const row = await env.DB.prepare("SELECT day, scans FROM daily_spend WHERE day = ?")
+    .bind(day)
+    .first<{ day: string; scans: number }>();
   return row ?? null;
 }
 
@@ -106,17 +126,22 @@ export default {
       return json({ error: "bad-install-id" }, 400, cors);
     }
     const id = installId!;
-    const limit = Number(env.FREE_SCANS ?? FREE_SCANS_PER_MONTH) || FREE_SCANS_PER_MONTH;
+    const limit = Number(env.FREE_SCANS ?? FREE_TRIAL_SCANS) || FREE_TRIAL_SCANS;
+    // Number("0") is 0 which is falsy, so `||` would quietly turn a deliberate shutdown back into
+    // the default. A cap of zero has to mean zero — that is the emergency stop.
+    const dayCap = Number.isFinite(Number(env.MAX_SCANS_PER_DAY))
+      ? Number(env.MAX_SCANS_PER_DAY)
+      : MAX_SCANS_PER_DAY;
     const now = new Date();
 
     if (request.method === "GET" && url.pathname === "/v1/quota") {
       const [row, subscribed] = await Promise.all([readRow(env, id), isSubscribed(env, id, now.getTime())]);
-      const q = peekQuota(row, now, subscribed, limit);
+      const q = peekQuota(row, subscribed, limit);
       return json({ ...q, limit: subscribed ? null : limit, subscribed }, 200, cors);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/scan") {
-      return handleScan(request, env, cors, id, limit, now);
+      return handleScan(request, env, cors, id, limit, dayCap, now);
     }
 
     return json({ error: "not-found" }, 404, cors);
@@ -129,6 +154,7 @@ async function handleScan(
   cors: Record<string, string>,
   installId: string,
   limit: number,
+  dayCap: number,
   now: Date
 ): Promise<Response> {
   let body: { imageBase64?: unknown };
@@ -154,21 +180,35 @@ async function handleScan(
     return json({ error: "too-fast" }, 429, cors);
   }
 
-  const decision = decideQuota(row, now, subscribed, limit);
+  const decision = decideQuota(row, subscribed, limit);
   if (!decision.allowed) {
     return json(
-      { error: "quota-exceeded", used: decision.used, left: 0, limit, month: decision.month },
+      { error: "quota-exceeded", used: decision.used, left: 0, limit },
       402, // Payment Required: the one status code that means exactly this
       cors
     );
   }
 
-  // Reserve the scan before spending anyone's money on it. The conditional UPDATE is the real
-  // enforcement — two requests arriving together both read the same row, and only one can win
-  // the `used < limit` check inside SQLite. decideQuota above provides the numbers to report.
-  const reserved = await reserve(env, installId, decision.month, subscribed, limit, now.getTime());
+  // The day's ceiling is checked before the install's allowance is spent, and reported as its own
+  // thing: this is the proxy having a busy day, not the person having run out. Sending them to a
+  // paywall for it would be a lie.
+  const spend = decideSpend(await readSpend(env, dayKeyOf(now)), now, dayCap);
+  if (!spend.allowed) {
+    return json({ error: "closed-today" }, 503, cors);
+  }
+
+  // Reserve the scan before spending anyone's money on it. The conditional UPDATEs are the real
+  // enforcement — two requests arriving together both read the same rows, and only one can win the
+  // `used < limit` and `scans < cap` checks inside SQLite. The decisions above provide the numbers
+  // to report; they do not, by themselves, keep anybody out.
+  const claimedDay = await claimDayBudget(env, spend.day, dayCap, now.getTime());
+  if (!claimedDay) {
+    return json({ error: "closed-today" }, 503, cors);
+  }
+  const reserved = await reserve(env, installId, subscribed, limit, now.getTime());
   if (!reserved) {
-    return json({ error: "quota-exceeded", used: limit, left: 0, limit, month: decision.month }, 402, cors);
+    await releaseDayBudget(env, spend.day);
+    return json({ error: "quota-exceeded", used: limit, left: 0, limit }, 402, cors);
   }
 
   try {
@@ -196,11 +236,11 @@ async function handleScan(
     );
 
     if (response.stop_reason === "refusal") {
-      await refund(env, installId, decision.month);
+      await refund(env, installId, spend.day);
       return json({ error: "refused" }, 422, cors);
     }
     if (!response.parsed_output) {
-      await refund(env, installId, decision.month);
+      await refund(env, installId, spend.day);
       return json({ error: "unparseable" }, 422, cors);
     }
 
@@ -210,20 +250,27 @@ async function handleScan(
     return json({ result, used: decision.used, left, limit: subscribed ? null : limit }, 200, cors);
   } catch (err) {
     // Our failure, not theirs: give the scan back rather than charging for a scan they never got.
-    await refund(env, installId, decision.month);
+    await refund(env, installId, spend.day);
     const status = err instanceof Anthropic.APIError ? 502 : 500;
     return json({ error: "scan-failed" }, status, cors);
   }
 }
 
+/** The UTC day, in the shape the daily_spend table is keyed by. */
+function dayKeyOf(now: Date): string {
+  return now.toISOString().slice(0, 10);
+}
+
 /**
- * Claim one scan atomically. Creates the row on first use and resets the counter when the stored
- * month is older than this one, then increments only if the cap still allows it.
+ * Claim one scan from the install's trial, atomically.
+ *
+ * Creates the row on first use. `used` is a lifetime count and nothing resets it — the month
+ * column is written for reporting only, so a glance at the table shows when an install was last
+ * active without it being load-bearing.
  */
 async function reserve(
   env: Env,
   installId: string,
-  month: string,
   subscribed: boolean,
   limit: number,
   nowMs: number
@@ -231,28 +278,61 @@ async function reserve(
   await env.DB.prepare(
     `INSERT INTO installs (install_id, month, used, created_at)
      VALUES (?1, ?2, 0, ?3)
-     ON CONFLICT(install_id) DO UPDATE SET
-       used = CASE WHEN installs.month <> ?2 THEN 0 ELSE installs.used END,
-       month = ?2`
+     ON CONFLICT(install_id) DO UPDATE SET month = ?2`
   )
-    .bind(installId, month, nowMs)
+    .bind(installId, monthKey(new Date(nowMs)), nowMs)
     .run();
 
   const result = await env.DB.prepare(
-    `UPDATE installs SET used = used + 1, last_scan_at = ?3
-     WHERE install_id = ?1 AND month = ?2 AND (?4 = 1 OR used < ?5)`
+    `UPDATE installs SET used = used + 1, last_scan_at = ?2
+     WHERE install_id = ?1 AND (?3 = 1 OR used < ?4)`
   )
-    .bind(installId, month, nowMs, subscribed ? 1 : 0, limit)
+    .bind(installId, nowMs, subscribed ? 1 : 0, limit)
     .run();
 
   return (result.meta?.changes ?? 0) === 1;
 }
 
-/** Give a reserved scan back, never below zero. */
-async function refund(env: Env, installId: string, month: string): Promise<void> {
+/**
+ * Claim one scan from today's budget, atomically.
+ *
+ * The conditional UPDATE is what actually enforces the ceiling: `decideSpend` can only report
+ * what a moment ago looked true, and a hundred simultaneous requests all read the same number.
+ * Only `scans < cap` inside SQLite can hold the line.
+ */
+async function claimDayBudget(env: Env, day: string, cap: number, nowMs: number): Promise<boolean> {
   await env.DB.prepare(
-    "UPDATE installs SET used = MAX(0, used - 1) WHERE install_id = ?1 AND month = ?2"
+    `INSERT INTO daily_spend (day, scans, updated_at) VALUES (?1, 0, ?2)
+     ON CONFLICT(day) DO NOTHING`
   )
-    .bind(installId, month)
+    .bind(day, nowMs)
     .run();
+
+  const result = await env.DB.prepare(
+    "UPDATE daily_spend SET scans = scans + 1, updated_at = ?3 WHERE day = ?1 AND scans < ?2"
+  )
+    .bind(day, cap, nowMs)
+    .run();
+
+  return (result.meta?.changes ?? 0) === 1;
+}
+
+/** Give back a claimed slice of the day's budget, never below zero. */
+async function releaseDayBudget(env: Env, day: string): Promise<void> {
+  await env.DB.prepare("UPDATE daily_spend SET scans = MAX(0, scans - 1) WHERE day = ?1")
+    .bind(day)
+    .run();
+}
+
+/**
+ * Give a scan back after a failure — the install's and the day's, together.
+ *
+ * They are always claimed as a pair, so they are always returned as a pair; refunding one and not
+ * the other would slowly poison whichever counter was left behind.
+ */
+async function refund(env: Env, installId: string, day: string): Promise<void> {
+  await env.DB.prepare("UPDATE installs SET used = MAX(0, used - 1) WHERE install_id = ?1")
+    .bind(installId)
+    .run();
+  await releaseDayBudget(env, day);
 }

@@ -46,47 +46,49 @@ beforeEach(() => localStorage.clear());
 
 describe("the scans-left counter", () => {
   it("shows how many are left once the server answers", async () => {
-    await renderApp({ used: 2, left: 3, limit: 5 });
-    expect(await screen.findByText(/3 scans left this month/i)).toBeInTheDocument();
+    await renderApp({ used: 1, left: 2, limit: 3 });
+    expect(await screen.findByText(/2 free scans left/i)).toBeInTheDocument();
   });
 
   it("says it in the singular for the last one", async () => {
-    await renderApp({ used: 4, left: 1, limit: 5 });
-    expect(await screen.findByText(/1 scan left this month/i)).toBeInTheDocument();
+    await renderApp({ used: 2, left: 1, limit: 3 });
+    expect(await screen.findByText(/1 free scan left/i)).toBeInTheDocument();
   });
 
   it("says nothing at all for a subscriber, who has no cap to count against", async () => {
     await renderApp({ used: 40, left: null, limit: null });
     // give the fetch a chance to land before asserting an absence
     await waitFor(() => expect(screen.getByLabelText(/scan receipt/i)).toBeInTheDocument());
-    expect(screen.queryByText(/left this month/i)).toBeNull();
+    expect(screen.queryByText(/free scans? left/i)).toBeNull();
   });
 });
 
 describe("the paywall", () => {
-  it("replaces the camera with a paywall once the allowance is gone", async () => {
-    const user = await renderApp({ used: 5, left: 0, limit: 5 });
+  it("replaces the camera with a paywall once the free scans are gone", async () => {
+    const user = await renderApp({ used: 3, left: 0, limit: 3 });
     // the file input is gone, so tapping cannot open the camera
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    expect(screen.getByText(/no scans left this month/i)).toBeInTheDocument();
+    expect(screen.getByText(/no free scans left/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /scan receipt/i }));
-    expect(screen.getByText(/out of scans/i)).toBeInTheDocument();
+    expect(screen.getByText(/out of free scans/i)).toBeInTheDocument();
   });
 
-  it("says when scanning comes back, and does not ask for money it cannot take", async () => {
-    const user = await renderApp({ used: 5, left: 0, limit: 5 });
+  it("says why scanning costs something, and promises no reset it cannot deliver", async () => {
+    const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
     await user.click(screen.getByRole("button", { name: /scan receipt/i }));
 
-    expect(screen.getByText(/scanning is back on/i)).toBeInTheDocument();
-    expect(screen.getByText(/isn't ready to buy yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/Billy is free. Reading a receipt isn't./i)).toBeInTheDocument();
+    expect(screen.getByText(/aren't ready to buy yet/i)).toBeInTheDocument();
+    // The free scans are a trial, not an allowance: nothing here may imply they come back.
+    expect(screen.queryByText(/scanning is back|next month|this month/i)).toBeNull();
     // no purchase button exists yet, so there is nothing to tap that cannot work
     expect(screen.queryByRole("button", { name: /subscribe|buy|upgrade/i })).toBeNull();
   });
 
   it("offers the honest way out and returns to the trip", async () => {
-    const user = await renderApp({ used: 5, left: 0, limit: 5 });
+    const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
     await user.click(screen.getByRole("button", { name: /scan receipt/i }));
 
@@ -97,11 +99,11 @@ describe("the paywall", () => {
   });
 
   it("shows how much was used, so the number is never a mystery", async () => {
-    const user = await renderApp({ used: 5, left: 0, limit: 5 });
+    const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
     await user.click(screen.getByRole("button", { name: /scan receipt/i }));
-    expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText(/of 5 scans used this month/i)).toBeInTheDocument();
+    expect(screen.getByText("3")).toBeInTheDocument();
+    expect(screen.getByText(/of 3 free scans used/i)).toBeInTheDocument();
   });
 });
 
@@ -120,7 +122,7 @@ describe("with no proxy configured", () => {
     await userEvent.setup().click(screen.getByText(/algarve/i));
 
     expect(screen.getByLabelText(/scan receipt/i)).toBeInTheDocument();
-    expect(screen.queryByText(/left this month/i)).toBeNull();
+    expect(screen.queryByText(/free scans? left/i)).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled(); // no proxy means nothing to ask
   });
 });

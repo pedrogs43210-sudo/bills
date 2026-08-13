@@ -1,52 +1,69 @@
 /**
- * How many scans an install has left this month.
+ * Who may scan, and whether the day's bill has run away.
  *
- * Pure on purpose: this is the rule that decides whether someone is asked to pay, so it is
- * worth being able to test every edge of it without a database or a network. The Worker reads
- * a row, calls `decideQuota`, and writes the result back.
+ * Pure on purpose: these are the rules that decide whether someone is asked to pay and whether
+ * the proxy keeps spending money, so it is worth being able to test every edge of them without a
+ * database or a network. The Worker reads a row, calls these, and writes the result back.
  *
- * It lives on the server because it has to. `localStorage.clear()` is an infinite supply of
+ * They live on the server because they have to. `localStorage.clear()` is an infinite supply of
  * free scans, and clearing site data is a normal thing for a person to do.
  */
 
-export const FREE_SCANS_PER_MONTH = 5;
+/**
+ * Free scans, once, for the life of the install — not per month.
+ *
+ * A monthly allowance is a recurring bill you cannot cancel: five scans a month is about €1.80 a
+ * year for every user who never pays, forever. Three scans *ever* costs about nine cents per
+ * curious person, one time, which is the difference between a hobby that pays for itself and one
+ * that does not. Three rather than two because one scan shows the trick works and the second
+ * shows it was not luck; the third is the one that costs nothing much and buys goodwill.
+ */
+export const FREE_TRIAL_SCANS = 3;
 
-/** UTC, so the allowance does not reset twice for someone who flies across a timezone. */
+/**
+ * The most scans the proxy will serve in one UTC day, across everybody.
+ *
+ * This is the brake, not the business model: at roughly three cents a scan it caps a bad day at
+ * about $30 rather than at whatever a script can manage before the card is noticed. It sits above
+ * anything real usage would reach, so an honest user never meets it.
+ */
+export const MAX_SCANS_PER_DAY = 1000;
+
+/** UTC, so a day does not roll over twice for someone who flies across a timezone. */
+export function dayKey(now: Date): string {
+  return now.toISOString().slice(0, 10);
+}
+
+/** Kept for the reporting column on the installs row: which month an install last scanned in. */
 export function monthKey(now: Date): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export type QuotaRow = { month: string; used: number };
+export type QuotaRow = { used: number };
 
 export type QuotaDecision = {
   allowed: boolean;
-  /** Scans used this month after this decision is applied. */
+  /** Scans used in the lifetime of this install, after this decision is applied. */
   used: number;
-  /** Scans remaining, or null when the install is subscribed and has no cap. */
+  /** Free scans remaining, or null when the install is subscribed and has no cap. */
   left: number | null;
-  month: string;
-  /** True when the stored row is for an older month and the caller should reset it. */
-  rolledOver: boolean;
 };
 
 /**
- * Whether this install may scan right now, and what its counters become.
+ * Whether this install may scan right now, and what its counter becomes.
  *
  * `subscribed` short-circuits the cap but still counts, so there is a usage figure to look at
- * when deciding whether five is the right number — and so a subscription that lapses does not
+ * when deciding whether three is the right number — and so a subscription that lapses does not
  * suddenly reveal a hidden pile of used scans.
  */
 export function decideQuota(
   row: QuotaRow | null,
-  now: Date,
   subscribed: boolean,
-  limit: number = FREE_SCANS_PER_MONTH
+  limit: number = FREE_TRIAL_SCANS
 ): QuotaDecision {
-  const month = monthKey(now);
-  const rolledOver = row !== null && row.month !== month;
   // A negative or fractional stored count means the row was tampered with or written by an
   // older version: treat it as unusable rather than as free scans.
-  const stored = row === null || rolledOver || !Number.isInteger(row.used) || row.used < 0 ? 0 : row.used;
+  const stored = row === null || !Number.isInteger(row.used) || row.used < 0 ? 0 : row.used;
 
   const allowed = subscribed || stored < limit;
   const used = allowed ? stored + 1 : stored;
@@ -54,22 +71,41 @@ export function decideQuota(
     allowed,
     used,
     left: subscribed ? null : Math.max(0, limit - used),
-    month,
-    rolledOver,
   };
 }
 
 /** The same question without spending a scan, for the counter the app shows. */
 export function peekQuota(
   row: QuotaRow | null,
-  now: Date,
   subscribed: boolean,
-  limit: number = FREE_SCANS_PER_MONTH
-): { used: number; left: number | null; month: string } {
-  const month = monthKey(now);
+  limit: number = FREE_TRIAL_SCANS
+): { used: number; left: number | null } {
+  const stored = row === null || !Number.isInteger(row.used) || row.used < 0 ? 0 : row.used;
+  return { used: stored, left: subscribed ? null : Math.max(0, limit - stored) };
+}
+
+export type SpendRow = { day: string; scans: number };
+
+/**
+ * Whether the proxy has any budget left today.
+ *
+ * Deliberately blind to who is asking. A per-install limit cannot save you from someone who can
+ * mint install ids, and until App Attest and Play Integrity exist there is nothing stopping them
+ * from doing exactly that. This is the floor under the whole thing: however the abuse works, the
+ * day's bill is bounded.
+ *
+ * A stored row from an earlier day counts as zero — the budget is per day, and a day that has
+ * rolled over starts empty.
+ */
+export function decideSpend(
+  row: SpendRow | null,
+  now: Date,
+  cap: number = MAX_SCANS_PER_DAY
+): { allowed: boolean; scansToday: number; day: string } {
+  const day = dayKey(now);
   const stored =
-    row === null || row.month !== month || !Number.isInteger(row.used) || row.used < 0 ? 0 : row.used;
-  return { used: stored, left: subscribed ? null : Math.max(0, limit - stored), month };
+    row === null || row.day !== day || !Number.isInteger(row.scans) || row.scans < 0 ? 0 : row.scans;
+  return { allowed: stored < cap, scansToday: stored, day };
 }
 
 /**
