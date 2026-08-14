@@ -11,14 +11,12 @@
  * A webhook that grants scans is easy; one that grants them twice, or grants them to a forged
  * request, is the expensive kind of bug.
  *
- * Run it (PowerShell):
+ * Run `node server/setup-secrets.mjs` once, then:
  *
- *   $env:RC_WEBHOOK_TOKEN="the-token-you-gave-wrangler"
  *   node server/simulate-purchase.mjs
  *
- * The proxy URL and app token are read from .env.local, which is git-ignored and which you already
- * have. RC_WEBHOOK_TOKEN is deliberately NOT read from there: it is a server secret, and client env
- * files have a way of ending up in builds.
+ * There is nothing to type and nothing to copy. Everything it needs is in the two git-ignored files
+ * that setup-secrets writes, which are the same files the Worker was configured from.
  *
  * What it touches: one obviously-fake install id in your D1, granted a pack and then refunded it,
  * ending back at zero. It never touches a real install and never spends a scan.
@@ -30,10 +28,10 @@ import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** Read a value out of .env.local without pulling in a dependency to do it. */
-function fromEnvFile(key) {
+/** Read a value out of a KEY=value file without pulling in a dependency to do it. */
+function fromFile(path, key) {
   try {
-    const text = readFileSync(join(here, "..", ".env.local"), "utf8");
+    const text = readFileSync(path, "utf8");
     const line = text.split(/\r?\n/).find((l) => l.trim().startsWith(`${key}=`));
     return line ? line.slice(line.indexOf("=") + 1).trim().replace(/^["']|["']$/g, "") : null;
   } catch {
@@ -41,10 +39,21 @@ function fromEnvFile(key) {
   }
 }
 
+/** What the app reads: the proxy URL and its token. Git-ignored. */
+const fromEnvFile = (key) => fromFile(join(here, "..", ".env.local"), key);
+/** What only this script reads: the webhook secret. Kept out of the app's env file on purpose —
+ *  Vite exposes anything prefixed VITE_, and a server secret should never be one slip from a bundle. */
+const fromSecretsFile = (key) => fromFile(join(here, ".secrets.local"), key);
+
 // Quotes are stripped because cmd.exe's `set FOO="bar"` puts the quotes *in* the value, which would
 // send a token that is subtly wrong and produce a 403 that looks exactly like a real secret
 // mismatch. An hour lost to that is an hour lost to punctuation.
-const token = (process.env.RC_WEBHOOK_TOKEN || "").replace(/^["']|["']$/g, "") || null;
+const token =
+  (process.env.RC_WEBHOOK_TOKEN || fromSecretsFile("RC_WEBHOOK_TOKEN") || "")
+    // Quotes are stripped because cmd.exe's `set FOO="bar"` puts the quotes *in* the value, which
+    // would send a token that is subtly wrong and produce a 403 that looks exactly like a real
+    // secret mismatch. An hour lost to that is an hour lost to punctuation.
+    .replace(/^["']|["']$/g, "") || null;
 const url = process.env.PROXY_URL || fromEnvFile("VITE_SCAN_PROXY_URL");
 const appToken = process.env.APP_TOKEN || fromEnvFile("VITE_APP_TOKEN");
 
@@ -56,12 +65,9 @@ const productId = process.argv[2] || "app.billy.scans.20";
 // past the id check. Nobody's phone will ever generate this.
 const INSTALL_ID = "00000000-0000-4000-8000-000000000001";
 
-if (!token) {
-  console.error("Set RC_WEBHOOK_TOKEN first — the same value you gave `wrangler secret put`.");
-  process.exit(1);
-}
-if (!url) {
-  console.error("No proxy URL. Put VITE_SCAN_PROXY_URL in .env.local, or set PROXY_URL.");
+if (!token || !url) {
+  console.error("\nNo secrets found. Run this first, and nothing needs copying:\n");
+  console.error("  node server/setup-secrets.mjs\n");
   process.exit(1);
 }
 
@@ -131,13 +137,10 @@ await check("a dashboard test event is answered calmly", async () => {
 
 if (!doorOpened) {
   console.error(
-    "\nThe Worker refused a correctly-formed notification, which means the token this script is\n" +
-      "sending is not the token the Worker is holding. They are set in two separate places and\n" +
-      "have to match exactly:\n\n" +
-      "  npx wrangler secret put RC_WEBHOOK_TOKEN     <- what the Worker checks against\n" +
-      "  set RC_WEBHOOK_TOKEN=...                     <- what this script sends\n\n" +
-      "There is no way to read the stored secret back, so the fix is always to set both again from\n" +
-      "the same value. Check the shell's copy first with:  echo %RC_WEBHOOK_TOKEN%\n"
+    "\nThe Worker refused a correctly-formed notification, which means the token this script sent\n" +
+      "is not the token the Worker is holding. There is no way to read the stored secret back, so\n" +
+      "the fix is never to investigate — it is to set both sides again from one new value:\n\n" +
+      "  node server/setup-secrets.mjs\n"
   );
   process.exit(1);
 }

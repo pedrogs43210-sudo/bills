@@ -61,21 +61,29 @@ connection — it fails halfway and leaves neither the Worker nor the secret. De
 plain call, and the Worker simply refuses every scan until the secrets arrive, which is fine when
 nothing is pointed at it yet.
 
-`APP_TOKEN` is any long random string — generate one with
-`node -e "console.log(crypto.randomUUID())"`.
+Then set both shared secrets in one command, from the project root:
+
+```bash
+node server/setup-secrets.mjs
+```
+
+It generates `APP_TOKEN` and `RC_WEBHOOK_TOKEN`, hands them to wrangler down a pipe, and writes them
+into the two git-ignored files that need them. Nothing is printed and nothing is copied by hand —
+which matters, because a secret that has to be identical in three places that cannot see each other
+is the single most reliable way to lose an evening. When one of them 403s, the fix is not to
+investigate: run this again and all three sides are back in step.
+
+It leaves `ANTHROPIC_API_KEY` alone. That one comes from Anthropic's console and is not ours to
+regenerate.
 
 Then point the app at it. Two places, because two things build the app:
 
-**For local testing** — `.env.local` in the repo root (git-ignored):
+**For local testing** — `setup-secrets.mjs` already wrote `.env.local` in the repo root.
 
-```
-VITE_SCAN_PROXY_URL=https://bills-scan-proxy.<your-subdomain>.workers.dev
-VITE_APP_TOKEN=<the same APP_TOKEN>
-```
-
-**For every built app** — the same two as **repository secrets** on GitHub (Settings → Secrets and
-variables → Actions → New repository secret), named exactly `VITE_SCAN_PROXY_URL` and
-`VITE_APP_TOKEN`. Both workflows read them, so the web build and the phone builds all get them.
+**For every built app** — the same two values as **repository secrets** on GitHub (Settings →
+Secrets and variables → Actions → New repository secret), named exactly `VITE_SCAN_PROXY_URL` and
+`VITE_APP_TOKEN`. Copy them out of `.env.local`. Both workflows read them, so the web build and the
+phone builds all get them.
 
 **Until those variables are set, the app keeps using the user's own key exactly as before.**
 Deploying the proxy is a switch, not a cutover — and unsetting the secrets switches it back.
