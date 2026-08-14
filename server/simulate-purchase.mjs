@@ -48,14 +48,28 @@ const fromSecretsFile = (key) => fromFile(join(here, ".secrets.local"), key);
 // Quotes are stripped because cmd.exe's `set FOO="bar"` puts the quotes *in* the value, which would
 // send a token that is subtly wrong and produce a 403 that looks exactly like a real secret
 // mismatch. An hour lost to that is an hour lost to punctuation.
-const token =
-  (process.env.RC_WEBHOOK_TOKEN || fromSecretsFile("RC_WEBHOOK_TOKEN") || "")
-    // Quotes are stripped because cmd.exe's `set FOO="bar"` puts the quotes *in* the value, which
-    // would send a token that is subtly wrong and produce a 403 that looks exactly like a real
-    // secret mismatch. An hour lost to that is an hour lost to punctuation.
-    .replace(/^["']|["']$/g, "") || null;
-const url = process.env.PROXY_URL || fromEnvFile("VITE_SCAN_PROXY_URL");
-const appToken = process.env.APP_TOKEN || fromEnvFile("VITE_APP_TOKEN");
+const clean = (v) => (v || "").replace(/^["']|["']$/g, "") || null;
+
+const fileToken = clean(fromSecretsFile("RC_WEBHOOK_TOKEN"));
+const envToken = clean(process.env.RC_WEBHOOK_TOKEN);
+
+// The FILE wins, not the environment variable — the opposite of the usual convention, and
+// deliberately so. `.secrets.local` was written by the same run of setup-secrets.mjs that told the
+// Worker what to expect, so it is the only copy known to match. An environment variable is a
+// leftover from some earlier attempt in a shell that has been open for an hour, and letting it
+// shadow the correct value produces a 403 that looks precisely like a forged request.
+const token = fileToken || envToken;
+
+if (fileToken && envToken && fileToken !== envToken) {
+  console.warn(
+    "\nNote: RC_WEBHOOK_TOKEN is set in this shell and disagrees with server/.secrets.local.\n" +
+      "Using the file, which is the copy the Worker was configured from. The shell's value is\n" +
+      "stale — close the window, or run: set RC_WEBHOOK_TOKEN="
+  );
+}
+
+const url = clean(fromEnvFile("VITE_SCAN_PROXY_URL")) || clean(process.env.PROXY_URL);
+const appToken = clean(fromEnvFile("VITE_APP_TOKEN")) || clean(process.env.APP_TOKEN);
 
 // The product to pretend was bought. Must be one of the ids in src/lib/packs.ts — if it drifts,
 // the Worker answers "unknown product" and this script says so, which is the whole idea.
@@ -68,15 +82,32 @@ const INSTALL_ID = "00000000-0000-4000-8000-000000000001";
 if (!token || !url) {
   console.error("\nNo secrets found. Run this first, and nothing needs copying:\n");
   console.error("  node server/setup-secrets.mjs\n");
-  process.exit(1);
+  process.exitCode = 1;
+  throw new Error("missing configuration");
 }
 
 const endpoint = `${url.replace(/\/$/, "")}/v1/purchases/revenuecat`;
 const run = Date.now(); // so repeated runs are new events, except where a replay is the point
 
+/**
+ * fetch, with one retry.
+ *
+ * A dropped connection is not a failed check — it is weather. Reporting "TypeError: fetch failed"
+ * next to a real assertion invites reading one as the other, and a test that cries wolf about the
+ * network is a test nobody trusts about anything else.
+ */
+async function hit(target, init) {
+  try {
+    return await fetch(target, init);
+  } catch {
+    await new Promise((r) => setTimeout(r, 750));
+    return fetch(target, init);
+  }
+}
+
 /** One notification, shaped the way RevenueCat shapes them. */
 const notify = (type, eventId, over = {}) =>
-  fetch(endpoint, {
+  hit(endpoint, {
     method: "POST",
     headers: { authorization: token, "content-type": "application/json" },
     body: JSON.stringify({
@@ -111,7 +142,7 @@ console.log(`Pretending ${INSTALL_ID} bought ${productId}\n`);
 // --- the refusals, first, because they are the ones that cost money when wrong ----------------
 
 await check("a forged request is refused", async () => {
-  const res = await fetch(endpoint, {
+  const res = await hit(endpoint, {
     method: "POST",
     headers: { authorization: "not-the-token", "content-type": "application/json" },
     body: JSON.stringify({ event: { type: "NON_RENEWING_PURCHASE", id: "forged", app_user_id: INSTALL_ID, product_id: productId } }),
@@ -120,7 +151,7 @@ await check("a forged request is refused", async () => {
 });
 
 await check("a request with no secret at all is refused", async () => {
-  const res = await fetch(endpoint, { method: "POST", body: "{}" });
+  const res = await hit(endpoint, { method: "POST", body: "{}" });
   return { ok: res.status === 403, detail: `HTTP ${res.status}` };
 });
 
@@ -142,7 +173,10 @@ if (!doorOpened) {
       "the fix is never to investigate — it is to set both sides again from one new value:\n\n" +
       "  node server/setup-secrets.mjs\n"
   );
-  process.exit(1);
+  // Not process.exit(): killing the process while a socket is still closing makes libuv abort on
+  // Windows with an assertion, which looks far more alarming than the thing actually being reported.
+  process.exitCode = 1;
+  throw new Error("token mismatch");
 }
 
 await check("a product we do not sell grants nothing", async () => {
@@ -181,7 +215,7 @@ await check("the same notification arriving twice grants nothing extra", async (
 if (appToken) {
   await check("the app can see the scans", async () => {
     // The real proof: not what the webhook said, but what the phone would be told next time it asks.
-    const res = await fetch(`${url.replace(/\/$/, "")}/v1/quota`, {
+    const res = await hit(`${url.replace(/\/$/, "")}/v1/quota`, {
       headers: { "x-install-id": INSTALL_ID, "x-app-token": appToken },
     });
     const b = await body(res);
@@ -201,7 +235,7 @@ await check("a refund takes the scans back", async () => {
 
 if (appToken) {
   await check("and the balance is back to nothing", async () => {
-    const res = await fetch(`${url.replace(/\/$/, "")}/v1/quota`, {
+    const res = await hit(`${url.replace(/\/$/, "")}/v1/quota`, {
       headers: { "x-install-id": INSTALL_ID, "x-app-token": appToken },
     });
     const b = await body(res);
@@ -215,4 +249,4 @@ console.log(
     ? `\nAll ${results.length} checks passed. The money-in path works.\n`
     : `\n${failed.length} of ${results.length} checks failed.\n`
 );
-process.exit(failed.length === 0 ? 0 : 1);
+process.exitCode = failed.length === 0 ? 0 : 1;
