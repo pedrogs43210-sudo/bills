@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Billy — Privacy Policy</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    max-width: 46rem; margin: 0 auto; padding: 2rem 1.25rem 5rem;
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #fff8f0; color: #3d2b24;
+  }
+  @media (prefers-color-scheme: dark) { body { background: #241a17; color: #fbeee2; } }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; }
+  .updated { color: #7d6555; margin-top: 0; }
+  @media (prefers-color-scheme: dark) { .updated { color: #a89383; } }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid #e2cdb6; vertical-align: top; }
+  @media (prefers-color-scheme: dark) { th, td { border-bottom-color: #5c4437; } }
+  code { overflow-wrap: anywhere; }
+  .todo {
+    background: #ffe8e4; border: 2px solid #b3261e; color: #6b1710;
+    padding: 1rem 1.1rem; border-radius: 10px; margin-bottom: 2rem;
+  }
+  .todo h2 { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<!-- ================================================================================
+     DELETE THIS BOX BEFORE PUBLISHING. Two things below are not yet decided, and the
+     policy is not true until they are filled in. Search the file for FILL-IN.
+     ================================================================================ -->
+<div class="todo">
+  <h2>Draft — two blanks to fill before this goes live</h2>
+  <ol>
+    <li><b>The contact address.</b> The Help screen inside the app already tells people to write
+      to "the address in the privacy policy", so this cannot ship empty.</li>
+    <li><b>The trader address.</b> Required of an EU trader selling in-app purchases, and it is
+      published on the store listing anyway. Waiting on the move to Portugal.</li>
+  </ol>
+  <p>Then delete this box.</p>
+</div>
+
+<h1>Billy — Privacy Policy</h1>
+<p class="updated">Last updated: 14 August 2026</p>
+
+<p>Billy splits receipts between friends. This policy explains, in plain language, exactly what
+leaves your phone and what does not. It is short because Billy collects very little.</p>
+
+<p><b>There is no account.</b> Billy never asks for your name, email address, or phone number, and
+there is nothing to sign up for.</p>
+
+<h2>What stays on your phone</h2>
+
+<p>Your trips, the people on them, the receipts, what everyone had, and who owes whom are stored
+<b>only in the app on your device</b>. None of it is ever sent anywhere. Nobody — including the
+developer — can see it.</p>
+
+<p>This also means it is not backed up. If you lose the phone, the data goes with it. Settings →
+Export writes a copy you can keep.</p>
+
+<h2>What leaves your phone</h2>
+
+<p>One thing: <b>the photo of a receipt, when you choose to scan one.</b></p>
+
+<p>The photo is shrunk on your phone and sent, over an encrypted connection, to Billy's own server,
+which passes it to <b>Anthropic</b> — an AI service that reads the text and sends back the list of
+items. Anthropic states that data submitted through its API is not used to train its models.</p>
+
+<p><b>The photo is not stored.</b> Not by Billy's server, not in any log, and not in any database.
+It exists only for the few seconds it takes to read, and is then gone. Typing a receipt in by hand
+sends nothing at all.</p>
+
+<h2>What the server keeps</h2>
+
+<p>Billy gives every install of the app a random reference — a string like
+<code>c2987a1a-9bfe-444b-b159-332468f72103</code> — generated on your phone when you first open it.
+It is not derived from anything about you or your device, and it is not linked to your name, because
+Billy does not know your name. You can see yours under Help &amp; about, at the bottom.</p>
+
+<p>Against that reference, the server stores:</p>
+
+<table>
+  <tr><th>What</th><th>Why</th></tr>
+  <tr><td>How many scans this install has used</td>
+      <td>To count the free trial. This has to live on a server: if it lived on the phone, clearing
+          the app's data would hand out unlimited free scans.</td></tr>
+  <tr><td>How many scans it has bought</td>
+      <td>So scans you paid for are still there next time.</td></tr>
+  <tr><td>The time of the most recent scan</td>
+      <td>To stop automated abuse of the scanning service.</td></tr>
+  <tr><td>A record of each completed purchase</td>
+      <td>So that a payment notification arriving twice does not charge you twice, and so a refund
+          can be applied correctly.</td></tr>
+</table>
+
+<p>Separately, and <b>not</b> linked to any install reference, the server counts how many scans were
+performed each day and what they cost to run. That record contains no reference, no photo, and no
+time more precise than the date, so it cannot be used to work out when anybody shops.</p>
+
+<h2>Payments</h2>
+
+<p>If you buy a pack of scans, the payment is handled entirely by <b>Google Play</b>. Billy never
+sees or receives your card details, billing address, or name. Google tells a service called
+<b>RevenueCat</b> that a purchase happened, which tells Billy's server to add the scans to your
+install reference. What is passed along is the reference and which pack was bought — nothing else.</p>
+
+<h2>Who processes data, and where</h2>
+
+<table>
+  <tr><th>Who</th><th>What they handle</th></tr>
+  <tr><td>Anthropic (United States)</td><td>Reads the receipt photo. Does not keep it.</td></tr>
+  <tr><td>Cloudflare</td><td>Runs Billy's server and stores the scan counts described above.</td></tr>
+  <tr><td>Google Play</td><td>Takes payment, if you buy a pack.</td></tr>
+  <tr><td>RevenueCat</td><td>Reports that a purchase happened.</td></tr>
+</table>
+
+<p>Some of these are outside the European Economic Area, so a scan involves an international
+transfer of the photo. It is sent encrypted, read, and not retained.</p>
+
+<h2>How long it is kept</h2>
+
+<p>The scan count is kept for as long as the app is installed. It is deliberately never reset — the
+free trial is once per install, for the life of that install, rather than a monthly allowance — so
+there is no point at which it expires on its own. Ask, and it will be deleted.</p>
+
+<h2>Your rights</h2>
+
+<p>Under the GDPR you can ask for a copy of what is held about you, ask for it to be corrected, or
+ask for it to be deleted. In Billy's case that is the short list in the table above and nothing
+else.</p>
+
+<p>To make a request, email the address below and <b>quote your install reference</b> — it is under
+Help &amp; about in the app. It is the only handle the record is stored under, so without it there
+is genuinely no way to find, or delete, your row. Deleting it also removes any scans you have
+bought, which cannot be undone.</p>
+
+<p>You also have the right to complain to your national data protection authority.</p>
+
+<h2>Children</h2>
+
+<p>Billy is not directed at children and does not knowingly collect anything from them. There is
+nothing to collect: no account, no name, no contact details.</p>
+
+<h2>Changes</h2>
+
+<p>If this policy changes, the date at the top changes with it. Material changes will be announced
+in the app.</p>
+
+<h2>Who is responsible</h2>
+
+<p>Billy is made by Pedro Santos.</p>
+
+<p>
+  Contact: <b>FILL-IN — contact email address</b><br>
+  Address: <b>FILL-IN — trader postal address</b>
+</p>
+
+</body>
+</html>

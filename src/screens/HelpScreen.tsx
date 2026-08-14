@@ -86,6 +86,18 @@ export function HelpScreen({ go }: { go: (v: View) => void }) {
           {/* Deliberately not a mailto with a guessed address — see docs/legal. */}
           Get in touch at the address in the privacy policy.
         </p>
+        {/* A relative path, so the same link works in the web build and inside the phone app, where
+            public/ is bundled alongside the app. Google requires a reachable policy, and a person
+            who wants to read one should not have to go looking for a website. */}
+        <a
+          className="btn"
+          style={{ width: "100%", marginTop: "var(--s2)" }}
+          href="privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Privacy policy
+        </a>
         {/* Quoted in a deletion request: it is the only handle the scan counter is stored under,
             so without showing it there is no way for someone to ask for their record to go. */}
         <p className="micro" style={{ marginTop: "var(--s3)" }}>
