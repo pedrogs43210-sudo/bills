@@ -118,11 +118,29 @@ await check("a request with no secret at all is refused", async () => {
   return { ok: res.status === 403, detail: `HTTP ${res.status}` };
 });
 
+// The first check that has to get *past* the door rather than be turned away by it. If this 403s
+// there is no point running the rest: they will all 403 for the same reason, and six identical
+// failures bury the one fact that matters.
+let doorOpened = false;
 await check("a dashboard test event is answered calmly", async () => {
   const res = await notify("TEST", `sim-${run}-test`);
   const b = await body(res);
+  doorOpened = res.status !== 403;
   return { ok: res.status === 200 && b.ignored === "test event", detail: JSON.stringify(b) };
 });
+
+if (!doorOpened) {
+  console.error(
+    "\nThe Worker refused a correctly-formed notification, which means the token this script is\n" +
+      "sending is not the token the Worker is holding. They are set in two separate places and\n" +
+      "have to match exactly:\n\n" +
+      "  npx wrangler secret put RC_WEBHOOK_TOKEN     <- what the Worker checks against\n" +
+      "  set RC_WEBHOOK_TOKEN=...                     <- what this script sends\n\n" +
+      "There is no way to read the stored secret back, so the fix is always to set both again from\n" +
+      "the same value. Check the shell's copy first with:  echo %RC_WEBHOOK_TOKEN%\n"
+  );
+  process.exit(1);
+}
 
 await check("a product we do not sell grants nothing", async () => {
   const res = await notify("NON_RENEWING_PURCHASE", `sim-${run}-unknown`, { product_id: "app.billy.scans.99999" });
