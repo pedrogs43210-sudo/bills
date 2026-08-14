@@ -6,6 +6,7 @@ import {
   isValidInstallId,
   monthKey,
   peekQuota,
+  scanCostMicros,
   FREE_TRIAL_SCANS,
   MAX_SCANS_PER_DAY,
 } from "./quota";
@@ -33,13 +34,13 @@ describe("the free trial", () => {
   });
 
   it("allows exactly the free allowance", () => {
-    const d = decideQuota({ used: FREE_TRIAL_SCANS - 1 }, false);
+    const d = decideQuota({ used: FREE_TRIAL_SCANS - 1, credits: 0 }, false);
     expect(d.allowed).toBe(true);
     expect(d.left).toBe(0);
   });
 
   it("refuses the one after, without incrementing the count", () => {
-    const d = decideQuota({ used: FREE_TRIAL_SCANS }, false);
+    const d = decideQuota({ used: FREE_TRIAL_SCANS, credits: 0 }, false);
     expect(d.allowed).toBe(false);
     expect(d.used).toBe(FREE_TRIAL_SCANS);
     expect(d.left).toBe(0);
@@ -48,13 +49,13 @@ describe("the free trial", () => {
   it("never comes back — this is the whole point of it not being monthly", () => {
     // A month later, a year later: the same install has the same spent trial. The old monthly
     // allowance was a recurring bill for every user who never paid.
-    const spent = { used: FREE_TRIAL_SCANS };
+    const spent = { used: FREE_TRIAL_SCANS, credits: 0 };
     expect(decideQuota(spent, false).allowed).toBe(false);
     expect(peekQuota(spent, false).left).toBe(0);
   });
 
   it("never caps a subscriber, but still counts them", () => {
-    const d = decideQuota({ used: 999 }, true);
+    const d = decideQuota({ used: 999, credits: 0 }, true);
     expect(d.allowed).toBe(true);
     expect(d.used).toBe(1000);
     expect(d.left).toBeNull();
@@ -62,35 +63,94 @@ describe("the free trial", () => {
 
   it("a lapsed subscriber falls back to the cap using the same counter", () => {
     // Their counter kept climbing while they were paying, so it is well past the trial.
-    const d = decideQuota({ used: 400 }, false);
+    const d = decideQuota({ used: 400, credits: 0 }, false);
     expect(d.allowed).toBe(false);
     expect(d.left).toBe(0);
   });
 
   it("treats a tampered count as zero rather than as free scans", () => {
     for (const used of [-5, 1.5, NaN]) {
-      expect(decideQuota({ used }, false).allowed).toBe(true);
-      expect(decideQuota({ used }, false).used).toBe(1);
+      expect(decideQuota({ used, credits: 0 }, false).allowed).toBe(true);
+      expect(decideQuota({ used, credits: 0 }, false).used).toBe(1);
     }
   });
 
   it("honours a different limit, and copes with one lowered below what was used", () => {
-    expect(decideQuota({ used: 5 }, false, 10).allowed).toBe(true);
-    const d = decideQuota({ used: 9 }, false, 3);
+    expect(decideQuota({ used: 5, credits: 0 }, false, 10).allowed).toBe(true);
+    const d = decideQuota({ used: 9, credits: 0 }, false, 3);
     expect(d.allowed).toBe(false);
     expect(d.left).toBe(0); // never negative
   });
 
   it("reports without spending a scan, and agrees with the decision", () => {
     for (const used of [0, 1, FREE_TRIAL_SCANS - 1, FREE_TRIAL_SCANS, 99]) {
-      const peek = peekQuota({ used }, false);
+      const peek = peekQuota({ used, credits: 0 }, false);
       expect(peek.used).toBe(used);
-      expect(peek.left! > 0).toBe(decideQuota({ used }, false).allowed);
+      expect(peek.left! > 0).toBe(decideQuota({ used, credits: 0 }, false).allowed);
     }
   });
 
   it("shows no cap for a subscriber", () => {
-    expect(peekQuota({ used: 12 }, true).left).toBeNull();
+    expect(peekQuota({ used: 12, credits: 0 }, true).left).toBeNull();
+  });
+});
+
+describe("bought credits", () => {
+  it("is spent only after the free trial is gone", () => {
+    // Burning a paid scan while a free one is sitting there is a small theft.
+    const fresh = decideQuota({ used: 0, credits: 20 }, false);
+    expect(fresh.source).toBe("trial");
+    expect(fresh.credits).toBe(20);
+
+    const spent = decideQuota({ used: FREE_TRIAL_SCANS, credits: 20 }, false);
+    expect(spent.source).toBe("credits");
+    expect(spent.credits).toBe(19);
+  });
+
+  it("counts trial and credits together in what the app shows as left", () => {
+    expect(peekQuota({ used: 1, credits: 20 }, false).left).toBe(FREE_TRIAL_SCANS - 1 + 20);
+    expect(decideQuota({ used: 1, credits: 20 }, false).left).toBe(FREE_TRIAL_SCANS - 2 + 20);
+  });
+
+  it("refuses once both are empty", () => {
+    const d = decideQuota({ used: FREE_TRIAL_SCANS, credits: 0 }, false);
+    expect(d.allowed).toBe(false);
+    expect(d.source).toBeNull();
+    expect(d.left).toBe(0);
+  });
+
+  it("does not touch credits for a subscriber", () => {
+    const d = decideQuota({ used: 500, credits: 20 }, true);
+    expect(d.source).toBe("subscription");
+    expect(d.credits).toBe(20);
+    expect(d.left).toBeNull();
+  });
+
+  it("treats a tampered credit balance as none, never as free scans", () => {
+    for (const credits of [-10, 2.5, NaN]) {
+      const d = decideQuota({ used: FREE_TRIAL_SCANS, credits }, false);
+      expect(d.allowed).toBe(false);
+      expect(d.credits).toBe(0);
+    }
+  });
+});
+
+describe("what a scan cost", () => {
+  it("prices the model that was actually used", () => {
+    // 5,950 in and 900 out on Sonnet 5: 5950*3 + 900*15 = 31,350 micro-dollars, about 3 cents.
+    expect(scanCostMicros("claude-sonnet-5", 5950, 900)).toBe(31_350);
+  });
+
+  it("bills an unknown model at the dearest rate rather than at nothing", () => {
+    // A cost report that silently reads zero for a model nobody added is worse than one too high.
+    expect(scanCostMicros("some-future-model", 1000, 100)).toBeGreaterThan(0);
+    expect(scanCostMicros("some-future-model", 1000, 100)).toBe(
+      scanCostMicros("claude-opus-4-8", 1000, 100)
+    );
+  });
+
+  it("shrugs off missing or nonsense token counts", () => {
+    expect(scanCostMicros("claude-sonnet-5", NaN, -5)).toBe(0);
   });
 });
 

@@ -7,9 +7,11 @@ import {
   isValidInstallId,
   monthKey,
   peekQuota,
+  scanCostMicros,
   FREE_TRIAL_SCANS,
   MAX_SCANS_PER_DAY,
   type QuotaRow,
+  type ScanSource,
   type SpendRow,
 } from "./quota";
 
@@ -76,9 +78,9 @@ function json(body: Json, status: number, headers: Record<string, string>): Resp
 
 /** Reads the install's counter row. Returns null when this install has never scanned. */
 async function readRow(env: Env, installId: string): Promise<QuotaRow & { last_scan_at: number | null } | null> {
-  const row = await env.DB.prepare("SELECT used, last_scan_at FROM installs WHERE install_id = ?")
+  const row = await env.DB.prepare("SELECT used, credits, last_scan_at FROM installs WHERE install_id = ?")
     .bind(installId)
-    .first<{ used: number; last_scan_at: number | null }>();
+    .first<{ used: number; credits: number; last_scan_at: number | null }>();
   return row ?? null;
 }
 
@@ -205,17 +207,20 @@ async function handleScan(
   if (!claimedDay) {
     return json({ error: "closed-today" }, 503, cors);
   }
-  const reserved = await reserve(env, installId, subscribed, limit, now.getTime());
+  const source = decision.source!;
+  const reserved = await reserve(env, installId, source, limit, now.getTime());
   if (!reserved) {
     await releaseDayBudget(env, spend.day);
     return json({ error: "quota-exceeded", used: limit, left: 0, limit }, 402, cors);
   }
 
+  const model = env.SCAN_MODEL || SCAN_MODEL;
+  const startedAt = Date.now();
   try {
     const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
     const response = await client.messages.parse(
       {
-        model: env.SCAN_MODEL || SCAN_MODEL,
+        model,
         // Sonnet 5 thinks by default, and max_tokens caps thinking + output together: a long
         // receipt could spend the budget reasoning and truncate mid-list. Transcribing a receipt
         // needs no deliberation, so it is off, and the ceiling is generous for a 60-item shop.
@@ -235,22 +240,37 @@ async function handleScan(
       { timeout: 60_000 }
     );
 
+    // Recorded whichever way it went: a scan that was refused or came back unreadable still cost
+    // real tokens, and a cost report that only counts the successes understates the bill.
+    const ok = response.stop_reason !== "refusal" && Boolean(response.parsed_output);
+    await recordScan(env, spend.day, model, response.usage, Date.now() - startedAt, ok);
+
     if (response.stop_reason === "refusal") {
-      await refund(env, installId, spend.day);
+      await refund(env, installId, source, spend.day);
       return json({ error: "refused" }, 422, cors);
     }
     if (!response.parsed_output) {
-      await refund(env, installId, spend.day);
+      await refund(env, installId, source, spend.day);
       return json({ error: "unparseable" }, 422, cors);
     }
 
     const result = normaliseDiscountSigns(response.parsed_output);
-    const left = subscribed ? null : Math.max(0, limit - decision.used);
     // The photo is never written anywhere — not to D1, not to logs.
-    return json({ result, used: decision.used, left, limit: subscribed ? null : limit }, 200, cors);
+    return json(
+      {
+        result,
+        used: decision.used,
+        left: decision.left,
+        credits: decision.credits,
+        limit: subscribed ? null : limit,
+      },
+      200,
+      cors
+    );
   } catch (err) {
     // Our failure, not theirs: give the scan back rather than charging for a scan they never got.
-    await refund(env, installId, spend.day);
+    await refund(env, installId, source, spend.day);
+    await recordScan(env, spend.day, model, undefined, Date.now() - startedAt, false);
     const status = err instanceof Anthropic.APIError ? 502 : 500;
     return json({ error: "scan-failed" }, status, cors);
   }
@@ -262,16 +282,21 @@ function dayKeyOf(now: Date): string {
 }
 
 /**
- * Claim one scan from the install's trial, atomically.
+ * Claim one scan from a named bucket, atomically.
  *
- * Creates the row on first use. `used` is a lifetime count and nothing resets it — the month
- * column is written for reporting only, so a glance at the table shows when an install was last
- * active without it being load-bearing.
+ * Creates the row on first use. `used` is a lifetime count and nothing resets it — the month column
+ * is written for reporting only, so a glance at the table shows when an install was last active
+ * without it being load-bearing.
+ *
+ * The bucket is passed in rather than worked out here, because `decideQuota` already chose it and
+ * two places deciding the same thing is two places to disagree. What this function adds is the part
+ * a pure function cannot do: the condition is re-checked *inside* SQLite, so of two requests that
+ * both saw one credit remaining, exactly one gets it.
  */
 async function reserve(
   env: Env,
   installId: string,
-  subscribed: boolean,
+  source: ScanSource,
   limit: number,
   nowMs: number
 ): Promise<boolean> {
@@ -283,14 +308,34 @@ async function reserve(
     .bind(installId, monthKey(new Date(nowMs)), nowMs)
     .run();
 
-  const result = await env.DB.prepare(
-    `UPDATE installs SET used = used + 1, last_scan_at = ?2
-     WHERE install_id = ?1 AND (?3 = 1 OR used < ?4)`
-  )
-    .bind(installId, nowMs, subscribed ? 1 : 0, limit)
-    .run();
+  const sql =
+    source === "subscription"
+      ? `UPDATE installs SET used = used + 1, last_scan_at = ?2 WHERE install_id = ?1`
+      : source === "trial"
+        ? `UPDATE installs SET used = used + 1, last_scan_at = ?2
+           WHERE install_id = ?1 AND used < ?3`
+        : `UPDATE installs SET used = used + 1, credits = credits - 1, last_scan_at = ?2
+           WHERE install_id = ?1 AND credits > 0`;
 
+  const result = await env.DB.prepare(sql).bind(installId, nowMs, limit).run();
   return (result.meta?.changes ?? 0) === 1;
+}
+
+/**
+ * Add bought scans to an install.
+ *
+ * Not reachable from any endpoint, deliberately. It is here so that wiring in-app purchases is a
+ * matter of verifying a store receipt and calling this — and so that nobody, reading this file
+ * later, is tempted to add a route that takes a number of credits from the client.
+ */
+export async function grantCredits(env: Env, installId: string, scans: number, nowMs: number): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO installs (install_id, month, used, credits, created_at)
+     VALUES (?1, ?2, 0, ?3, ?4)
+     ON CONFLICT(install_id) DO UPDATE SET credits = credits + ?3`
+  )
+    .bind(installId, monthKey(new Date(nowMs)), Math.max(0, Math.trunc(scans)), nowMs)
+    .run();
 }
 
 /**
@@ -329,10 +374,51 @@ async function releaseDayBudget(env: Env, day: string): Promise<void> {
  *
  * They are always claimed as a pair, so they are always returned as a pair; refunding one and not
  * the other would slowly poison whichever counter was left behind.
+ *
+ * A scan paid for with a credit gets the credit back, not a trial scan. They are worth different
+ * amounts to the person who owns them.
  */
-async function refund(env: Env, installId: string, day: string): Promise<void> {
-  await env.DB.prepare("UPDATE installs SET used = MAX(0, used - 1) WHERE install_id = ?1")
-    .bind(installId)
-    .run();
+async function refund(env: Env, installId: string, source: ScanSource, day: string): Promise<void> {
+  const sql =
+    source === "credits"
+      ? "UPDATE installs SET used = MAX(0, used - 1), credits = credits + 1 WHERE install_id = ?1"
+      : "UPDATE installs SET used = MAX(0, used - 1) WHERE install_id = ?1";
+  await env.DB.prepare(sql).bind(installId).run();
   await releaseDayBudget(env, day);
+}
+
+/**
+ * Record what a scan cost, with nothing that says who scanned or when beyond the day.
+ *
+ * The question this exists to answer is "what does a scan actually cost", which has been guessed at
+ * for weeks. It cannot answer "what does this person buy, and when" — there is no install id here
+ * and no clock finer than the date, so the table is useless for building a picture of anybody.
+ */
+async function recordScan(
+  env: Env,
+  day: string,
+  model: string,
+  usage: { input_tokens?: number; output_tokens?: number } | undefined,
+  ms: number,
+  ok: boolean
+): Promise<void> {
+  const input = usage?.input_tokens ?? 0;
+  const output = usage?.output_tokens ?? 0;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO scan_stats (day, model, scans, failures, input_tokens, output_tokens, cost_micros, total_ms)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+       ON CONFLICT(day, model) DO UPDATE SET
+         scans = scans + ?3,
+         failures = failures + ?4,
+         input_tokens = input_tokens + ?5,
+         output_tokens = output_tokens + ?6,
+         cost_micros = cost_micros + ?7,
+         total_ms = total_ms + ?8`
+    )
+      .bind(day, model, ok ? 1 : 0, ok ? 0 : 1, input, output, scanCostMicros(model, input, output), Math.round(ms))
+      .run();
+  } catch {
+    // Bookkeeping must never be the reason somebody does not get their receipt back.
+  }
 }

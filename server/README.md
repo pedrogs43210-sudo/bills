@@ -91,5 +91,33 @@ then meets the ceiling, which is the difference between a nuisance and a bill yo
 **Set `MAX_SCANS_PER_DAY = 0` to stop scanning entirely.** It is the emergency brake: no deploy, no
 code change, and the app degrades to "Billy is having a busy day" rather than breaking.
 
+## What a scan actually costs
+
+`scan_stats` answers the question this project has been guessing at. One row per day per model, no
+install id, no clock finer than the date — so it can tell you what scanning costs and cannot tell
+you when anybody shops.
+
+```sh
+npx wrangler d1 execute bills --remote --command   "SELECT day, model, scans, failures,
+          ROUND(cost_micros / 1000000.0, 2)          AS dollars,
+          ROUND(cost_micros / 1000.0 / scans, 2)     AS cents_per_scan,
+          input_tokens / scans                       AS avg_in,
+          output_tokens / scans                      AS avg_out,
+          total_ms / scans                           AS avg_ms
+   FROM scan_stats WHERE scans > 0 ORDER BY day DESC LIMIT 14"
+```
+
+Failed scans are counted and costed too. A refusal or an unreadable answer still burned tokens, and
+a report that only counts the successes understates the bill.
+
+## Giving somebody the scans they bought
+
+`grantCredits()` exists in `worker.ts` and **no endpoint calls it.** That is deliberate: a route
+that takes a number of credits from the client is a route that hands out free scans. When in-app
+purchases ship, the flow is store receipt → verify it with Apple or Google → `grantCredits()`.
+
+The free trial is always spent before bought credits, so nobody burns a scan they paid for while a
+free one is sitting there.
+
 **Nothing writes to the `subscriptions` table yet.** The proxy already reads it, so switching
 subscriptions on is an insert once in-app purchases are verified — no change to this code.

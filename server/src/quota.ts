@@ -39,38 +39,70 @@ export function monthKey(now: Date): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-export type QuotaRow = { used: number };
+export type QuotaRow = { used: number; credits: number };
+
+/**
+ * Where a scan is paid from.
+ *
+ * Named rather than implied, because a refund has to go back to the bucket it came from. Handing a
+ * failed paid scan back as a free one — or worse, the other way — is the sort of quiet unfairness
+ * nobody notices until someone counts.
+ */
+export type ScanSource = "subscription" | "trial" | "credits";
 
 export type QuotaDecision = {
   allowed: boolean;
+  /** Which bucket pays for this scan, and therefore which one a refund returns to. */
+  source: ScanSource | null;
   /** Scans used in the lifetime of this install, after this decision is applied. */
   used: number;
-  /** Free scans remaining, or null when the install is subscribed and has no cap. */
+  /** Free trial scans plus bought credits remaining, or null when subscribed and uncapped. */
   left: number | null;
+  /** Bought scans remaining after this decision, so the app can say what was free and what was not. */
+  credits: number;
 };
 
+/** A stored count that is negative, fractional or missing is unusable, never free scans. */
+const sane = (n: unknown): number => (Number.isInteger(n) && (n as number) >= 0 ? (n as number) : 0);
+
 /**
- * Whether this install may scan right now, and what its counter becomes.
+ * Whether this install may scan right now, and what its counters become.
  *
- * `subscribed` short-circuits the cap but still counts, so there is a usage figure to look at
- * when deciding whether three is the right number — and so a subscription that lapses does not
- * suddenly reveal a hidden pile of used scans.
+ * The free trial is spent before bought credits, always. Someone who buys a pack while they still
+ * have a free scan left would otherwise burn the one they paid for first, which is a small theft.
+ *
+ * `subscribed` short-circuits both but still counts, so there is a usage figure to look at when
+ * deciding whether three is the right number — and so a subscription that lapses does not suddenly
+ * reveal a hidden pile of unused trial scans.
  */
 export function decideQuota(
   row: QuotaRow | null,
   subscribed: boolean,
   limit: number = FREE_TRIAL_SCANS
 ): QuotaDecision {
-  // A negative or fractional stored count means the row was tampered with or written by an
-  // older version: treat it as unusable rather than as free scans.
-  const stored = row === null || !Number.isInteger(row.used) || row.used < 0 ? 0 : row.used;
+  const used = sane(row?.used);
+  const credits = sane(row?.credits);
+  const trialLeft = Math.max(0, limit - used);
 
-  const allowed = subscribed || stored < limit;
-  const used = allowed ? stored + 1 : stored;
+  const source: ScanSource | null = subscribed
+    ? "subscription"
+    : trialLeft > 0
+      ? "trial"
+      : credits > 0
+        ? "credits"
+        : null;
+
+  if (source === null) {
+    return { allowed: false, source: null, used, left: 0, credits };
+  }
+  const creditsAfter = source === "credits" ? credits - 1 : credits;
+  const usedAfter = used + 1;
   return {
-    allowed,
-    used,
-    left: subscribed ? null : Math.max(0, limit - used),
+    allowed: true,
+    source,
+    used: usedAfter,
+    left: subscribed ? null : Math.max(0, limit - usedAfter) + creditsAfter,
+    credits: creditsAfter,
   };
 }
 
@@ -79,9 +111,14 @@ export function peekQuota(
   row: QuotaRow | null,
   subscribed: boolean,
   limit: number = FREE_TRIAL_SCANS
-): { used: number; left: number | null } {
-  const stored = row === null || !Number.isInteger(row.used) || row.used < 0 ? 0 : row.used;
-  return { used: stored, left: subscribed ? null : Math.max(0, limit - stored) };
+): { used: number; left: number | null; credits: number } {
+  const used = sane(row?.used);
+  const credits = sane(row?.credits);
+  return {
+    used,
+    left: subscribed ? null : Math.max(0, limit - used) + credits,
+    credits,
+  };
 }
 
 export type SpendRow = { day: string; scans: number };
@@ -106,6 +143,27 @@ export function decideSpend(
   const stored =
     row === null || row.day !== day || !Number.isInteger(row.scans) || row.scans < 0 ? 0 : row.scans;
   return { allowed: stored < cap, scansToday: stored, day };
+}
+
+/** Anthropic's price list, in micro-dollars per token, so cost is integer arithmetic throughout. */
+const PRICES: Record<string, { input: number; output: number }> = {
+  // $3 / $15 per million tokens. The introductory $2/$10 ends 2026-08-31; using the standard rate
+  // means the recorded figure is never an understatement, which is the safer direction to be wrong.
+  "claude-sonnet-5": { input: 3, output: 15 },
+  "claude-opus-4-8": { input: 5, output: 25 },
+  "claude-haiku-4-5": { input: 1, output: 5 },
+};
+
+/**
+ * What one scan cost, in micro-dollars.
+ *
+ * Integers, because this gets summed over thousands of rows and floating-point cents drift. An
+ * unknown model falls back to the most expensive rate on the list rather than to zero: a cost
+ * report that silently reads zero for a model nobody updated is worse than one that reads high.
+ */
+export function scanCostMicros(model: string, inputTokens: number, outputTokens: number): number {
+  const price = PRICES[model] ?? { input: 5, output: 25 };
+  return Math.round(sane(inputTokens) * price.input + sane(outputTokens) * price.output);
 }
 
 /**
