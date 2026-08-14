@@ -32,7 +32,14 @@ const appToken: string = import.meta.env?.VITE_APP_TOKEN ?? "";
 export const usingProxy = (): boolean => scanProxyUrl !== "";
 
 /** What the proxy said about this install's allowance, when it said anything. */
-export type ScanQuota = { used: number; left: number | null; limit: number | null };
+export type ScanQuota = {
+  used: number;
+  /** Free trial scans plus bought ones, together. Null for a subscriber, who has no cap. */
+  left: number | null;
+  limit: number | null;
+  /** Of `left`, how many were paid for — so the app can avoid calling a bought scan free. */
+  credits: number;
+};
 let lastQuota: ScanQuota | null = null;
 export const lastKnownQuota = (): ScanQuota | null => lastQuota;
 
@@ -112,7 +119,14 @@ async function scanViaProxy(imageBase64: string): Promise<ScanResult> {
     throw new ScanError("network", "Could not reach the scanning service — are you online?");
   }
 
-  let body: { result?: unknown; error?: string; used?: number; left?: number | null; limit?: number | null };
+  let body: {
+    result?: unknown;
+    error?: string;
+    used?: number;
+    left?: number | null;
+    limit?: number | null;
+    credits?: number;
+  };
   try {
     body = await response.json();
   } catch {
@@ -122,7 +136,12 @@ async function scanViaProxy(imageBase64: string): Promise<ScanResult> {
   // Remember the allowance even on a refusal: the paywall needs it, and a failed scan still
   // tells us where this install stands.
   if (typeof body.used === "number") {
-    lastQuota = { used: body.used, left: body.left ?? null, limit: body.limit ?? null };
+    lastQuota = {
+      used: body.used,
+      left: body.left ?? null,
+      limit: body.limit ?? null,
+      credits: body.credits ?? 0,
+    };
   }
 
   if (!response.ok) {
@@ -149,7 +168,12 @@ export async function fetchQuota(): Promise<ScanQuota | null> {
     });
     if (!response.ok) return null;
     const body = (await response.json()) as ScanQuota;
-    lastQuota = { used: body.used, left: body.left ?? null, limit: body.limit ?? null };
+    lastQuota = {
+      used: body.used,
+      left: body.left ?? null,
+      limit: body.limit ?? null,
+      credits: body.credits ?? 0,
+    };
     return lastQuota;
   } catch {
     return null; // the counter is a nicety; never block the app on it

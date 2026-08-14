@@ -1,5 +1,6 @@
+import { useState } from "react";
 import type { View } from "../App";
-import type { ScanQuota } from "../lib/scan";
+import { fetchQuota, type ScanQuota } from "../lib/scan";
 import { PackChooser } from "../components/PackChooser";
 
 /**
@@ -13,6 +14,10 @@ import { PackChooser } from "../components/PackChooser";
  * disappointment to the first of the month. What it can do is tell the truth about why scanning
  * costs something when the rest of the app does not, and make the free path sound like the real
  * thing it is rather than a consolation prize.
+ *
+ * Buying here has to change what the screen says. Someone who has just paid and is still looking
+ * at "Out of free scans" will reasonably conclude it did not work — so a purchase refreshes the
+ * count from the server and turns the screen into a way back to the camera they were reaching for.
  *
  * The pack chooser sits above the free path rather than below it. That ordering is the honest one:
  * this is the screen where we ask for money, and burying the ask under the alternative would be a
@@ -29,33 +34,62 @@ export function PaywallScreen({
   go: (v: View) => void;
 }) {
   const limit = quota?.limit ?? null;
+  const [bought, setBought] = useState(false);
+
+  /**
+   * A purchase happened. Re-ask the server what this install now has — the client is never the
+   * authority on that — and let the screen become an exit rather than a wall.
+   */
+  function afterBuying() {
+    setBought(true);
+    void fetchQuota();
+  }
 
   return (
     <div>
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trip", tripId })}>←</button>
-        <h1 className="screen-title">Out of free scans</h1>
+        <h1 className="screen-title">{bought ? "You're all set" : "Out of free scans"}</h1>
       </div>
 
-      {quota !== null && (
-        <div className="card" style={{ textAlign: "center" }}>
-          <span className="hero">{quota.used}</span>
-          <span className="micro">
-            {limit === null ? "scans used" : `of ${limit} free scans used`}
-          </span>
-        </div>
+      {bought ? (
+        <>
+          <div className="note note-good" role="status">
+            <span className="note-dot" aria-hidden="true">✓</span>
+            <div>
+              <span className="note-head">Your scans are ready. </span>
+              They never expire, so anything you don't use is waiting for the next receipt.
+            </div>
+          </div>
+          {/* They came here trying to photograph something. Send them back to it. */}
+          <button className="btn btn-primary" onClick={() => go({ screen: "trip", tripId })}>
+            📸 Back to scanning
+          </button>
+        </>
+      ) : (
+        <>
+          {quota !== null && (
+            <div className="card" style={{ textAlign: "center" }}>
+              <span className="hero">{quota.used}</span>
+              <span className="micro">
+                {limit === null ? "scans used" : `of ${limit} free scans used`}
+              </span>
+            </div>
+          )}
+
+          <div className="note" role="status">
+            <span className="note-dot" aria-hidden="true">!</span>
+            <div>
+              <span className="note-head">Billy is free. Reading a receipt isn't. </span>
+              Every photo goes off to be read by an AI service, and that costs a few cents each
+              time — so scanning is the one part that has to be paid for. Everything else stays
+              free.
+            </div>
+          </div>
+
+          <PackChooser onBought={afterBuying} />
+        </>
       )}
-
-      <div className="note" role="status">
-        <span className="note-dot" aria-hidden="true">!</span>
-        <div>
-          <span className="note-head">Billy is free. Reading a receipt isn't. </span>
-          Every photo goes off to be read by an AI service, and that costs a few cents each time —
-          so scanning is the one part that has to be paid for. Everything else stays free.
-        </div>
-      </div>
-
-      <PackChooser />
 
       {/* The way out has to be genuinely useful, not a consolation prize. Adding items by hand is
           the whole app minus the camera, and anyone who leaves believing otherwise never returns. */}

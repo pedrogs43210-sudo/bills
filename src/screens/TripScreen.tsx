@@ -576,9 +576,11 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             a subscriber has no cap to count against. */}
         {quota?.left !== null && quota?.left !== undefined && (
           <div className="micro" style={{ textAlign: "center", marginBottom: 8 }}>
+            {/* "free" only while they all are. Calling a scan somebody paid for free is a small
+                lie, and it is the kind that makes a person wonder what else is loose. */}
             {quota.left === 0
-              ? "No free scans left"
-              : `${quota.left} free scan${quota.left === 1 ? "" : "s"} left`}
+              ? "No scans left"
+              : `${quota.left} ${quota.credits > 0 ? "" : "free "}scan${quota.left === 1 ? "" : "s"} left`}
           </div>
         )}
         <div className="row">

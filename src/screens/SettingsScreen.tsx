@@ -23,6 +23,14 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle");
   const [importError, setImportError] = useState("");
   const [theme, setTheme] = useState<ThemeChoice>(themeChoice);
+  const [scanQuota, setScanQuota] = useState<ScanQuota | null>(lastKnownQuota());
+
+  /** Asked of the server, never believed from the phone — before and after anything is bought. */
+  const refreshScanQuota = () => void fetchQuota().then((q) => q && setScanQuota(q));
+  useEffect(() => {
+    if (usingProxy()) refreshScanQuota();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function testKey() {
     setKeyStatus("checking");
@@ -65,9 +73,10 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
           discover they could have topped up is a worse experience and a worse conversion. */}
       <div className="card">
         <h3>Scans</h3>
-        <ScansSummary />
+        <ScansSummary quota={scanQuota} />
       </div>
-      <PackChooser />
+      {/* Buying below has to move the number above it, or the card and the purchase disagree. */}
+      <PackChooser onBought={refreshScanQuota} />
 
       {/* Light and dark both exist; this is the choice between them. "Auto" follows the phone,
           which is right most of the time and wrong at a sunny kitchen table. */}
@@ -194,19 +203,7 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
  * Deliberately quiet when there is nothing to say: with no proxy configured there is no counter to
  * report, and inventing "unlimited" would be a promise this app cannot keep.
  */
-function ScansSummary() {
-  const [quota, setQuota] = useState<ScanQuota | null>(lastKnownQuota());
-
-  useEffect(() => {
-    let live = true;
-    void fetchQuota().then((q) => {
-      if (live && q) setQuota(q);
-    });
-    return () => {
-      live = false;
-    };
-  }, []);
-
+function ScansSummary({ quota }: { quota: ScanQuota | null }) {
   if (!usingProxy()) {
     return (
       <p className="muted" style={{ margin: 0 }}>
@@ -229,9 +226,18 @@ function ScansSummary() {
     );
   }
   return (
-    <div className="row">
-      <span className="micro">Scans left</span>
-      <span className="money-1">{quota.left}</span>
-    </div>
+    <>
+      <div className="row">
+        <span className="micro">Scans left</span>
+        <span className="money-1">{quota.left}</span>
+      </div>
+      {/* Only worth breaking down when both kinds exist. "3 free" on its own is just the number
+          again, and "20 bought" on its own is not news to whoever bought them. */}
+      {quota.credits > 0 && quota.left > quota.credits && (
+        <p className="muted" style={{ margin: "var(--s1) 0 0" }}>
+          {quota.left - quota.credits} free, {quota.credits} bought
+        </p>
+      )}
+    </>
   );
 }

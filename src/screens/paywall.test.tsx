@@ -17,7 +17,15 @@ function seedTrip(): Trip {
   };
 }
 
-async function renderApp(quota: { used: number; left: number | null; limit: number | null }) {
+/**
+ * `boughtPack` pretends the store took the money. It has to be stubbed *inside* here, after
+ * resetModules and before App is imported — a spy installed on the module registry that
+ * resetModules is about to throw away applies to nothing.
+ */
+async function renderApp(
+  quota: { used: number; left: number | null; limit: number | null; credits?: number },
+  opts: { boughtPack?: number } = {}
+) {
   vi.resetModules();
   vi.stubEnv("VITE_SCAN_PROXY_URL", PROXY);
   vi.stubGlobal(
@@ -30,6 +38,11 @@ async function renderApp(quota: { used: number; left: number | null; limit: numb
       )
     )
   );
+  if (opts.boughtPack !== undefined) {
+    const purchase = await import("../lib/purchase");
+    vi.spyOn(purchase, "canBuy").mockReturnValue(true);
+    vi.spyOn(purchase, "buyPack").mockResolvedValue({ kind: "bought", scansAdded: opts.boughtPack });
+  }
   const { saveData, saveApiKey } = await import("../lib/storage");
   localStorage.clear();
   saveData({ schemaVersion: 2, trips: [seedTrip()] });
@@ -41,7 +54,10 @@ async function renderApp(quota: { used: number; left: number | null; limit: numb
   return user;
 }
 
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
 beforeEach(() => localStorage.clear());
 
 describe("the scans-left counter", () => {
@@ -68,7 +84,7 @@ describe("the paywall", () => {
     const user = await renderApp({ used: 3, left: 0, limit: 3 });
     // the file input is gone, so tapping cannot open the camera
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    expect(screen.getByText(/no free scans left/i)).toBeInTheDocument();
+    expect(screen.getByText(/no scans left/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /scan receipt/i }));
     expect(screen.getByText(/out of free scans/i)).toBeInTheDocument();
@@ -88,6 +104,35 @@ describe("the paywall", () => {
     expect(screen.getByRole("radio", { name: /20 scans/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Buy \d+ scans/ })).toBeDisabled();
     expect(screen.getByText(/aren't ready to buy yet/i)).toBeInTheDocument();
+  });
+
+  it("stops saying 'out of scans' the moment some are bought", async () => {
+    // The gap this pins: with nothing wired to the purchase, someone who had just paid would still
+    // be looking at the wall and would reasonably conclude their money had gone nowhere.
+    const user = await renderApp({ used: 3, left: 0, limit: 3, credits: 0 }, { boughtPack: 20 });
+    await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
+    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+
+    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+
+    expect(await screen.findByRole("heading", { name: /you're all set/i })).toBeInTheDocument();
+    expect(screen.queryByText(/out of free scans/i)).toBeNull();
+    // And it sends them back to what they were trying to do in the first place.
+    expect(screen.getByRole("button", { name: /back to scanning/i })).toBeInTheDocument();
+  });
+
+  it("asks the server what was bought rather than trusting the phone", async () => {
+    // A client that can tell itself it owns 20 scans is a client that can say it a hundred times.
+    const user = await renderApp({ used: 3, left: 0, limit: 3, credits: 0 }, { boughtPack: 20 });
+    await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
+    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    const before = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+
+    await waitFor(() =>
+      expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(before)
+    );
   });
 
   it("offers the honest way out and returns to the trip", async () => {

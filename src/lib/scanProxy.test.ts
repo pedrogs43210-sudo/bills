@@ -62,7 +62,7 @@ describe("scanning through the proxy", () => {
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(respond({ error: "quota-exceeded", used: 5, left: 0, limit: 5 }, 402)));
     await expect(scanReceipt("", "img")).rejects.toMatchObject({ reason: "out-of-scans" });
     // and the allowance is remembered, because the paywall needs it
-    expect(lastKnownQuota()).toEqual({ used: 5, left: 0, limit: 5 });
+    expect(lastKnownQuota()).toEqual({ used: 5, left: 0, limit: 5, credits: 0 });
   });
 
   it("still normalises an unsigned discount, wherever the scan happened", async () => {
@@ -115,7 +115,7 @@ describe("scanning through the proxy", () => {
     const { fetchQuota } = await loadScanner();
     const fetchMock = vi.fn().mockReturnValue(respond({ used: 2, left: 3, limit: 5, month: "2026-08", subscribed: false }));
     vi.stubGlobal("fetch", fetchMock);
-    expect(await fetchQuota()).toEqual({ used: 2, left: 3, limit: 5 });
+    expect(await fetchQuota()).toEqual({ used: 2, left: 3, limit: 5, credits: 0 });
     expect(fetchMock.mock.calls[0][0]).toBe("https://proxy.example/v1/quota");
   });
 
