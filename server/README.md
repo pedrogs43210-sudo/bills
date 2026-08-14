@@ -111,12 +111,16 @@ you when anybody shops.
 ```sh
 npx wrangler d1 execute bills --remote --command   "SELECT day, model, scans, failures,
           ROUND(cost_micros / 1000000.0, 2)          AS dollars,
-          ROUND(cost_micros / 1000.0 / scans, 2)     AS cents_per_scan,
+          ROUND(cost_micros / 10000.0 / scans, 2)    AS cents_per_scan,
           input_tokens / scans                       AS avg_in,
           output_tokens / scans                      AS avg_out,
           total_ms / scans                           AS avg_ms
    FROM scan_stats WHERE scans > 0 ORDER BY day DESC LIMIT 14"
 ```
+
+A million micro-dollars is a dollar, so cents are `cost_micros / 10000`. The first version of this
+query divided by 1,000 and labelled the result `cents_per_scan`, which reported a three-cent scan as
+costing thirty. A wrong unit under a confident column name is worse than no column at all.
 
 Failed scans are counted and costed too. A refusal or an unreadable answer still burned tokens, and
 a report that only counts the successes understates the bill.
