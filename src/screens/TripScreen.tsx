@@ -14,6 +14,7 @@ import { downscaleToBase64Jpeg } from "../lib/image";
 import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanFailure, type ScanQuota } from "../lib/scan";
 import { ScanFailedScreen } from "./ScanFailedScreen";
 import { countsDiscountLines, discountConvention } from "../lib/discounts";
+import { LOW_SCANS, offerAfter, shouldOffer } from "../lib/promo";
 import type { View } from "../App";
 import type { Person, Receipt } from "../types";
 import { excludedReceipts } from "../lib/settle";
@@ -157,7 +158,14 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       dispatch({ type: "addReceipt", tripId, receipt });
       if (!alive.current) return; // user left this screen — keep the data, skip the navigation
       setScanState("idle");
-      setQuota(lastKnownQuota());
+      const after = lastKnownQuota();
+      setQuota(after);
+      // The scan that just landed was the last one. Say so on the screen they are about to reach,
+      // *after* the items are in front of them — not here, and not before the camera. Someone who
+      // has just watched Billy read a crumpled receipt is the best audience it will ever have; the
+      // same sentence thirty seconds earlier is an obstacle between them and the thing they came
+      // to do.
+      if (shouldOffer("last-scan", receipt.id, after)) offerAfter(receipt.id);
       // Same reasoning as leaving the screen: they asked to stop waiting, so the receipt is
       // kept and listed, but they are not dragged into it.
       if (abandoned.current) return;
@@ -573,15 +581,23 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           </div>
         )}
         {/* Only ever shown when there is a real number to show: no proxy means no counter, and
-            a subscriber has no cap to count against. */}
+            a subscriber has no cap to count against.
+
+            It is a button, not a label. Someone watching this number fall is the most interested
+            person in the app, and a number they cannot tap is a number they cannot act on — they
+            would have to run out first to find out what the options are. Running out should never
+            be how anybody discovers the price. */}
         {quota?.left !== null && quota?.left !== undefined && (
-          <div className="micro" style={{ textAlign: "center", marginBottom: 8 }}>
+          <button
+            className={`micro scans-left${quota.left <= LOW_SCANS ? " scans-left-low" : ""}`}
+            onClick={() => go({ screen: "paywall", tripId })}
+          >
             {/* "free" only while they all are. Calling a scan somebody paid for free is a small
                 lie, and it is the kind that makes a person wonder what else is loose. */}
             {quota.left === 0
-              ? "No scans left"
+              ? "No scans left — get more"
               : `${quota.left} ${quota.credits > 0 ? "" : "free "}scan${quota.left === 1 ? "" : "s"} left`}
-          </div>
+          </button>
         )}
         <div className="row">
           <button className="btn" style={{ flex: 1 }} disabled={trip.people.length === 0} onClick={addManualReceipt}>

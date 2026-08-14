@@ -21,7 +21,21 @@ import { buyPack, canBuy, restorePurchases, whyCannotBuy, type PurchaseOutcome }
  *   what changes is the button, which is disabled and says plainly that packs are not ready yet
  *   rather than pretending to work.
  */
-export function PackChooser({ onBought }: { onBought?: (scansAdded: number) => void }) {
+export function PackChooser({
+  onBought,
+  compact = false,
+}: {
+  onBought?: (scansAdded: number) => void;
+  /**
+   * For the offer sheet, where vertical space is the constraint and attention is the point.
+   *
+   * Drops the heading, which would repeat the sheet's own title back at the reader, and the Restore
+   * button, which is for the rare person setting up a new phone and has no business sitting next to
+   * a primary action at the moment somebody is deciding whether to spend €2.99. Restore still lives
+   * on the paywall screen and in Settings, where a person looking for it will actually be.
+   */
+  compact?: boolean;
+}) {
   const [chosen, setChosen] = useState<Pack>(featuredPack());
   const bestValue = bestValuePack();
   const [busy, setBusy] = useState(false);
@@ -46,7 +60,7 @@ export function PackChooser({ onBought }: { onBought?: (scansAdded: number) => v
 
   return (
     <div className="card">
-      <h3>Scan packs</h3>
+      {!compact && <h3>Scan packs</h3>}
 
       <div role="radiogroup" aria-label="Scan packs">
         {PACKS.map((pack) => {
@@ -97,14 +111,16 @@ export function PackChooser({ onBought }: { onBought?: (scansAdded: number) => v
 
       {/* Quiet on purpose. Both stores require it to exist, but it is for the rare person moving to
           a new phone — it must not compete with the thing most people are here to do. */}
-      <button
-        className="btn btn-ghost"
-        style={{ width: "100%", marginTop: "var(--s2)" }}
-        disabled={busy}
-        onClick={() => run(restorePurchases)}
-      >
-        Already bought some? Restore
-      </button>
+      {!compact && (
+        <button
+          className="btn btn-ghost"
+          style={{ width: "100%", marginTop: "var(--s2)" }}
+          disabled={busy}
+          onClick={() => run(restorePurchases)}
+        >
+          Already bought some? Restore
+        </button>
+      )}
 
       {outcome && outcome.kind !== "bought" && (
         <div className={outcome.kind === "cancelled" ? "banner-warn" : "banner-warn"} role="status">

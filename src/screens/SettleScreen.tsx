@@ -7,11 +7,19 @@ import { Disc } from "../components/chips";
 import { Footerbar } from "../components/Footerbar";
 import { settledMessage, summaryText } from "../lib/summary";
 import { shareOrCopy } from "../lib/share";
+import { decline, shouldOffer } from "../lib/promo";
+import { lastKnownQuota } from "../lib/scan";
 import type { View } from "../App";
 
 export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => void }) {
   const { data } = useStore();
   const [feedback, setFeedback] = useState<"" | "copied" | "failed">("");
+  // Declining has to change the screen immediately, not only the next time it is built — so the
+  // stored answer is mirrored in state. The store is the memory; this is the redraw.
+  const [offerDeclined, setOfferDeclined] = useState(false);
+  const quota = lastKnownQuota();
+  const scansLeft = quota?.left ?? 0;
+  const offerHere = !offerDeclined && shouldOffer("after-settle", tripId, quota);
   const trip = data.trips.find((t) => t.id === tripId);
   if (!trip) return null;
 
@@ -146,6 +154,39 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
           </div>
         ))}
       </div>
+
+      {/* The best-tempered moment in the app: Billy has just divided a bill nobody wanted to divide,
+          and nothing is blocked. So this is a card among cards — not a sheet, not a wall — and it
+          appears only when the scans are nearly gone. Selling to someone who has plenty would be
+          noise, and noise here is expensive: this screen is the one people come back for. */}
+      {offerHere && (
+        <div className="card">
+          <h3>Running low on scans</h3>
+          <p className="muted" style={{ marginTop: 0 }}>
+            {scansLeft === 0
+              ? "That was the last one. Everything except reading the photo stays free — but the camera needs a pack."
+              : `${scansLeft} scan${scansLeft === 1 ? "" : "s"} left. Packs never expire, so one covers the next few dinners.`}
+          </p>
+          <div className="row">
+            <button
+              className="btn btn-primary"
+              style={{ flex: 1 }}
+              onClick={() => go({ screen: "paywall", tripId })}
+            >
+              See the packs
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => {
+                decline("after-settle", tripId);
+                setOfferDeclined(true);
+              }}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
 
       {feedback === "copied" && <div className="banner-good">Copied to clipboard ✓</div>}
       {feedback === "failed" && <div className="banner-warn">Couldn't share from this phone.</div>}

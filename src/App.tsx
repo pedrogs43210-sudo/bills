@@ -9,8 +9,10 @@ import { SettingsScreen } from "./screens/SettingsScreen";
 import { PaywallScreen } from "./screens/PaywallScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { HelpScreen } from "./screens/HelpScreen";
+import { PackOfferSheet } from "./components/PackOfferSheet";
 import { hasOnboarded } from "./lib/onboarding";
-import { lastKnownQuota } from "./lib/scan";
+import { clearOffer, decline, usePendingOffer } from "./lib/promo";
+import { fetchQuota, lastKnownQuota } from "./lib/scan";
 import { back, initialNav, navigate } from "./lib/history";
 import { exitApp, onHardwareBack } from "./lib/nativeBack";
 import { runBackIntercept } from "./lib/backIntercept";
@@ -23,6 +25,39 @@ export type View =
   | { screen: "paywall"; tripId: string }
   | { screen: "settings" }
   | { screen: "help" };
+
+/**
+ * The offer sheet, wherever the person happens to be standing.
+ *
+ * Rendered by the router rather than by a screen because the two are not the same: the scan
+ * finishes on the trip screen and the person is sent straight to their new receipt, which is where
+ * the sheet should appear. Anything owned by a screen would unmount on the way.
+ */
+function PendingOffer() {
+  const about = usePendingOffer();
+  if (about === null) return null;
+  return (
+    <PackOfferSheet
+      title="That was your last free scan"
+      /* One line, not four. The full explanation of why reading a photo costs money lives on the
+         paywall screen, where there is room for it and where somebody has gone looking. Here it
+         pushed the way out below the fold, and an offer whose decline you have to scroll for is
+         the trick this sheet was designed not to be. */
+      blurb="Everything else stays free — only reading the photo costs anything."
+      onClose={() => {
+        // Recorded against this receipt, so it will not reappear on this one — and will on the
+        // next time they run low. A no that is forgotten immediately is nagging; a no that is
+        // remembered forever loses a customer who was only busy.
+        decline("last-scan", about);
+        clearOffer();
+      }}
+      onBought={() => {
+        void fetchQuota();
+        clearOffer();
+      }}
+    />
+  );
+}
 
 function Router() {
   const [nav, setNav] = useState(() => initialNav());
@@ -55,24 +90,36 @@ function Router() {
 
   if (showIntro) return <OnboardingScreen onDone={() => setShowIntro(false)} />;
 
-  if (view.screen === "trips") return <TripListScreen go={setView} />;
-  if (view.screen === "settings") return <SettingsScreen go={setView} />;
-  if (view.screen === "help") return <HelpScreen go={setView} />;
+  /** Which screen the current view means. Kept as a function so the sheet can sit beside it. */
+  function screen() {
+    if (view.screen === "trips") return <TripListScreen go={setView} />;
+    if (view.screen === "settings") return <SettingsScreen go={setView} />;
+    if (view.screen === "help") return <HelpScreen go={setView} />;
 
-  const trip = data.trips.find((t) => t.id === view.tripId);
-  if (!trip) return <TripListScreen go={setView} />; // trip was deleted
+    const trip = data.trips.find((t) => t.id === view.tripId);
+    if (!trip) return <TripListScreen go={setView} />; // trip was deleted
 
-  if (view.screen === "trip") return <TripScreen tripId={trip.id} go={setView} />;
-  if (view.screen === "settle") return <SettleScreen tripId={trip.id} go={setView} />;
-  if (view.screen === "paywall")
-    return <PaywallScreen tripId={trip.id} quota={lastKnownQuota()} go={setView} />;
+    if (view.screen === "trip") return <TripScreen tripId={trip.id} go={setView} />;
+    if (view.screen === "settle") return <SettleScreen tripId={trip.id} go={setView} />;
+    if (view.screen === "paywall")
+      return <PaywallScreen tripId={trip.id} quota={lastKnownQuota()} go={setView} />;
 
-  const receipt = trip.receipts.find((r) => r.id === view.receiptId);
-  if (!receipt) return <TripScreen tripId={trip.id} go={setView} />;
-  return receipt.status === "review" ? (
-    <ReviewScreen tripId={trip.id} receiptId={receipt.id} go={setView} />
-  ) : (
-    <AssignScreen tripId={trip.id} receiptId={receipt.id} go={setView} />
+    const receipt = trip.receipts.find((r) => r.id === view.receiptId);
+    if (!receipt) return <TripScreen tripId={trip.id} go={setView} />;
+    return receipt.status === "review" ? (
+      <ReviewScreen tripId={trip.id} receiptId={receipt.id} go={setView} />
+    ) : (
+      <AssignScreen tripId={trip.id} receiptId={receipt.id} go={setView} />
+    );
+  }
+
+  return (
+    <>
+      {screen()}
+      {/* Never on the paywall: that screen is already the ask, and a sheet over it would be the
+          same offer twice, one of them covering the other. */}
+      {view.screen !== "paywall" && <PendingOffer />}
+    </>
   );
 }
 
