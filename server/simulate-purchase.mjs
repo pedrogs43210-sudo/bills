@@ -41,7 +41,10 @@ function fromEnvFile(key) {
   }
 }
 
-const token = process.env.RC_WEBHOOK_TOKEN;
+// Quotes are stripped because cmd.exe's `set FOO="bar"` puts the quotes *in* the value, which would
+// send a token that is subtly wrong and produce a 403 that looks exactly like a real secret
+// mismatch. An hour lost to that is an hour lost to punctuation.
+const token = (process.env.RC_WEBHOOK_TOKEN || "").replace(/^["']|["']$/g, "") || null;
 const url = process.env.PROXY_URL || fromEnvFile("VITE_SCAN_PROXY_URL");
 const appToken = process.env.APP_TOKEN || fromEnvFile("VITE_APP_TOKEN");
 
