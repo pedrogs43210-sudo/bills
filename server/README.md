@@ -56,16 +56,21 @@ npx wrangler deploy
 `APP_TOKEN` is any long random string — generate one with
 `node -e "console.log(crypto.randomUUID())"`.
 
-Then point the app at it by adding to `.env.local` in the repo root (and to the GitHub Pages
-build environment):
+Then point the app at it. Two places, because two things build the app:
+
+**For local testing** — `.env.local` in the repo root (git-ignored):
 
 ```
 VITE_SCAN_PROXY_URL=https://bills-scan-proxy.<your-subdomain>.workers.dev
 VITE_APP_TOKEN=<the same APP_TOKEN>
 ```
 
+**For every built app** — the same two as **repository secrets** on GitHub (Settings → Secrets and
+variables → Actions → New repository secret), named exactly `VITE_SCAN_PROXY_URL` and
+`VITE_APP_TOKEN`. Both workflows read them, so the web build and the phone builds all get them.
+
 **Until those variables are set, the app keeps using the user's own key exactly as before.**
-Deploying the proxy is a switch, not a cutover.
+Deploying the proxy is a switch, not a cutover — and unsetting the secrets switches it back.
 
 ## Checking it works
 

@@ -21,6 +21,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          # Set these two as repository secrets and the built app scans through the proxy instead
+          # of asking each user for their own Anthropic key. Leave them unset and nothing changes:
+          # the build simply keeps the own-key behaviour, so this is a switch, not a cutover.
+          VITE_SCAN_PROXY_URL: ${{ secrets.VITE_SCAN_PROXY_URL }}
+          VITE_APP_TOKEN: ${{ secrets.VITE_APP_TOKEN }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

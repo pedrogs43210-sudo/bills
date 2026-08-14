@@ -39,6 +39,12 @@ jobs:
       # The native bundle deliberately has no service worker: the assets are already inside the
       # app, and a stale cache would survive a store update.
       - run: npm run build:native
+        env:
+          # Set these two as repository secrets and the built app scans through the proxy instead
+          # of asking each user for their own Anthropic key. Leave them unset and nothing changes:
+          # the build simply keeps the own-key behaviour, so this is a switch, not a cutover.
+          VITE_SCAN_PROXY_URL: ${{ secrets.VITE_SCAN_PROXY_URL }}
+          VITE_APP_TOKEN: ${{ secrets.VITE_APP_TOKEN }}
       - run: npx cap sync android
       - name: Assemble debug APK
         run: |
@@ -77,6 +83,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:native
+        env:
+          # Set these two as repository secrets and the built app scans through the proxy instead
+          # of asking each user for their own Anthropic key. Leave them unset and nothing changes:
+          # the build simply keeps the own-key behaviour, so this is a switch, not a cutover.
+          VITE_SCAN_PROXY_URL: ${{ secrets.VITE_SCAN_PROXY_URL }}
+          VITE_APP_TOKEN: ${{ secrets.VITE_APP_TOKEN }}
       - run: npx cap sync ios
       - name: Build for simulator, unsigned
         run: |
