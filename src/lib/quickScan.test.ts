@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { splitNameFor } from "./quickScan";
+import { splitNameFor, recentPeopleNames } from "./quickScan";
+import type { Trip } from "../types";
 
 describe("splitNameFor", () => {
   it("uses the shop's name, which is what the person will recognise", () => {
@@ -22,5 +23,58 @@ describe("splitNameFor", () => {
     const long = "Supermercado Continente Modelo Hipermercados Amoreiras Lisboa";
     expect(splitNameFor(long, "2026-08-14").length).toBeLessThanOrEqual(40);
     expect(splitNameFor(`  Pingo Doce  `, "2026-08-14")).toBe("Pingo Doce");
+  });
+});
+
+const trip = (id: string, createdAt: string, names: string[]): Trip => ({
+  id,
+  name: id,
+  emoji: "🧾",
+  currency: "EUR",
+  people: names.map((n, i) => ({ id: `${id}-${i}`, name: n, color: "#fff" })),
+  groups: [],
+  receipts: [],
+  createdAt,
+  schemaVersion: 2,
+});
+
+describe("recentPeopleNames", () => {
+  it("offers the people from the most recent other split", () => {
+    const trips = [
+      trip("old", "2026-08-01T10:00:00Z", ["Ana", "Rui"]),
+      trip("recent", "2026-08-12T10:00:00Z", ["Maria", "João"]),
+      trip("current", "2026-08-14T10:00:00Z", ["You"]),
+    ];
+    expect(recentPeopleNames(trips, "current")).toEqual(["Maria", "João"]);
+  });
+
+  it("never suggests somebody already here — including the You it just created", () => {
+    const trips = [
+      trip("recent", "2026-08-12T10:00:00Z", ["You", "Maria"]),
+      trip("current", "2026-08-14T10:00:00Z", ["You"]),
+    ];
+    expect(recentPeopleNames(trips, "current")).toEqual(["Maria"]);
+  });
+
+  it("ignores case and padding when deciding somebody is already here", () => {
+    const trips = [
+      trip("recent", "2026-08-12T10:00:00Z", [" maria ", "Rui"]),
+      trip("current", "2026-08-14T10:00:00Z", ["Maria"]),
+    ];
+    expect(recentPeopleNames(trips, "current")).toEqual(["Rui"]);
+  });
+
+  it("says nothing when there is no previous split, rather than an empty row of chips", () => {
+    expect(recentPeopleNames([trip("current", "2026-08-14T10:00:00Z", ["You"])], "current")).toEqual([]);
+    expect(recentPeopleNames([], "current")).toEqual([]);
+  });
+
+  it("skips a previous split that had nobody in it", () => {
+    const trips = [
+      trip("has-people", "2026-08-10T10:00:00Z", ["Ana"]),
+      trip("empty", "2026-08-12T10:00:00Z", []),
+      trip("current", "2026-08-14T10:00:00Z", ["You"]),
+    ];
+    expect(recentPeopleNames(trips, "current")).toEqual(["Ana"]);
   });
 });
