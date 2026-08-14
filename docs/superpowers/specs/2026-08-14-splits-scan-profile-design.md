@@ -94,6 +94,29 @@ From the receipt, so the user never types anything:
 The emoji is 🧾, added to the existing `EMOJIS` list. The name is editable afterwards like any
 other. Currency is the app default, as it is for a hand-made split.
 
+### The split is created with one person: "You"
+
+`TripScreen` sets a scanned receipt's payer to `trip.people[0]` — every receipt needs a payer, and a
+freshly created split has nobody in it. A quick-scanned split is therefore created with a single
+person named **You**, who is the payer.
+
+This is honest rather than a workaround: somebody photographing a receipt is almost always holding
+it because they paid for it. It also means the summary reads "Maria owes you €12.40" without anybody
+having typed their own name.
+
+### Who's in
+
+Between the scan landing and the review screen, quick scan shows one small step: **who's in.**
+
+It offers the people from the most recent other split as tappable chips, plus a field to type a new
+name. "You" is already there. Tapping "Done" continues to review, and from there the flow is exactly
+what it is today.
+
+This step exists because `AssignScreen` has no way to add people — people are added on `TripScreen`,
+which quick scan never passes through. Without it, a quick-scanned split would be permanently stuck
+with one person. The step is shown **only** for quick scans; the ordinary route through `TripScreen`
+is untouched.
+
 ### Nothing is created until a scan succeeds
 
 The split is created **after** the scan returns, never before. A failed or cancelled scan must leave
@@ -116,10 +139,10 @@ appears only when there is one to go back to.
 
 ### People, without a roster
 
-On the assign screen for a quick-scanned split, offer **the people from the most recent split other
-than this one** as tappable chips above the "add someone" field. The exclusion matters: a
-quick-scanned split is by definition the newest one, and suggesting its own (empty) list of people
-would offer nothing at all.
+The chips on the who's-in step come from **the most recent split other than this one**, minus anyone
+already on this split by name. Both exclusions matter: a quick-scanned split is by definition the
+newest, so without the first it would suggest its own list; and without the second it would offer a
+second "You".
 
 Derived at render time from `data.trips` — no global `Person`, no roster screen, nothing new stored.
 If it is the same three flatmates, that is three taps. If it is new people, typing works exactly as
@@ -199,8 +222,11 @@ Beyond keeping the existing 521 green:
   on whole words so nothing legitimate is caught. The rename is spread across enough files that a
   human will miss one.
 
-## Open question for review
+## Settled: no tab bar on the split screen
 
-**Should the split detail screen keep the tab bar?** This design says no, because that screen has a
-`Footerbar`. The alternative is to show both, which costs about 56px of a phone screen on the app's
-busiest view. Worth a look on a real device before it is built.
+Decided 2026-08-14. The split detail screen keeps its `Footerbar` and shows no tab bar, so the
+"one publisher of `--footer-h` per screen" rule holds without exception and the app's busiest view
+keeps its 56px.
+
+The accepted cost is that Scan is two taps away from inside a split rather than one. That screen has
+its own scan control, which is nearer than the tab bar would have been anyway.
