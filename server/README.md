@@ -182,6 +182,24 @@ Press **Send test event** in RevenueCat when it is wired up. A `TEST` event is a
 `{ ok: true, ignored: "test event" }` — proof the URL and the secret are right, without anybody
 being given anything.
 
+### Proving it works before there is a store
+
+`simulate-purchase.mjs` stands in for RevenueCat: same shape of message, same secret, same endpoint,
+against the deployed Worker and the real database. It checks the refusals as much as the grant — a
+forged request, a replayed notification, a product we do not sell, and a payload lying about how
+many scans it bought.
+
+```bash
+node server/simulate-purchase.mjs
+```
+
+with `RC_WEBHOOK_TOKEN` in the environment. It uses one obviously-fake install id, grants it a pack
+and then refunds it, ending back at zero — it never touches a real install and never spends a scan.
+
+This is worth running the day the secret is set, long before a store account exists. Finding out the
+last two links of the chain are wrong is cheap now and expensive on the day a stranger's €2.99 goes
+missing.
+
 The free trial is always spent before bought credits, so nobody burns a scan they paid for while a
 free one is sitting there.
 
