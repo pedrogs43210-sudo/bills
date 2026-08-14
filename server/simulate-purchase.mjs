@@ -136,8 +136,31 @@ const body = async (res) => {
   }
 };
 
+/** What the phone would be told if it asked right now. */
+async function quota() {
+  const res = await hit(`${url.replace(/\/$/, "")}/v1/quota`, {
+    headers: { "x-install-id": INSTALL_ID, "x-app-token": appToken },
+  });
+  return body(res);
+}
+
 console.log(`\nAgainst ${endpoint}`);
 console.log(`Pretending ${INSTALL_ID} bought ${productId}\n`);
+
+/**
+ * What this fake install held before we started.
+ *
+ * Measured rather than assumed to be zero, so an interrupted run — or an earlier version of this
+ * script that granted more than it gave back — does not make every future run look like a failure.
+ * The checks below are about what *changed*, which is the only thing this run is responsible for.
+ */
+let before = 0;
+if (appToken) {
+  before = (await quota()).credits ?? 0;
+  if (before !== 0) {
+    console.log(`  (starts with ${before} credits left over from an earlier run — measuring from there)\n`);
+  }
+}
 
 // --- the refusals, first, because they are the ones that cost money when wrong ----------------
 
@@ -185,24 +208,35 @@ await check("a product we do not sell grants nothing", async () => {
   return { ok: res.status === 200 && String(b.ignored).startsWith("unknown product"), detail: JSON.stringify(b) };
 });
 
+/**
+ * Scans this run has granted, on top of whatever the install already held.
+ *
+ * Kept as a running total because the lying-payload check below is *itself* a real purchase — it
+ * has to be, or it would not be testing anything — and the first version of this script forgot
+ * that and reported the Worker as broken for doing exactly the right thing. A test that miscounts
+ * is worse than no test: it spends an evening on a bug that was never there.
+ */
+let expected = 0;
+const liarId = `sim-${run}-liar`;
+
 await check("a payload claiming 10,000 scans does not get 10,000 scans", async () => {
   // The number must come from our catalogue, not from the message. This one names a real product
   // and lies about the size; it should be granted the real size.
-  const res = await notify("NON_RENEWING_PURCHASE", `sim-${run}-liar`, { scans: 10000, credits: 10000 });
+  const res = await notify("NON_RENEWING_PURCHASE", liarId, { scans: 10000, credits: 10000 });
   const b = await body(res);
-  return { ok: res.status === 200 && b.scans !== 10000, detail: JSON.stringify(b) };
+  if (b.applied === "grant") expected += b.scans;
+  return { ok: res.status === 200 && b.scans !== 10000 && b.scans > 0, detail: JSON.stringify(b) };
 });
 
 // --- the grant, and the replay -----------------------------------------------------------------
 
 const grantId = `sim-${run}-grant`;
-let granted = 0;
 
 await check("a real purchase grants the pack", async () => {
   const res = await notify("NON_RENEWING_PURCHASE", grantId);
   const b = await body(res);
-  granted = b.scans ?? 0;
-  return { ok: res.status === 200 && b.applied === "grant" && granted > 0, detail: JSON.stringify(b) };
+  if (b.applied === "grant") expected += b.scans;
+  return { ok: res.status === 200 && b.applied === "grant" && b.scans > 0, detail: JSON.stringify(b) };
 });
 
 await check("the same notification arriving twice grants nothing extra", async () => {
@@ -215,31 +249,35 @@ await check("the same notification arriving twice grants nothing extra", async (
 if (appToken) {
   await check("the app can see the scans", async () => {
     // The real proof: not what the webhook said, but what the phone would be told next time it asks.
-    const res = await hit(`${url.replace(/\/$/, "")}/v1/quota`, {
-      headers: { "x-install-id": INSTALL_ID, "x-app-token": appToken },
-    });
-    const b = await body(res);
-    return { ok: b.credits === granted, detail: `credits ${b.credits}, expected ${granted}` };
+    const now = (await quota()).credits;
+    const want = before + expected;
+    return { ok: now === want, detail: `credits ${now}, expected ${want}` };
   });
 } else {
-  console.log("  -- skipped the balance check (no VITE_APP_TOKEN in .env.local)");
+  console.log("  -- skipped the balance checks (no VITE_APP_TOKEN in .env.local)");
 }
 
-// --- the refund, which is also the cleanup ------------------------------------------------------
+// --- the refunds, which are also the cleanup ----------------------------------------------------
 
+// Both purchases are given back, not just the second. Leaving one behind would quietly inflate the
+// starting balance of every future run, and a test that pollutes its own fixture eventually starts
+// failing for reasons that have nothing to do with the code.
 await check("a refund takes the scans back", async () => {
-  const res = await notify("REFUND", `sim-${run}-refund`);
+  const res = await notify("REFUND", `${liarId}-refund`);
+  const b = await body(res);
+  return { ok: res.status === 200 && b.applied === "revoke", detail: JSON.stringify(b) };
+});
+
+await check("and so does a refund of the second purchase", async () => {
+  const res = await notify("REFUND", `${grantId}-refund`);
   const b = await body(res);
   return { ok: res.status === 200 && b.applied === "revoke", detail: JSON.stringify(b) };
 });
 
 if (appToken) {
-  await check("and the balance is back to nothing", async () => {
-    const res = await hit(`${url.replace(/\/$/, "")}/v1/quota`, {
-      headers: { "x-install-id": INSTALL_ID, "x-app-token": appToken },
-    });
-    const b = await body(res);
-    return { ok: b.credits === 0, detail: `credits ${b.credits}` };
+  await check("leaving the balance where it started", async () => {
+    const now = (await quota()).credits;
+    return { ok: now === before, detail: `credits ${now}, started at ${before}` };
   });
 }
 
