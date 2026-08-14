@@ -27,12 +27,14 @@ someone who can mint install ids.
 |---|---|
 | `POST /v1/scan` | `{ imageBase64 }` → `{ result, used, left, limit }`. `402` when the trial is spent, `503` (`closed-today`) when the day's ceiling is reached. |
 | `GET /v1/quota` | `{ used, left, limit, subscribed }` — the counter, without spending a scan. |
+| `POST /v1/purchases/revenuecat` | Called by RevenueCat's servers, never by the app. Adds bought scans. |
 
 The two refusals are deliberately different codes and different words. `402` is the person's own
 trial running out, and a scan pack would fix it. `503` is the proxy having a busy day, which they
 can do nothing about and should not be sold anything for.
 
-Both require `X-Install-Id` (a uuid the app generates on first launch) and `X-App-Token`.
+The first two require `X-Install-Id` (a uuid the app generates on first launch) and `X-App-Token`.
+The third carries neither — it comes from RevenueCat, not from a phone — and has a secret of its own.
 
 ## Deploying it
 
@@ -91,7 +93,7 @@ npx wrangler d1 execute bills --remote --command "SELECT * FROM installs"
 who wants to. It stops casual drive-by use of the endpoint and nothing more. Real assurance needs
 **App Attest (iOS)** and **Play Integrity (Android)**, which require a native build to attest —
 so it arrives with the Capacitor wrapper, not before. Until then the exposure is bounded by the
-**daily ceiling** (`MAX_SCANS_PER_DAY`, default 1000 ≈ $30 at ~3 cents a scan), the per-install
+**daily ceiling** (`MAX_SCANS_PER_DAY`, currently 200 ≈ $6 at ~3 cents a scan), the per-install
 trial, the two-second burst check, and the 4 MB image limit.
 
 **A reinstall resets someone's free trial**, because the install id is generated fresh. This is
@@ -127,12 +129,61 @@ a report that only counts the successes understates the bill.
 
 ## Giving somebody the scans they bought
 
-`grantCredits()` exists in `worker.ts` and **no endpoint calls it.** That is deliberate: a route
-that takes a number of credits from the client is a route that hands out free scans. When in-app
-purchases ship, the flow is store receipt → verify it with Apple or Google → `grantCredits()`.
+The phone never tells the proxy what was bought. Google tells RevenueCat, RevenueCat tells this
+Worker, and the Worker looks the product up in its *own* catalogue:
+
+```
+phone → Google Play → RevenueCat → POST /v1/purchases/revenuecat → credits
+```
+
+Three things are checked, in order, each cheaper than the last:
+
+1. **the shared secret** — `RC_WEBHOOK_TOKEN`, sent as an `Authorization` header. Unset means the
+   endpoint refuses everything, which is the right way to be misconfigured;
+2. **the product** — the number of scans comes from `PACKS` in `src/lib/packs.ts`, keyed by the
+   product id. A payload claiming ten thousand scans gets whatever the pack it names is worth, and
+   a product we do not sell gets nothing;
+3. **the event id** — inserted into `processed_events` as a primary key *before* the grant, so a
+   replay collides and changes nothing. Webhooks are delivered at least once; a retry that granted
+   a second pack would be free scans for anybody who noticed.
+
+Refunds run the same path backwards, and never below zero: someone who bought twenty, used five and
+was refunded keeps nothing, but does not go into debt either — a negative balance would follow them
+into their next purchase and quietly eat scans they had paid for again.
+
+Almost everything gets a `200` with a reason in the body. An error would be retried, and there is no
+point retrying a message that will never be understood; the reason is what makes RevenueCat's
+delivery log readable while you are setting it up.
+
+### Setting it up
+
+In RevenueCat: **Project → Integrations → Webhooks**.
+
+- **URL:** `https://bills-scan-proxy.<your-subdomain>.workers.dev/v1/purchases/revenuecat`
+- **Authorization header:** any long random string — `node -e "console.log(crypto.randomUUID())"`
+
+Then give the same string to the Worker and re-deploy:
+
+```bash
+npx wrangler d1 execute bills --remote --file=./schema.sql   # adds processed_events
+npx wrangler secret put RC_WEBHOOK_TOKEN
+npx wrangler deploy
+```
+
+`schema.sql` is safe to run as often as you like — every table in it is `CREATE TABLE IF NOT
+EXISTS`, so re-running it adds what is new and leaves your data alone.
+
+The products in RevenueCat must be named exactly as in `src/lib/packs.ts`
+(`app.billy.scans.10`, `.20`, `.60`), and the app must call RevenueCat's `logIn()` with the **install
+id** before the purchase sheet opens — that is what makes `app_user_id` a uuid this Worker
+recognises. An anonymous id is ignored rather than guessed at.
+
+Press **Send test event** in RevenueCat when it is wired up. A `TEST` event is answered
+`{ ok: true, ignored: "test event" }` — proof the URL and the secret are right, without anybody
+being given anything.
 
 The free trial is always spent before bought credits, so nobody burns a scan they paid for while a
 free one is sitting there.
 
 **Nothing writes to the `subscriptions` table yet.** The proxy already reads it, so switching
-subscriptions on is an insert once in-app purchases are verified — no change to this code.
+subscriptions on is an insert — no change to this code.

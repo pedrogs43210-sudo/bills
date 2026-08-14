@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { PROMPT, SCAN_MODEL, ScanResultSchema, normaliseDiscountSigns } from "../../src/lib/receipt";
+import { interpretEvent } from "./webhook";
 import {
   decideQuota,
   decideSpend,
@@ -41,6 +42,14 @@ export interface Env {
   FREE_SCANS?: string;
   /** Optional override for the day's ceiling, so it can be raised or dropped to zero in a hurry. */
   MAX_SCANS_PER_DAY?: string;
+  /**
+   * The shared secret RevenueCat sends on its webhook, set in its dashboard as an Authorization
+   * header. The app never sees it, which is the whole point: this is the only door through which
+   * anybody gets scans they did not pay for, so it is shut to everything but RevenueCat.
+   *
+   * Unset means the webhook refuses everything, which is the right way to be misconfigured.
+   */
+  RC_WEBHOOK_TOKEN?: string;
   /** Optional override, to try a different scanning model without shipping a build. */
   SCAN_MODEL?: string;
 }
@@ -117,6 +126,12 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+    // Before the app-token and install-id checks: this one is called by RevenueCat's servers, not
+    // by the app, so it carries neither. It has a secret of its own.
+    if (request.method === "POST" && url.pathname === "/v1/purchases/revenuecat") {
+      return handlePurchase(request, env, new Date());
+    }
 
     const installId = request.headers.get("x-install-id");
     const appToken = request.headers.get("x-app-token");
@@ -276,6 +291,82 @@ async function handleScan(
   }
 }
 
+/**
+ * A purchase notification from RevenueCat.
+ *
+ * Three things have to be true before anybody is given anything, and they are checked in this
+ * order because each is cheaper than the last:
+ *
+ * 1. the request carries the shared secret, so it came from RevenueCat and not from a phone;
+ * 2. the event means a purchase of a product in our own catalogue, so the number of scans comes
+ *    from `PACKS` rather than from the message;
+ * 3. this exact event has not already been acted on, because webhooks are delivered at least once
+ *    and a retry that grants a second pack is free scans for whoever notices.
+ *
+ * It answers 200 to almost everything. A webhook that returns an error gets retried, and there is
+ * no point retrying a message that will never be understood — the body says what was decided, which
+ * is what makes RevenueCat's delivery log readable during setup.
+ */
+async function handlePurchase(request: Request, env: Env, now: Date): Promise<Response> {
+  const plain = { "content-type": "application/json; charset=utf-8" };
+
+  // No secret configured means the door is shut, not open. Being misconfigured should fail closed.
+  const expected = env.RC_WEBHOOK_TOKEN;
+  const offered = request.headers.get("authorization");
+  if (!expected || offered !== expected) {
+    return new Response(JSON.stringify({ error: "forbidden" }), { status: 403, headers: plain });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "bad-json" }), { status: 400, headers: plain });
+  }
+
+  const outcome = interpretEvent(body);
+  if (outcome.kind === "ignore") {
+    return new Response(JSON.stringify({ ok: true, ignored: outcome.why }), { status: 200, headers: plain });
+  }
+
+  const scans = outcome.kind === "grant" ? outcome.scans : -outcome.scans;
+
+  // The insert IS the idempotency check: the event id is the primary key, so a replay collides and
+  // changes nothing. Doing it before the grant means a retry that arrives while the first is still
+  // running loses the race rather than doubling the pack.
+  const claimed = await env.DB.prepare(
+    `INSERT INTO processed_events (event_id, install_id, product_id, scans, processed_at)
+     VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(event_id) DO NOTHING`
+  )
+    .bind(outcome.eventId, outcome.installId, outcome.productId, scans, now.getTime())
+    .run();
+
+  if ((claimed.meta?.changes ?? 0) !== 1) {
+    return new Response(JSON.stringify({ ok: true, ignored: "already processed" }), {
+      status: 200,
+      headers: plain,
+    });
+  }
+
+  if (outcome.kind === "grant") {
+    await grantCredits(env, outcome.installId, outcome.scans, now.getTime());
+  } else {
+    // A refund takes back what is left, never more. Somebody who bought twenty, used five and was
+    // refunded keeps nothing, but they do not go into debt either — a negative balance would follow
+    // them into a future purchase and quietly eat scans they had paid for again.
+    await env.DB.prepare(
+      "UPDATE installs SET credits = MAX(0, credits - ?2) WHERE install_id = ?1"
+    )
+      .bind(outcome.installId, outcome.scans)
+      .run();
+  }
+
+  return new Response(JSON.stringify({ ok: true, applied: outcome.kind, scans: outcome.scans }), {
+    status: 200,
+    headers: plain,
+  });
+}
+
 /** The UTC day, in the shape the daily_spend table is keyed by. */
 function dayKeyOf(now: Date): string {
   return now.toISOString().slice(0, 10);
@@ -324,11 +415,11 @@ async function reserve(
 /**
  * Add bought scans to an install.
  *
- * Not reachable from any endpoint, deliberately. It is here so that wiring in-app purchases is a
- * matter of verifying a store receipt and calling this — and so that nobody, reading this file
- * later, is tempted to add a route that takes a number of credits from the client.
+ * Reached only from `handlePurchase`, which is reached only by a request carrying RevenueCat's
+ * shared secret. There is deliberately no route by which a client can ask for credits — the number
+ * always comes from our own catalogue, keyed by a product id the store confirmed was bought.
  */
-export async function grantCredits(env: Env, installId: string, scans: number, nowMs: number): Promise<void> {
+async function grantCredits(env: Env, installId: string, scans: number, nowMs: number): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO installs (install_id, month, used, credits, created_at)
      VALUES (?1, ?2, 0, ?3, ?4)

@@ -47,6 +47,19 @@ CREATE TABLE IF NOT EXISTS scan_stats (
   PRIMARY KEY (day, model)
 );
 
+-- Every purchase notification that has already been acted on.
+--
+-- Webhooks are delivered at least once, not exactly once: RevenueCat retries anything it is not
+-- sure arrived, and a retry that grants a second pack is free scans for whoever notices. The event
+-- id is the store's own, so a replay of a message from an hour ago is recognised as one.
+CREATE TABLE IF NOT EXISTS processed_events (
+  event_id     TEXT PRIMARY KEY,
+  install_id   TEXT NOT NULL,
+  product_id   TEXT NOT NULL,
+  scans        INTEGER NOT NULL,       -- negative for a refund
+  processed_at INTEGER NOT NULL        -- ms epoch
+);
+
 -- Written only by verified store receipts and store notifications, never by the app. Empty until
 -- in-app purchases ship; the proxy already reads it, so switching subscriptions on is an insert.
 CREATE TABLE IF NOT EXISTS subscriptions (
