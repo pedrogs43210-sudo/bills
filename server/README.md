@@ -48,10 +48,16 @@ Paste the printed `database_id` into `wrangler.toml`, then create the tables and
 
 ```bash
 npx wrangler d1 execute bills --remote --file=./schema.sql
+npx wrangler deploy
 npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put APP_TOKEN
-npx wrangler deploy
 ```
+
+Deploy *before* the secrets, deliberately. Setting a secret on a Worker that does not exist yet
+makes wrangler create one on the fly, and that path is noticeably more fragile on a flaky
+connection — it fails halfway and leaves neither the Worker nor the secret. Deploying first is one
+plain call, and the Worker simply refuses every scan until the secrets arrive, which is fine when
+nothing is pointed at it yet.
 
 `APP_TOKEN` is any long random string — generate one with
 `node -e "console.log(crypto.randomUUID())"`.

@@ -3,6 +3,11 @@ main = "src/worker.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Every deployment otherwise also gets its own preview URL, which serves the same code with the
+# same key and the same database. There is no use for one here, and an endpoint that spends money
+# should have exactly as many front doors as it needs.
+preview_urls = false
+
 # Origins allowed to call the proxy. Add the Capacitor origins once the native build exists
 # (capacitor://localhost on iOS, https://localhost on Android).
 [vars]
@@ -13,16 +18,20 @@ ALLOWED_ORIGINS = "https://pedrogs43210-sudo.github.io,http://localhost:5173,cap
 # Free scans per install, once, for the life of the install — not per month. A monthly allowance
 # is a recurring bill for every user who never pays.
 FREE_SCANS = "3"
-# The day's ceiling, across everybody. At roughly 3 cents a scan this bounds a bad day at about
-# $30. Set it to "0" to stop scanning entirely — the emergency brake, no deploy needed.
-MAX_SCANS_PER_DAY = "1000"
+# The day's ceiling, across everybody, at roughly 3 cents a scan.
+#
+# Deliberately low to begin with: nothing here has ever been exercised against real traffic, and a
+# misconfiguration found on day one should cost about a euro rather than thirty. Raise it to "1000"
+# once a week of real scans has gone through without surprises. "0" stops scanning entirely — the
+# emergency brake.
+MAX_SCANS_PER_DAY = "50"
 
 # Created with: npx wrangler d1 create bills
 # Then paste the id printed by that command here.
 [[d1_databases]]
 binding = "DB"
 database_name = "bills"
-database_id = "PASTE_DATABASE_ID_HERE"
+database_id = "8df999ab-a5ca-49d7-86e3-7e0639af7190"
 
 # Secrets are NOT set here — they would end up in git. Set them once, per environment:
 #   npx wrangler secret put ANTHROPIC_API_KEY
