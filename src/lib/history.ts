@@ -44,7 +44,14 @@ export function back(nav: Nav): Nav | null {
   return { current, stack };
 }
 
-/** The trip list is home: from anywhere else, back should reach it rather than exiting. */
+/**
+ * The splits list is home: from anywhere else — including the profile tab — back should reach it
+ * rather than exiting. Only from home itself does back mean "close the app".
+ *
+ * Profile is a tab root but deliberately not a second home. Android's convention is that back walks
+ * you to one place and then out, and an app you cannot leave from the tab you happen to be standing
+ * on is one people press back on four times and then force-quit.
+ */
 export function isHome(view: View): boolean {
   return view.screen === "trips";
 }

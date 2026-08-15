@@ -6,6 +6,7 @@ const trips: View = { screen: "trips" };
 const trip: View = { screen: "trip", tripId: "t1" };
 const receipt: View = { screen: "receipt", tripId: "t1", receiptId: "r1" };
 const settle: View = { screen: "settle", tripId: "t1" };
+const profile: View = { screen: "profile" };
 
 describe("the back stack", () => {
   it("starts at the trip list with nowhere to go back to", () => {
@@ -57,5 +58,34 @@ describe("the back stack", () => {
     expect(isHome(trips)).toBe(true);
     expect(isHome(trip)).toBe(false);
     expect(isHome(settle)).toBe(false);
+  });
+});
+
+describe("the tab roots", () => {
+  it("treats the splits list as home and the profile as not", () => {
+    expect(isHome(trips)).toBe(true);
+    expect(isHome(profile)).toBe(false);
+  });
+
+  it("goes back from profile to the splits list rather than closing the app", () => {
+    const nav = navigate(initialNav(), profile);
+    expect(back(nav)?.current).toEqual(trips);
+  });
+
+  it("leaves no stack behind when tabs are switched, so one back still exits", () => {
+    // Splits -> Profile -> Splits. The second hop unwinds rather than stacking, so from the splits
+    // list there is nowhere left to go and the app closes, which is what Android expects at home.
+    // Pinned because a tab bar is exactly where this would otherwise regress: every tap would push.
+    let nav = initialNav();
+    nav = navigate(nav, profile);
+    nav = navigate(nav, trips);
+    expect(nav.stack).toEqual([]);
+    expect(back(nav)).toBeNull();
+  });
+
+  it("does not stack a duplicate when the profile tab is tapped twice", () => {
+    let nav = navigate(initialNav(), profile);
+    nav = navigate(nav, profile);
+    expect(nav.stack).toEqual([trips]);
   });
 });
