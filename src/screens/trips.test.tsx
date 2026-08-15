@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
+import { TripListScreen } from "./TripListScreen";
+import { StoreProvider } from "../state/StoreProvider";
 import { saveData } from "../lib/storage";
 import type { Trip } from "../types";
 import { setOnboarded } from "../lib/onboarding";
@@ -77,7 +79,14 @@ describe("the trip list", () => {
 
   it("reserves room for the round button, so the last trip is never under it", async () => {
     saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
-    render(<App />);
+    // The screen on its own, not through the router: the router now puts a tab bar on this root
+    // too, and it publishes `--footer-h` after the button does. What is being pinned here is the
+    // button's own reservation, so the router is left out of it.
+    render(
+      <StoreProvider>
+        <TripListScreen go={() => {}} />
+      </StoreProvider>
+    );
     // jsdom lays nothing out, so the height is 0 — what this proves is that the button publishes
     // the reservation at all, and that the page padding is derived from it rather than guessed.
     // The arithmetic is measured in a real browser.

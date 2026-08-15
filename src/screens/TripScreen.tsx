@@ -8,6 +8,7 @@ import { isReservedGroupName } from "../lib/groups";
 import { currencyOptions } from "../lib/currencies";
 import { Disc, personVars } from "../components/chips";
 import { Footerbar } from "../components/Footerbar";
+import { PhotoPicker } from "../components/PhotoPicker";
 import { ScanProgressScreen } from "./ScanProgressScreen";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
@@ -535,50 +536,9 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             📸 Scan receipt
           </button>
         ) : (
-          /* One row, not two full-width buttons. Taking the photo is the thing you came to do, so
-             it keeps the primary button; picking one you already have is the rarer path and only
-             needs a 44px square beside it. They cannot be one control: capture forces the camera
-             and hides the gallery on some browsers. */
-          <div className="row" style={{ marginBottom: 8, gap: "var(--s2)" }}>
-            {/* capture="environment" is what actually opens the rear camera. Without it the
-                browser shows a generic file picker, which on Android lands in the gallery — so
-                "scan a receipt" meant hunting for a photo you had not taken yet. */}
-            <label className="btn btn-primary" style={{ opacity: trip.people.length === 0 ? 0.45 : 1, flex: 1 }}>
-              📸 Scan receipt
-              <input
-                hidden
-                type="file"
-                accept="image/*"
-                capture="environment"
-                aria-label="Scan receipt"
-                disabled={trip.people.length === 0}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void handlePhoto(f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <label
-              className="btn btn-square"
-              title="Choose a photo you already have"
-              style={{ opacity: trip.people.length === 0 ? 0.45 : 1 }}
-            >
-              <span aria-hidden="true">🖼</span>
-              <input
-                hidden
-                type="file"
-                accept="image/*"
-                aria-label="Choose a photo of a receipt"
-                disabled={trip.people.length === 0}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void handlePhoto(f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-          </div>
+          /* The same pair the Scan tab opens with — see components/PhotoPicker.tsx. Disabled until
+             somebody is on the trip, because a scanned receipt needs a payer. */
+          <PhotoPicker disabled={trip.people.length === 0} onPick={(f) => void handlePhoto(f)} />
         )}
         {/* Only ever shown when there is a real number to show: no proxy means no counter, and
             a subscriber has no cap to count against.

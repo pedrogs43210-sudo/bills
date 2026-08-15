@@ -29,12 +29,19 @@ export function PaywallScreen({
   quota,
   go,
 }: {
-  tripId: string;
+  /**
+   * Optional, because the Scan tab can reach this wall with nothing behind it: the scan is refused
+   * before any split exists, which is the whole point of creating nothing until it succeeds. Every
+   * way off this screen therefore has to work with no split to return to.
+   */
+  tripId?: string;
   quota: ScanQuota | null;
   go: (v: View) => void;
 }) {
   const limit = quota?.limit ?? null;
   const [bought, setBought] = useState(false);
+  /** Back to the split they came from, or to the list, which is where a new one starts. */
+  const whereBack: View = tripId ? { screen: "trip", tripId } : { screen: "trips" };
 
   /**
    * A purchase happened. Re-ask the server what this install now has — the client is never the
@@ -48,7 +55,7 @@ export function PaywallScreen({
   return (
     <div>
       <div className="topbar">
-        <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trip", tripId })}>←</button>
+        <button className="btn btn-ghost" aria-label="Back" onClick={() => go(whereBack)}>←</button>
         <h1 className="screen-title">{bought ? "You're all set" : "Out of free scans"}</h1>
       </div>
 
@@ -61,8 +68,10 @@ export function PaywallScreen({
               They never expire, so anything you don't use is waiting for the next receipt.
             </div>
           </div>
-          {/* They came here trying to photograph something. Send them back to it. */}
-          <button className="btn btn-primary" onClick={() => go({ screen: "trip", tripId })}>
+          {/* They came here trying to photograph something. Send them back to it — to the split
+              they were scanning into, or, when there was none, to the list, where the Scan tab
+              they started from is sitting at the bottom of the screen. */}
+          <button className="btn btn-primary" onClick={() => go(whereBack)}>
             📸 Back to scanning
           </button>
         </>
@@ -99,7 +108,7 @@ export function PaywallScreen({
           Type the items in yourself and the app does the rest — the splitting, the groups, the
           rounding, who owes whom. That part is free and always will be, with no limit on it.
         </p>
-        <button className="btn" style={{ width: "100%" }} onClick={() => go({ screen: "trip", tripId })}>
+        <button className="btn" style={{ width: "100%" }} onClick={() => go(whereBack)}>
           ✍️ Add a receipt by hand
         </button>
       </div>
