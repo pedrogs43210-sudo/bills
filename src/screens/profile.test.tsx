@@ -44,19 +44,19 @@ describe("profile screen", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("tab", { name: /profile/i }));
-    await user.upload(screen.getByLabelText(/import trip/i), file);
+    await user.upload(screen.getByLabelText(/import split/i), file);
     // No back button to leave through — the imported trip shows up right here, in the
     // Backup card's own list, without navigating anywhere.
     expect(await screen.findByText(/madeira/i)).toBeInTheDocument();
   });
 
-  it("rejects a non-trip file", async () => {
+  it("rejects a non-split file", async () => {
     const file = new File(["{}"], "junk.json", { type: "application/json" });
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("tab", { name: /profile/i }));
-    await user.upload(screen.getByLabelText(/import trip/i), file);
-    expect(await screen.findByText(/isn't a Billy trip/i)).toBeInTheDocument();
+    await user.upload(screen.getByLabelText(/import split/i), file);
+    expect(await screen.findByText(/isn't a Billy split/i)).toBeInTheDocument();
   });
 });
 

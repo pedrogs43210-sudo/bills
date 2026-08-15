@@ -47,7 +47,7 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
     const blob = new Blob([exportTrip(trip)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${trip.name.replace(/\W+/g, "-") || "trip"}.bills.json`;
+    a.download = `${trip.name.replace(/\W+/g, "-") || "split"}.bills.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -57,7 +57,7 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
       dispatch({ type: "importTrip", trip: importTrip(await file.text()) });
       setImportError("");
     } catch {
-      setImportError("That file isn't a Billy trip export.");
+      setImportError("That file isn't a Billy split export.");
     }
   }
 
@@ -156,9 +156,9 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
         <h3>Backup</h3>
         <p className="label" style={{ marginTop: 0 }}>
           Everything lives on this phone, so a backup is the only way it survives a lost or reset
-          phone. Export each trip you care about.
+          phone. Export each split you care about.
         </p>
-        {data.trips.length === 0 && <p className="muted">No trips to export yet.</p>}
+        {data.trips.length === 0 && <p className="muted">No splits to export yet.</p>}
         {data.trips.map((t) => (
           <div key={t.id} className="row" style={{ padding: "var(--s1) 0" }}>
             <span className="row" style={{ gap: "var(--s2)", minWidth: 0 }}>
@@ -169,7 +169,7 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
           </div>
         ))}
         <label className="micro" htmlFor="import" style={{ display: "block", marginTop: "var(--s4)" }}>
-          Import trip
+          Import split
         </label>
         <input
           id="import"

@@ -32,7 +32,7 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
   const excluded = excludedReceipts(trip);
   const reasonText: Record<ExclusionReason, string> = {
     "no-payer": "nobody is marked as paying",
-    "unknown-payer": "a payer isn't in this trip any more",
+    "unknown-payer": "a payer isn't in this split any more",
     "negative-amount": "an amount is negative",
   };
   const toMove = transfers.reduce((sum, t) => sum + t.amount, 0);
@@ -51,7 +51,7 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
       head: `${excluded.length} receipt${excluded.length === 1 ? " isn't" : "s aren't"} counted yet. `,
       body:
         `${listed}${excluded.length > 3 ? `; and ${excluded.length - 3} more` : ""}. ` +
-        `Open ${excluded.length === 1 ? "it" : "them"} from the trip screen and fix the warning at the bottom ` +
+        `Open ${excluded.length === 1 ? "it" : "them"} from the split screen and fix the warning at the bottom ` +
         `(tap the ✏️ button at the top first if the receipt opens on the assigning screen).`,
     });
   }
@@ -196,7 +196,7 @@ export function SettleScreen({ tripId, go }: { tripId: string; go: (v: View) => 
             somebody decides to carry on rather than stop. */}
         <div className="row">
           <button className="btn" style={{ flex: 1 }} onClick={() => go({ screen: "trip", tripId })}>
-            ← Back to the trip
+            ← Back to the split
           </button>
           <button className="btn btn-primary" style={{ flex: 1 }} onClick={share}>
             📤 Share

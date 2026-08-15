@@ -225,7 +225,7 @@ describe("review screen", () => {
     const user = userEvent.setup();
     render(<App />);
     await openReceipt(user);
-    expect(screen.getByText(/isn't in this trip/i)).toBeInTheDocument();
+    expect(screen.getByText(/isn't in this split/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
     expect((screen.getByLabelText("Payer 1") as HTMLSelectElement).value).toBe("");
   });

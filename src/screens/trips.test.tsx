@@ -165,7 +165,7 @@ describe("trip management", () => {
     render(<App />);
     await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
     await user.click(screen.getByRole("button", { name: /create split/i }));
-    await user.click(screen.getByRole("button", { name: /delete trip/i }));
+    await user.click(screen.getByRole("button", { name: /delete split/i }));
     expect(screen.queryByText(/algarve/i)).toBeNull();
     expect(screen.getByText(/new split/i)).toBeInTheDocument();
     vi.mocked(window.confirm).mockRestore();
@@ -345,7 +345,7 @@ describe("groups on the trip screen", () => {
     await user.click(screen.getByRole("button", { name: /new group/i }));
     await user.type(screen.getByLabelText(/group name/i), " everyone "); // padded and lower-case
     await user.click(screen.getByRole("button", { name: /add Ana to group/i }));
-    expect(screen.getByText(/already the button that picks the whole trip/i)).toBeInTheDocument();
+    expect(screen.getByText(/already the button that picks the whole split/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save group/i })).toBeDisabled();
 
     // and it saves fine once the name is no longer the reserved one

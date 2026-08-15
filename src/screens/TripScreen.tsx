@@ -392,7 +392,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
               )}
               {reservedName && (
                 <span className="muted" style={{ display: "block", color: "var(--warn)" }}>
-                  "Everyone" is already the button that picks the whole trip — pick another name.
+                  "Everyone" is already the button that picks the whole split — pick another name.
                 </span>
               )}
               <div style={{ marginTop: 6 }}>
@@ -494,7 +494,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           be somewhere else — but it is set once and then never touched, so it sits down here with
           the other trip-level settings instead of being the first thing above the receipts. */}
       <div className="card">
-        <h3>Trip settings</h3>
+        <h3>Split settings</h3>
         <div className="row">
           <label className="micro" htmlFor="currency">Currency</label>
           <select
@@ -514,13 +514,13 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           className="btn btn-ghost"
           style={{ width: "100%", marginTop: "var(--s3)", color: "var(--warn)" }}
           onClick={() => {
-            if (window.confirm(`Delete trip "${trip.name}" and all its receipts? This can't be undone.`)) {
+            if (window.confirm(`Delete split "${trip.name}" and all its receipts? This can't be undone.`)) {
               dispatch({ type: "deleteTrip", tripId });
               go({ screen: "trips" });
             }
           }}
         >
-          🗑 Delete trip
+          🗑 Delete split
         </button>
       </div>
 

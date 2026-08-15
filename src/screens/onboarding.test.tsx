@@ -73,7 +73,7 @@ describe("the first-run introduction", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
-    await user.click(screen.getByRole("button", { name: /delete trip/i }));
+    await user.click(screen.getByRole("button", { name: /delete split/i }));
     // back to an empty app, but not back to being a stranger
     expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
     expect(screen.queryByText(/photograph the receipt/i)).toBeNull();
