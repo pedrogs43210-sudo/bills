@@ -17,7 +17,7 @@ const KEY_STATUS_TEXT: Record<KeyStatus, string> = {
   unknown: "Couldn't check — are you online?",
 };
 
-export function SettingsScreen({ go }: { go: (v: View) => void }) {
+export function ProfileScreen({ go }: { go: (v: View) => void }) {
   const { data, dispatch } = useStore();
   const [key, setKey] = useState(loadApiKey());
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle");
@@ -47,7 +47,7 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
     const blob = new Blob([exportTrip(trip)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `${trip.name.replace(/\W+/g, "-") || "trip"}.bills.json`;
+    a.download = `${trip.name.replace(/\W+/g, "-") || "split"}.bills.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -57,15 +57,16 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
       dispatch({ type: "importTrip", trip: importTrip(await file.text()) });
       setImportError("");
     } catch {
-      setImportError("That file isn't a Billy trip export.");
+      setImportError("That file isn't a Billy split export.");
     }
   }
 
   return (
     <div>
+      {/* No back button: this is a tab root, reached from the bottom bar rather than by
+          drilling in, so the tab bar itself is how you leave it. */}
       <div className="topbar">
-        <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trips" })}>←</button>
-        <h1 className="screen-title">Settings</h1>
+        <h1 className="screen-title">Profile</h1>
       </div>
 
       {/* Buying before you need it, rather than only at the wall. Someone packing for a holiday
@@ -155,9 +156,9 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
         <h3>Backup</h3>
         <p className="label" style={{ marginTop: 0 }}>
           Everything lives on this phone, so a backup is the only way it survives a lost or reset
-          phone. Export each trip you care about.
+          phone. Export each split you care about.
         </p>
-        {data.trips.length === 0 && <p className="muted">No trips to export yet.</p>}
+        {data.trips.length === 0 && <p className="muted">No splits to export yet.</p>}
         {data.trips.map((t) => (
           <div key={t.id} className="row" style={{ padding: "var(--s1) 0" }}>
             <span className="row" style={{ gap: "var(--s2)", minWidth: 0 }}>
@@ -168,7 +169,7 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
           </div>
         ))}
         <label className="micro" htmlFor="import" style={{ display: "block", marginTop: "var(--s4)" }}>
-          Import trip
+          Import split
         </label>
         <input
           id="import"

@@ -374,6 +374,66 @@ h3 { font-size: 15.5px; }
   .fab { transition: transform 0.12s ease; }
 }
 
+/* ---------- The root tab bar ---------- */
+
+/* Only on the two root screens (Splits, Profile) — every other screen already has a Footerbar
+   fixed at the bottom, and two stacked bars is worse than either. Centred on the app's own
+   480px column rather than the window, exactly like .footerbar, so it sits beside the content
+   on a wide screen instead of stretching edge to edge. Opaque, unlike the footerbar's fade: this
+   bar has nothing scrolling past it to fade under, and a see-through nav bar over the last row of
+   a list is the same "was that tappable?" problem the footerbar's gradient exists to avoid. */
+.tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  align-items: stretch;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  padding: 0 var(--s2) env(safe-area-inset-bottom);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  border: 0;
+  background: none;
+  font: 600 11px/1.2 var(--text);
+  /* Unselected — the same tertiary tone as .muted, so an inactive tab reads as quiet rather than
+     as broken. */
+  color: var(--ink-3);
+  cursor: pointer;
+}
+.tab-icon { font-size: 20px; line-height: 1; }
+/* Selected is the words themselves, not the fill — --accent measures only 3.67:1 as text, which
+   is the rings-and-borders bar, not the 4.5:1 words need. --accent-ink is the darker, text-safe
+   version of the same hue (see .btn-ghost, which uses it for the same reason). */
+.tab.selected { color: var(--accent-ink); font-weight: 700; }
+
+/* The middle tab: an action, never a place, so it never carries .selected or aria-selected="true"
+   — see the comment on TabBar.tsx. Its own row is narrower than the outer two so the disc reads
+   as a button sitting on the bar rather than a third, oddly-shaped tab. */
+.tab-scan { padding: 0; }
+.tab-scan-disc {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-pill);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
+  /* Same cocoa as .btn-primary and .fab: white measured 2.72–1.78:1 on this gradient. */
+  color: #4a1f10;
+  box-shadow: var(--sh-2);
+}
+
 .item-row { padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
 .item-row:last-child { border-bottom: none; }
 /* On the paper, not in the maths. Dimmed and struck rather than hidden. */

@@ -222,7 +222,7 @@ describe("Settings once the app scans on the user's behalf", () => {
     const App = (await import("../App")).default;
     render(<App />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: /settings/i }));
+    await user.click(screen.getByRole("tab", { name: /profile/i }));
 
     // the whole card is gone: no key field, no "Test key", no talk of Anthropic keys
     expect(screen.queryByPlaceholderText(/sk-ant/i)).toBeNull();

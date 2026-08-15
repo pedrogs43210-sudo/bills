@@ -24,7 +24,7 @@
 | `src/App.tsx` | `View` gains `profile`, loses `settings`; `paywall.tripId` optional; owns the quick-scan flow and renders the tab bar. |
 | `src/lib/history.ts` | `isHome` covers the splits root. |
 | `src/screens/TripListScreen.tsx` | FAB out, `+` into the header, copy to "split". |
-| `src/index.css` | `.tabbar` styles. |
+| `src/theme.css` | `.tabbar` styles. The stylesheet is `theme.css`, not `index.css` — this plan said the wrong name until Task 3 found it. |
 
 ---
 
@@ -241,7 +241,7 @@ git commit -m "feat: offer the people from last time, without a roster"
 **Files:**
 - Create: `src/components/TabBar.tsx`
 - Create: `src/components/tabbar.test.tsx`
-- Modify: `src/index.css` (append)
+- Modify: `src/theme.css` (append)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -375,7 +375,7 @@ export function TabBar({
 }
 ```
 
-Append to `src/index.css`:
+Append to `src/theme.css`:
 
 ```css
 /* The bottom bar. Aligned to the app's own column rather than the window, the same as .footerbar,
@@ -435,12 +435,12 @@ Expected: PASS, 4 tests
 - [ ] **Step 5: Check the CSS variables actually exist**
 
 Run: `npm test -- --run src/tokens.test.ts`
-Expected: PASS. This test fails on any `var(--…)` that is never declared — if `--col`, `--line`, `--bg`, `--ink-3`, `--accent` or `--accent-ink` are named differently in `index.css`, fix the names in `.tabbar` to match rather than adding new variables.
+Expected: PASS. This test fails on any `var(--…)` that is never declared — if `--col`, `--line`, `--bg`, `--ink-3`, `--accent` or `--accent-ink` are named differently in `theme.css`, fix the names in `.tabbar` to match rather than adding new variables.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/components/TabBar.tsx src/components/tabbar.test.tsx src/index.css
+git add src/components/TabBar.tsx src/components/tabbar.test.tsx src/theme.css
 git commit -m "feat: a bottom bar whose middle tab is the camera"
 ```
 

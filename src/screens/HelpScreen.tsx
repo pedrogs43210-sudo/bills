@@ -13,7 +13,7 @@ export function HelpScreen({ go }: { go: (v: View) => void }) {
   return (
     <div>
       <div className="topbar">
-        <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "settings" })}>←</button>
+        <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "profile" })}>←</button>
         <h1 className="screen-title">Help &amp; about</h1>
       </div>
 
@@ -27,8 +27,8 @@ export function HelpScreen({ go }: { go: (v: View) => void }) {
           <b>Why your share can be one cent different from your friend's.</b> A €5.01 bottle split
           two ways is €2.505 each, which does not exist. Rather than round both up and collect
           €5.02, or both down and collect €5.00, the app gives one person €2.51 and the other
-          €2.50. The total always matches the receipt exactly, and over a shopping trip those odd
-          cents land on different people.
+          €2.50. The total always matches the receipt exactly, and over the course of a split those
+          odd cents land on different people.
         </p>
         <p className="label">
           <b>If the items don't add up to the receipt total,</b> the app says so rather than
@@ -59,9 +59,9 @@ export function HelpScreen({ go }: { go: (v: View) => void }) {
           The photo is not stored on any server, and it is not used to train anything.
         </p>
         <p className="label">
-          <b>Everything else stays on this phone.</b> Your trips, who is on them, what they had
+          <b>Everything else stays on this phone.</b> Your splits, who is on them, what they had
           and who owes whom are saved in this app only. There is no account, and nobody — including
-          me — can see them. That is also why Settings → Export is worth using: if you lose the
+          me — can see them. That is also why Profile → Export is worth using: if you lose the
           phone, the data goes with it.
         </p>
       </div>

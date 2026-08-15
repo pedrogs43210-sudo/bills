@@ -1,3 +1,12 @@
+/**
+ * A note on names. The UI calls these SPLITS; the code calls them TRIPS.
+ *
+ * Not an oversight. `Trip`, `trips` and `tripId` appear in the JSON on every existing user's phone,
+ * so renaming them means a migration — real risk, for a benefit no user can see. The words on
+ * screen were the whole point of the rename, and those have changed. See
+ * docs/superpowers/specs/2026-08-14-splits-scan-profile-design.md.
+ */
+
 import type { DiscountConvention } from "./lib/discounts";
 
 export type Person = { id: string; name: string; color: string };

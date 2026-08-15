@@ -36,14 +36,14 @@ describe("the first-run introduction", () => {
     expect(screen.getByText(/see who owes whom/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /start splitting/i }));
-    expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
   });
 
   it("can be skipped from the very first panel", async () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: /skip/i }));
-    expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
   });
 
   it("never appears again once it has been seen", async () => {
@@ -53,7 +53,7 @@ describe("the first-run introduction", () => {
     unmount();
 
     render(<App />); // a fresh launch reads localStorage again
-    expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
     expect(screen.queryByText(/photograph the receipt/i)).toBeNull();
   });
 
@@ -73,9 +73,9 @@ describe("the first-run introduction", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
-    await user.click(screen.getByRole("button", { name: /delete trip/i }));
+    await user.click(screen.getByRole("button", { name: /delete split/i }));
     // back to an empty app, but not back to being a stranger
-    expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
     expect(screen.queryByText(/photograph the receipt/i)).toBeNull();
     vi.mocked(window.confirm).mockRestore();
   });
@@ -98,7 +98,7 @@ describe("the first-run introduction", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: /skip/i }));
     // it still gets out of the way for this session
-    expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
     setItem.mockRestore();
   });
 });

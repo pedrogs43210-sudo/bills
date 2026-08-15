@@ -69,7 +69,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
           <span className="note-dot" aria-hidden="true">✓</span>
           <div>
             <span className="note-head">No account, no sign-up. </span>
-            Your trips stay on this phone, and splitting up a bill works with no signal at all.
+            Your splits stay on this phone, and splitting up a bill works with no signal at all.
           </div>
         </div>
       )}

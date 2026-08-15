@@ -330,7 +330,7 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         </div>
       )}
       {unknownPayer && (
-        <div className="banner-warn">⚠️ Someone who paid isn't in this trip any more — pick who paid.</div>
+        <div className="banner-warn">⚠️ Someone who paid isn't in this split any more — pick who paid.</div>
       )}
 
       <Footerbar>

@@ -35,7 +35,7 @@ describe("settle screen", () => {
     render(<App />);
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
-    await user.click(screen.getByRole("button", { name: /back to the trip/i }));
+    await user.click(screen.getByRole("button", { name: /back to the split/i }));
     // back on the trip screen, where receipts get added
     expect(screen.getByRole("heading", { name: /Algarve/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/scan receipt/i)).toBeInTheDocument();

@@ -12,17 +12,17 @@ beforeEach(() => {
 async function openHelp() {
   const user = userEvent.setup();
   render(<App />);
-  await user.click(screen.getByRole("button", { name: /settings/i }));
+  await user.click(screen.getByRole("tab", { name: /profile/i }));
   await user.click(screen.getByRole("button", { name: /open help/i }));
   return user;
 }
 
 describe("help and about", () => {
-  it("is reachable from settings and comes back", async () => {
+  it("is reachable from profile and comes back", async () => {
     const user = await openHelp();
     expect(screen.getByRole("heading", { name: /help & about/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /back/i }));
-    expect(screen.getByRole("heading", { name: /^settings$/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^profile$/i })).toBeInTheDocument();
   });
 
   it("answers the one-cent question with the actual arithmetic", async () => {
