@@ -13,7 +13,7 @@ export function HelpScreen({ go }: { go: (v: View) => void }) {
   return (
     <div>
       <div className="topbar">
-        <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "settings" })}>←</button>
+        <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "profile" })}>←</button>
         <h1 className="screen-title">Help &amp; about</h1>
       </div>
 

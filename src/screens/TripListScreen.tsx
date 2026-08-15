@@ -51,7 +51,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           height={30}
         />
         <h1 className="screen-title">Billy</h1>
-        <button className="btn btn-ghost" aria-label="Settings" onClick={() => go({ screen: "settings" })}>
+        <button className="btn btn-ghost" aria-label="Settings" onClick={() => go({ screen: "profile" })}>
           ⚙️
         </button>
       </div>

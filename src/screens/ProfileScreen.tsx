@@ -17,7 +17,7 @@ const KEY_STATUS_TEXT: Record<KeyStatus, string> = {
   unknown: "Couldn't check — are you online?",
 };
 
-export function SettingsScreen({ go }: { go: (v: View) => void }) {
+export function ProfileScreen({ go }: { go: (v: View) => void }) {
   const { data, dispatch } = useStore();
   const [key, setKey] = useState(loadApiKey());
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle");
@@ -63,9 +63,10 @@ export function SettingsScreen({ go }: { go: (v: View) => void }) {
 
   return (
     <div>
+      {/* No back button: this is a tab root, reached from the bottom bar rather than by
+          drilling in, so the tab bar itself is how you leave it. */}
       <div className="topbar">
-        <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trips" })}>←</button>
-        <h1 className="screen-title">Settings</h1>
+        <h1 className="screen-title">Profile</h1>
       </div>
 
       {/* Buying before you need it, rather than only at the wall. Someone packing for a holiday

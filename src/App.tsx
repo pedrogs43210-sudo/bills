@@ -5,7 +5,7 @@ import { TripScreen } from "./screens/TripScreen";
 import { ReviewScreen } from "./screens/ReviewScreen";
 import { AssignScreen } from "./screens/AssignScreen";
 import { SettleScreen } from "./screens/SettleScreen";
-import { SettingsScreen } from "./screens/SettingsScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import { PaywallScreen } from "./screens/PaywallScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { HelpScreen } from "./screens/HelpScreen";
@@ -23,7 +23,7 @@ export type View =
   | { screen: "receipt"; tripId: string; receiptId: string }
   | { screen: "settle"; tripId: string }
   | { screen: "paywall"; tripId: string }
-  | { screen: "settings" }
+  | { screen: "profile" }
   | { screen: "help" };
 
 /**
@@ -93,7 +93,7 @@ function Router() {
   /** Which screen the current view means. Kept as a function so the sheet can sit beside it. */
   function screen() {
     if (view.screen === "trips") return <TripListScreen go={setView} />;
-    if (view.screen === "settings") return <SettingsScreen go={setView} />;
+    if (view.screen === "profile") return <ProfileScreen go={setView} />;
     if (view.screen === "help") return <HelpScreen go={setView} />;
 
     const trip = data.trips.find((t) => t.id === view.tripId);

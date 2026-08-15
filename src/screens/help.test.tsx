@@ -18,11 +18,11 @@ async function openHelp() {
 }
 
 describe("help and about", () => {
-  it("is reachable from settings and comes back", async () => {
+  it("is reachable from profile and comes back", async () => {
     const user = await openHelp();
     expect(screen.getByRole("heading", { name: /help & about/i })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /back/i }));
-    expect(screen.getByRole("heading", { name: /^settings$/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^profile$/i })).toBeInTheDocument();
   });
 
   it("answers the one-cent question with the actual arithmetic", async () => {

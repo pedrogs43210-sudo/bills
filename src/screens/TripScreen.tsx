@@ -89,7 +89,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         }}
         onSettings={() => {
           setScanState("idle");
-          go({ screen: "settings" });
+          go({ screen: "profile" });
         }}
         onBack={() => setScanState("idle")}
       />
@@ -115,7 +115,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     // Only the user's-own-key path needs a key. With a proxy configured, sending someone to
     // Settings would reinstate the exact wall the proxy exists to remove.
     if (!apiKey && !usingProxy()) {
-      go({ screen: "settings" });
+      go({ screen: "profile" });
       return;
     }
     abandoned.current = false;

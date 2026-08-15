@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
+import { ProfileScreen } from "./ProfileScreen";
+import { StoreProvider } from "../state/StoreProvider";
 import { loadApiKey, exportTrip } from "../lib/storage";
 import type { Trip } from "../types";
 import { setOnboarded } from "../lib/onboarding";
@@ -13,7 +15,16 @@ beforeEach(() => {
   setOnboarded();
 });
 
-describe("settings screen", () => {
+describe("profile screen", () => {
+  it("is a root, so it has no back button — the tab bar is how you leave", () => {
+    render(
+      <StoreProvider>
+        <ProfileScreen go={() => {}} />
+      </StoreProvider>
+    );
+    expect(screen.queryByRole("button", { name: /^back$/i })).toBeNull();
+  });
+
   it("saves the API key locally", async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -34,7 +45,8 @@ describe("settings screen", () => {
     render(<App />);
     await user.click(screen.getByRole("button", { name: /settings/i }));
     await user.upload(screen.getByLabelText(/import trip/i), file);
-    await user.click(screen.getByRole("button", { name: /back/i }));
+    // No back button to leave through — the imported trip shows up right here, in the
+    // Backup card's own list, without navigating anywhere.
     expect(await screen.findByText(/madeira/i)).toBeInTheDocument();
   });
 
