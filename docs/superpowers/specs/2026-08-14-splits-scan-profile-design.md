@@ -139,10 +139,17 @@ appears only when there is one to go back to.
 
 ### People, without a roster
 
-The chips on the who's-in step come from **the most recent split other than this one**, minus anyone
-already on this split by name. Both exclusions matter: a quick-scanned split is by definition the
-newest, so without the first it would suggest its own list; and without the second it would offer a
-second "You".
+The chips on the who's-in step come from **the most recent split that actually yields somebody** —
+skipping this one, and skipping anyone already here by name.
+
+"Yields somebody" rather than "has people", because the difference is the whole feature. Quick scan
+creates every split with one person called "You", so a single quick scan where the user taps Done
+without adding anybody would leave a You-only split at the top of the list. Picking the newest split
+*with people* and then filtering would return nothing from then on, and the chips would silently go
+empty forever. Found in review of Task 2, not in design.
+
+Duplicate names are collapsed on the same normalised key, keeping the first spelling: three chips
+reading "Ana" looks like a bug even though tapping one fixes it.
 
 Derived at render time from `data.trips` — no global `Person`, no roster screen, nothing new stored.
 If it is the same three flatmates, that is three taps. If it is new people, typing works exactly as

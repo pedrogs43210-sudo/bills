@@ -61,9 +61,14 @@ export function recentPeopleNames(trips: Trip[], currentTripId: string): string[
     .map((trip, index) => ({ trip, index }))
     .filter(({ trip }) => trip.id !== currentTripId && trip.people.length > 0)
     .sort((a, b) => {
-      // ISO string comparison is deterministic and needs no locale machinery.
-      const cmp = (b.trip.createdAt ?? "").localeCompare(a.trip.createdAt ?? "");
-      return cmp !== 0 ? cmp : b.index - a.index;
+      // Plain comparison rather than localeCompare: these are ISO strings in one fixed format, so
+      // `>` is deterministic everywhere, and this file is deliberately free of locale machinery
+      // after the month names turned out to differ between Android WebViews.
+      const mine = a.trip.createdAt ?? "";
+      const theirs = b.trip.createdAt ?? "";
+      if (mine !== theirs) return theirs > mine ? 1 : -1;
+      // Same timestamp: later in the array is the more recently added, matching TripListScreen.
+      return b.index - a.index;
     });
 
   for (const { trip } of candidates) {
