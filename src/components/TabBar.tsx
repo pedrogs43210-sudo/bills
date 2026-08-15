@@ -42,7 +42,10 @@ export function TabBar({
         Splits
       </button>
 
-      <button type="button" role="tab" aria-selected="false" className="tab tab-scan" onClick={onScan} aria-label="Scan">
+      {/* Labelled like the other two, not left as a bare disc. An unlabelled icon between two
+          captioned tabs reads as something that failed to load, and the one control here that
+          spends money is the last one that should be a guess. */}
+      <button type="button" role="tab" aria-selected="false" className="tab tab-scan" onClick={onScan}>
         <span className="tab-scan-disc" aria-hidden="true">
           {/* A camera viewfinder: four corner brackets and a centre circle. Drawn rather than a
               typed ＋, which at 30px put only 16px of ink inside this 56px circle — and how much
@@ -55,6 +58,7 @@ export function TabBar({
             <circle cx="12" cy="12" r="3.5" />
           </svg>
         </span>
+        Scan
       </button>
 
       <button
