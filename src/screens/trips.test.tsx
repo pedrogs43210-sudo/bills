@@ -49,21 +49,20 @@ describe("the trip list", () => {
     expect(shown[0]).toContain("Last added"); // most recently added still comes first
   });
 
-  it("shows your trips first, with the new-trip form behind the ＋", async () => {
+  it("shows your trips first, with the new-split form behind the header ＋", async () => {
     // It used to be the other way round, so opening the app meant looking at an empty field
     // before your own holidays.
     saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
     const user = userEvent.setup();
     render(<App />);
-    expect(screen.queryByPlaceholderText(/trip name/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/split name/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Algarve/ })).toBeInTheDocument();
 
-    // The round button in the corner, not a ＋ in the header: the header's far corner is the
-    // hardest place to reach one-handed.
-    const fab = screen.getByRole("button", { name: "New trip" });
-    expect(fab).toHaveClass("fab");
-    await user.click(fab);
-    const form = screen.getByPlaceholderText(/trip name/i);
+    // The ＋ lives in the header now — the round button and the tab bar cannot both own the
+    // bottom of the screen, so the bar won and this moved up.
+    const plus = screen.getByRole("button", { name: "New split" });
+    await user.click(plus);
+    const form = screen.getByPlaceholderText(/split name/i);
     const tripRow = screen.getByRole("button", { name: /Algarve/ });
     // DOCUMENT_POSITION_FOLLOWING: opened, the form goes above the trips it is adding to
     expect(form.compareDocumentPosition(tripRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -72,25 +71,38 @@ describe("the trip list", () => {
   it("opens the form by itself for someone with no trips", () => {
     // Nothing else to look at, and exactly one thing to do.
     render(<App />);
-    expect(screen.getByPlaceholderText(/trip name/i)).toBeInTheDocument();
-    // No round button while the form is open: one control, not two that both close it.
-    expect(screen.queryByRole("button", { name: "New trip" })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
   });
 
-  it("reserves room for the round button, so the last trip is never under it", async () => {
-    saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
-    // The screen on its own, not through the router: the router now puts a tab bar on this root
-    // too, and it publishes `--footer-h` after the button does. What is being pinned here is the
-    // button's own reservation, so the router is left out of it.
+  it("starts a split from the header, not a floating button — the bar owns the bottom now", () => {
     render(
       <StoreProvider>
         <TripListScreen go={() => {}} />
       </StoreProvider>
     );
-    // jsdom lays nothing out, so the height is 0 — what this proves is that the button publishes
-    // the reservation at all, and that the page padding is derived from it rather than guessed.
-    // The arithmetic is measured in a real browser.
-    expect(document.documentElement.style.getPropertyValue("--footer-h")).toBe("16px");
+    expect(screen.getByRole("button", { name: /new split/i })).toBeTruthy();
+  });
+
+  it("calls a split a split", () => {
+    render(
+      <StoreProvider>
+        <TripListScreen go={() => {}} />
+      </StoreProvider>
+    );
+    expect(screen.getByText(/no splits yet/i)).toBeTruthy();
+  });
+
+  it("publishes no --footer-h of its own, now that the tab bar owns the bottom of the screen", () => {
+    saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
+    // The screen on its own, not through the router: the router puts a tab bar on this root, and
+    // that bar is the one and only publisher of `--footer-h` here. Rendering the screen alone
+    // proves it has no publisher left of its own now that the round button is gone.
+    render(
+      <StoreProvider>
+        <TripListScreen go={() => {}} />
+      </StoreProvider>
+    );
+    expect(document.documentElement.style.getPropertyValue("--footer-h")).toBe("");
   });
 });
 
@@ -98,8 +110,8 @@ describe("trip management", () => {
   it("creates a trip and lands on the trip screen", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve 2026");
-    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    await user.type(screen.getByPlaceholderText(/split name/i), "Algarve 2026");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
     expect(screen.getByText(/algarve 2026/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/add friend/i)).toBeInTheDocument();
   });
@@ -107,8 +119,8 @@ describe("trip management", () => {
   it("adds friends and persists across remount", async () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
-    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
-    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.type(screen.getByPlaceholderText(/add friend/i), "Pedro");
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.type(screen.getByPlaceholderText(/add friend/i), "Ana");
@@ -124,8 +136,8 @@ describe("trip management", () => {
   it("disables adding receipts until there is at least one person", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
-    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
     expect(screen.getByRole("button", { name: /add items by hand/i })).toBeDisabled();
     await user.type(screen.getByPlaceholderText(/add friend/i), "Pedro");
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -135,8 +147,8 @@ describe("trip management", () => {
   it("renames a friend inline", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
-    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.type(screen.getByPlaceholderText(/add friend/i), "Pedor");
     await user.click(screen.getByRole("button", { name: "Add" }));
     await user.click(screen.getByRole("button", { name: "Rename Pedor" }));
@@ -151,11 +163,11 @@ describe("trip management", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<App />);
-    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
-    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.click(screen.getByRole("button", { name: /delete trip/i }));
     expect(screen.queryByText(/algarve/i)).toBeNull();
-    expect(screen.getByText(/new trip/i)).toBeInTheDocument();
+    expect(screen.getByText(/new split/i)).toBeInTheDocument();
     vi.mocked(window.confirm).mockRestore();
   });
 
@@ -195,8 +207,8 @@ describe("trip management", () => {
 /** Creates a trip named "Algarve" with Pedro and Ana already added, and renders it. */
 async function tripWithTwoFriends(user: ReturnType<typeof userEvent.setup>) {
   render(<App />);
-  await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
-  await user.click(screen.getByRole("button", { name: /create trip/i }));
+  await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
+  await user.click(screen.getByRole("button", { name: /create split/i }));
   for (const name of ["Pedro", "Ana"]) {
     await user.type(screen.getByPlaceholderText(/add friend/i), name);
     await user.click(screen.getByRole("button", { name: "Add" }));
@@ -265,8 +277,8 @@ describe("groups on the trip screen", () => {
   it("hides groups until there are two friends", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.type(screen.getByPlaceholderText(/trip name/i), "Algarve");
-    await user.click(screen.getByRole("button", { name: /create trip/i }));
+    await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.type(screen.getByPlaceholderText(/add friend/i), "Pedro");
     await user.click(screen.getByRole("button", { name: "Add" }));
     expect(screen.queryByRole("button", { name: /new group/i })).toBeNull();

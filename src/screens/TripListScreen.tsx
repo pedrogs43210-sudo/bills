@@ -4,9 +4,8 @@ import { newId } from "../lib/ids";
 import type { View } from "../App";
 import type { Trip } from "../types";
 import { Disc } from "../components/chips";
-import { Fab } from "../components/Fab";
 
-const EMOJIS = ["🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
+const EMOJIS = ["🧾", "🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
 
 /**
  * Newest trip first. Trips are stored in the order they were added, so a missing or equal
@@ -40,8 +39,9 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
 
   return (
     <div>
-      {/* The app's own name and mark, and the two things the header is for: start a trip, or go
-          to settings. The same file the phone uses as the app icon, so there is one mark. */}
+      {/* The app's own name and mark, and the one thing the header is for now: start a split.
+          Settings moved to the Profile tab, so the corner that used to open it opens this instead.
+          The same file the phone uses as the app icon, so there is one mark. */}
       <div className="topbar">
         <img
           className="app-mark"
@@ -51,24 +51,33 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           height={30}
         />
         <h1 className="screen-title">Billy</h1>
-        <button className="btn btn-ghost" aria-label="Settings" onClick={() => go({ screen: "profile" })}>
-          ⚙️
+        <button
+          className="btn btn-ghost"
+          aria-label="New split"
+          onClick={() => {
+            setAdding(true);
+            // The form appears under the header. From half way down a long list that would be
+            // off-screen, so the tap takes you to it.
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          ＋
         </button>
       </div>
 
       {adding && (
         <div className="card">
           <div className="row">
-            <h3 style={{ margin: 0 }}>New trip</h3>
-            {/* The round button opens this; closing it belongs here, next to what it closes. */}
+            <h3 style={{ margin: 0 }}>New split</h3>
+            {/* The header button opens this; closing it belongs here, next to what it closes. */}
             {data.trips.length > 0 && (
-              <button className="btn btn-ghost" aria-label="Close the new trip form" onClick={() => setAdding(false)}>
+              <button className="btn btn-ghost" aria-label="Close the new split form" onClick={() => setAdding(false)}>
                 ✕
               </button>
             )}
           </div>
           <input
-            placeholder="Trip name"
+            placeholder="Split name"
             autoFocus={data.trips.length > 0}
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -88,13 +97,13 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
             ))}
           </div>
           <button className="btn btn-primary" onClick={create}>
-            Create trip
+            Create split
           </button>
         </div>
       )}
 
-      {data.trips.length === 0 && !adding && (
-        <p className="muted">No trips yet — tap the ＋ button to start one.</p>
+      {data.trips.length === 0 && (
+        <p className="muted">No splits yet — tap ＋ to start one.</p>
       )}
 
       {newestFirst(data.trips).map((t) => (
@@ -133,26 +142,6 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           )}
         </button>
       ))}
-
-      {/* Last in the tree, so it is last in the tab order and a screen reader reaches the trips
-          first. It is fixed, so where it sits in the DOM has nothing to do with where it appears. */}
-      {!adding && (
-        <Fab
-          label="New trip"
-          onClick={() => {
-            setAdding(true);
-            // The form appears under the header. From half way down a long list that would be
-            // off-screen, so the tap takes you to it.
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          {/* Drawn, not typed. A ＋ at 30px puts only 16px of ink inside a 56px circle, and how
-              much depends on which font loaded; this is 24px of stroke, exactly centred. */}
-          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 4v16M4 12h16" stroke="currentColor" strokeWidth="3" strokeLinecap="round" fill="none" />
-          </svg>
-        </Fab>
-      )}
     </div>
   );
 }

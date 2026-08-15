@@ -12,7 +12,7 @@ beforeEach(() => {
 async function openHelp() {
   const user = userEvent.setup();
   render(<App />);
-  await user.click(screen.getByRole("button", { name: /settings/i }));
+  await user.click(screen.getByRole("tab", { name: /profile/i }));
   await user.click(screen.getByRole("button", { name: /open help/i }));
   return user;
 }
