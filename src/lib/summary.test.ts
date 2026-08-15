@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { summaryText, receiptSummaryText } from "./summary";
+import { APP_LINK, SHARE_FOOTER } from "./appLink";
 import type { Trip } from "../types";
 
 const trip: Trip = {
@@ -25,6 +26,44 @@ describe("summaryText", () => {
     expect(text).toContain("1 receipt");
     expect(text).toMatch(/Pedro: .*5[.,]00.* \(paid .*10[.,]00.*\)/);
     expect(text).toMatch(/💸 Ana → Pedro .*5[.,]00/);
+  });
+
+  it("does not call a restaurant bill a grocery split", () => {
+    // The header used to end "— grocery split" on every summary, including a dinner. A small
+    // wrongness, but it lands in a group chat where four people read it.
+    expect(summaryText(trip)).not.toContain("grocery");
+  });
+
+  it("ends with a link, so somebody reading it in a group chat can get the app", () => {
+    const text = summaryText(trip);
+    expect(text).toContain(SHARE_FOOTER);
+    expect(text.trimEnd().endsWith(SHARE_FOOTER)).toBe(true);
+  });
+
+  it("keeps the link below the numbers, which is what the message is for", () => {
+    // A friend opens this to find out what they owe. Anything above that answer is in their way,
+    // and an advert above it is the reason somebody stops sharing these.
+    const text = summaryText(trip);
+    expect(text.indexOf(SHARE_FOOTER)).toBeGreaterThan(text.indexOf("💸"));
+  });
+
+  it("carries a source marker and nothing about who shared it", () => {
+    // Measurable — did anybody arrive from a shared summary — without putting an identifier into
+    // a URL that lands in a group chat.
+    expect(APP_LINK).toContain("from=share");
+    expect(APP_LINK).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  });
+
+  it("still reads sensibly when there is nothing to settle", () => {
+    const even: Trip = {
+      ...trip,
+      receipts: [{
+        ...trip.receipts[0],
+        items: [{ id: "i1", name: "stuff", quantity: 1, lineTotal: 1000, assignment: { kind: "people", personIds: ["pedro"] } }],
+      }],
+    };
+    const text = summaryText(even);
+    expect(text.indexOf(SHARE_FOOTER)).toBeGreaterThan(text.indexOf("All square"));
   });
 
   it("says all square when balanced and everything is counted", () => {

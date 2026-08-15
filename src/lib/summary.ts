@@ -2,6 +2,7 @@ import type { Receipt, Trip } from "../types";
 import { balances, countableReceipts, excludedReceipts, paidTotals, settle, shareTotals } from "./settle";
 import { receiptShares } from "./split";
 import { formatCents } from "./money";
+import { SHARE_FOOTER } from "./appLink";
 
 /**
  * What "nobody owes anybody" actually means, which depends on how much the app was able to
@@ -26,7 +27,9 @@ export function summaryText(trip: Trip): string {
   const fmt = (c: number) => formatCents(c, trip.currency);
 
   const lines = [
-    `${trip.emoji} ${trip.name} — grocery split`,
+    // Not "grocery split": restaurants are the commoner case, and a dinner bill announcing itself
+    // as groceries in a group chat is a small wrongness everybody notices.
+    `${trip.emoji} ${trip.name}`,
     `${counted.length} receipt${counted.length === 1 ? "" : "s"} · ${fmt(total)} total`,
   ];
   // Right after the headline, before the numbers below look final — a friend skimming a
@@ -41,6 +44,9 @@ export function summaryText(trip: Trip): string {
   } else {
     lines.push(settledMessage(trip));
   }
+  // Last, below the answer everybody opened the message for. This is the app's only growth
+  // mechanism today and it is one line of text — see lib/appLink.ts for why it is not more.
+  lines.push("", SHARE_FOOTER);
   return lines.join("\n");
 }
 
