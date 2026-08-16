@@ -89,7 +89,9 @@ describe("the paywall", () => {
     // And the gallery goes with it: importing a photo costs a scan too, so leaving a dimmed 🖼
     // there would imply a free path that does not exist.
     expect(screen.queryByLabelText(/choose a photo/i)).toBeNull();
-    expect(screen.getByText(/scanning is unavailable/i)).toBeInTheDocument();
+    // The way out is a button rather than a sentence explaining there is one. Typing a receipt in
+    // has never had a limit, and a screen whose only action is unavailable is a dead end.
+    expect(screen.getByRole("button", { name: /add items by hand/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
     expect(screen.getByText(/out of free scans/i)).toBeInTheDocument();

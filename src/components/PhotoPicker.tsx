@@ -51,10 +51,6 @@ export function PhotoPicker({
           <span className="scan-btn-label">🎟 Get more scans</span>
           <span className="scan-chip">from €1.99</span>
         </button>
-        <p className="label" style={{ margin: "var(--s2) var(--s1) 0" }}>
-          Scanning is unavailable, so the button stops offering it. Adding a split by hand is still
-          free.
-        </p>
       </div>
     );
   }

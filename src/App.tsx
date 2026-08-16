@@ -169,6 +169,38 @@ function Router() {
    *
    * It otherwise mirrors `handlePhoto` in TripScreen.tsx; keep the two in step.
    */
+  /**
+   * A split typed in by hand, with nothing to scan.
+   *
+   * The same shape as a quick scan minus the photograph: a split, a "You" to pay for it, and an
+   * empty receipt to fill in. It matters most in the state where scanning is impossible — out of
+   * scans, or a photo that will not read — because until now the scan screen offered no way out of
+   * either except going back. Typing a receipt in has never had a limit and never will.
+   */
+  function quickManual() {
+    const tripId = newId();
+    const personId = newId();
+    const today = new Date().toISOString().slice(0, 10);
+    dispatch({ type: "createTrip", id: tripId, name: splitNameFor("", today), emoji: "🧾" });
+    dispatch({ type: "addPerson", tripId, personId, name: "You" });
+    dispatch({
+      type: "addReceipt",
+      tripId,
+      receipt: {
+        id: newId(),
+        storeName: "",
+        date: today,
+        payments: [{ personId, amount: 0 }],
+        items: [],
+        printedTotal: 0,
+        status: "review",
+        totalIsAuto: true, // nothing was printed, so the items are the total
+      },
+    });
+    setScanState("idle");
+    setView({ screen: "whosin", tripId });
+  }
+
   async function quickScan(file: File) {
     lastPhoto.current = file;
     const apiKey = loadApiKey();
@@ -432,6 +464,13 @@ function Router() {
                 setView({ screen: "paywall" });
               }}
             />
+            {/* Under the scan button rather than beside it: this is the alternative to scanning,
+                not a peer of it. It is also the only way off this screen when the scans have run
+                out or a photo will not read — a screen whose single action can be unavailable is a
+                dead end. */}
+            <button className="btn" style={{ width: "100%" }} onClick={quickManual}>
+              ✍️ Add items by hand
+            </button>
           </Footerbar>
         </div>
       );
