@@ -135,6 +135,33 @@ costing thirty. A wrong unit under a confident column name is worse than no colu
 Failed scans are counted and costed too. A refusal or an unreadable answer still burned tokens, and
 a report that only counts the successes understates the bill.
 
+## Sharing a split with the other people at the table
+
+The host publishes a split; the friends' phones read it and write back what they each had. No
+accounts anywhere — the code in the invite link **is** the permission, and each phone identifies
+itself with the install id it already has.
+
+The server is a **postbox, not a record**. The host's phone stays the source of truth, this copy
+exists for seven days so four phones can look at one list of items, and then it is deleted — checked
+on every read, and swept daily by a cron trigger, because a split nobody reopens would otherwise
+live forever.
+
+Nothing here spends money: **guests never scan.** A link sitting in a group chat that could spend the
+host's balance is a hole, so the scanning path is untouched by all of it.
+
+```bash
+node server/simulate-share.mjs
+```
+
+Twelve checks against the deployed Worker and the real database. **Number 5 is the one that
+matters** — two phones both trying to be Ana, and the second refused. That rule lives in a unique
+index rather than in application code, because a check-then-insert lets both phones read "Ana is
+free" before either writes. If it ever stops holding, two people quietly become one and the
+arithmetic silently stops describing the dinner that happened.
+
+The script publishes one split under two obviously-fake install ids and revokes it at the end, so it
+leaves nothing behind and costs nothing to run.
+
 ## Giving somebody the scans they bought
 
 The phone never tells the proxy what was bought. Google tells RevenueCat, RevenueCat tells this

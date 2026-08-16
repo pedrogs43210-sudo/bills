@@ -72,3 +72,36 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 );
 
 CREATE INDEX IF NOT EXISTS subscriptions_txn ON subscriptions (original_transaction_id);
+
+-- A split published for other phones to read, and the answers they write back.
+--
+-- The server is a POSTBOX, NOT A RECORD. The host's phone remains the source of truth; this is a
+-- copy that exists so four people can look at the same list of items. It is deleted after seven
+-- days, and that expiry is what the privacy policy rests on — so nothing here may outlive it.
+CREATE TABLE IF NOT EXISTS shared_splits (
+  code       TEXT PRIMARY KEY,        -- the code from the invite link
+  host_token TEXT NOT NULL,           -- only this may update or revoke; guests never see it
+  payload    TEXT NOT NULL,           -- the split as JSON
+  created_at INTEGER NOT NULL,        -- ms epoch
+  expires_at INTEGER NOT NULL         -- created_at + 7 days
+);
+
+CREATE INDEX IF NOT EXISTS shared_splits_expiry ON shared_splits (expires_at);
+
+-- One row per phone that joined a split, holding that phone's own answer.
+--
+-- Each phone owns exactly its own row, which is why no two writers ever contend: there is nothing
+-- shared to contend over. Merging happens on the host's phone, from the union of these rows.
+CREATE TABLE IF NOT EXISTS split_participants (
+  code       TEXT NOT NULL,
+  install_id TEXT NOT NULL,
+  person_id  TEXT NOT NULL,              -- which person on the split this phone claims to be
+  claims     TEXT NOT NULL DEFAULT '[]', -- JSON array of item ids
+  joined_at  INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (code, install_id)
+);
+
+-- "A name can only be taken once", enforced where it cannot be raced. Checking in application code
+-- first would let two phones both read "Ana is free" and both take her.
+CREATE UNIQUE INDEX IF NOT EXISTS split_person_once ON split_participants (code, person_id);

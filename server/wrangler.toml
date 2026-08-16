@@ -39,3 +39,9 @@ database_id = "8df999ab-a5ca-49d7-86e3-7e0639af7190"
 # Secrets are NOT set here — they would end up in git. Set them once, per environment:
 #   npx wrangler secret put ANTHROPIC_API_KEY
 #   npx wrangler secret put APP_TOKEN
+
+# Daily, to delete shared splits nobody came back for. Expiry is also enforced on every read, but a
+# split that is abandoned is never read again — and the privacy policy promises a week, not "a week
+# unless somebody looks".
+[triggers]
+crons = ["17 3 * * *"]
