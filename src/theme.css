@@ -1025,3 +1025,23 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
   justify-content: center;
   font-size: 20px;
 }
+
+/* A labelled pill for a header action. Quiet enough not to compete with the sunset button at the
+   bottom of the screen, loud enough that the word is read rather than the glyph guessed at.
+   44px tall because it is a real target, not a decoration. */
+.btn-pill {
+  height: var(--tap);
+  width: auto;
+  padding: 0 var(--s4);
+  border-radius: var(--r-pill);
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  color: var(--accent-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--brand);
+  font-weight: 700;
+  font-size: 13.5px;
+  white-space: nowrap;
+}

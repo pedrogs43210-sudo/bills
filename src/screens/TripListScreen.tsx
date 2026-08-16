@@ -51,8 +51,14 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           height={30}
         />
         <h1 className="screen-title">Billy</h1>
+        {/* A labelled pill rather than a bare ＋. The glyph on its own was a mystery: the one
+            control on this screen that creates anything, sitting in the corner hardest to reach,
+            saying nothing about what it does. The word costs 40px and removes the guess.
+
+            aria-label keeps the fuller "New split" for a screen reader, which reads it out of
+            context where "New" alone means nothing. */}
         <button
-          className="btn btn-ghost"
+          className="btn btn-pill"
           aria-label="New split"
           onClick={() => {
             setAdding(true);
@@ -61,7 +67,8 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
         >
-          ＋
+          <span aria-hidden="true" style={{ fontSize: "17px", fontWeight: 600 }}>＋</span>
+          New
         </button>
       </div>
 
