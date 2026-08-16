@@ -875,3 +875,153 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
 @media (prefers-reduced-motion: reduce) {
   .scanning-sweep { animation: none; top: 18%; opacity: 0.75; }
 }
+
+/* ---------- The scan button, and the count that rides on it ----------
+   The count used to be a grey line underneath these controls. It read as an afterthought bolted
+   onto the thing it describes, despite being the only place the app's price is ever mentioned
+   before somebody runs out. */
+
+.scan-btn {
+  height: 56px;
+  border-radius: var(--r-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding: 0 10px 0 var(--s4);
+  width: 100%;
+}
+
+/* No chip means nothing to balance against, so the label takes the middle. */
+.scan-btn-bare { justify-content: center; padding: 0 var(--s4); }
+
+.scan-btn-label {
+  font-family: var(--brand);
+  font-weight: 700;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+/* A label, not a control: no border and no pill, sitting in a tinted well so it reads as printed
+   on the button rather than placed on top of it. The wash is the ink colour at low alpha, which
+   keeps it on the gradient in both themes without a second colour to maintain.
+
+   It sits at the amber end of the gradient, which is what keeps it legible — measured 6.3:1 there
+   against 4.25:1 at the red end. If the gradient angle changes, re-measure before shipping. */
+.scan-chip {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  background: rgba(61, 43, 36, 0.15);
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  font-family: var(--text);
+  font-weight: 800;
+  font-size: 12.5px;
+}
+
+/* The last one. Inverted for weight rather than turned red — red says something has gone wrong,
+   and nothing has: they have a scan, and then a decision.
+
+   Fixed colours, not tokens, for the same reason .btn-primary hardcodes its ink: the gradient
+   underneath is identical in both themes, so anything sitting on it must be too. Tokens here made
+   this a cream pill glowing on the sunset in dark mode — inverted against a surface that never
+   inverted. */
+.scan-chip-last {
+  background: #3d2b24;
+  color: #ffe6d2;
+}
+
+.scan-square { width: 56px; height: 56px; border-radius: var(--r-lg); font-size: 20px; }
+
+/* ---------- The scan screen's viewfinder ----------
+   The middle of the screen used to be empty, with all the words at the top and all the action at
+   the bottom. This is the object the screen is about. */
+
+.viewfinder { position: relative; width: 172px; height: 242px; }
+
+/* The torn bottom edge is the app's own mark, cut down to a receipt. */
+.viewfinder-paper {
+  position: absolute;
+  inset: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  clip-path: polygon(0 0, 100% 0, 100% 96.5%, 91% 100%, 82% 96.5%, 73% 100%, 64% 96.5%,
+    55% 100%, 46% 96.5%, 37% 100%, 28% 96.5%, 19% 100%, 10% 96.5%, 0 100%);
+  box-shadow: 0 10px 26px rgba(184, 62, 26, 0.1);
+  padding: 20px 16px 22px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Nothing to point it at yet, so the paper goes quiet rather than alarming. */
+.viewfinder-paper-empty {
+  background: var(--sunken);
+  border: 1.5px dashed var(--line-strong);
+  box-shadow: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.viewfinder-line { height: 6px; border-radius: 3px; background: var(--line); }
+.viewfinder-line-head { height: 10px; background: var(--line-strong); }
+
+.viewfinder-bracket {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 0 solid var(--accent);
+}
+.viewfinder-tl { left: -13px; top: -13px; border-left-width: 3px; border-top-width: 3px; border-radius: 9px 0 0 0; }
+.viewfinder-tr { right: -13px; top: -13px; border-right-width: 3px; border-top-width: 3px; border-radius: 0 9px 0 0; }
+.viewfinder-bl { left: -13px; bottom: -13px; border-left-width: 3px; border-bottom-width: 3px; border-radius: 0 0 0 9px; }
+.viewfinder-br { right: -13px; bottom: -13px; border-right-width: 3px; border-bottom-width: 3px; border-radius: 0 0 9px 0; }
+
+.scan-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: var(--s6) var(--s5) var(--s7);
+}
+
+/* ---------- The tab badge ----------
+   Only below the threshold, and never a red alert: it is a count, not a fault. */
+.tab-badge {
+  position: absolute;
+  top: 4px;
+  left: 39px;
+  min-width: 17px;
+  height: 17px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--text);
+  font-weight: 800;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The 🎟 tile beside the scan count. A rounded well rather than a bare emoji, so the headline has
+   something to sit against and the card has a left edge. */
+.scans-tile {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 14px;
+  background: var(--sunken);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}

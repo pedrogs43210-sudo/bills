@@ -26,6 +26,7 @@ import {
   ScanError,
   usingProxy,
   type ScanFailure,
+  type ScanQuota,
 } from "./lib/scan";
 import { countsDiscountLines, discountConvention } from "./lib/discounts";
 import { downscaleToBase64Jpeg } from "./lib/image";
@@ -101,6 +102,23 @@ function Router() {
   const [scanState, setScanState] = useState<ScanState>("idle");
   const [scanFailure, setScanFailure] = useState<ScanFailure | null>(null);
   const [scanMessage, setScanMessage] = useState("");
+
+  /**
+   * How many scans are left, asked for once on launch.
+   *
+   * It has to live here rather than be read from `lastKnownQuota()` at render time, for two
+   * reasons. The module variable is only populated by whoever last called `fetchQuota`, so until
+   * this existed the badge and the button's chip were both blank on a fresh launch and only
+   * appeared once you happened to open a split — the two surfaces the design puts the number on
+   * were the two that never had it. And a module variable changing does not re-render React, so
+   * the count would then be stale until something else moved.
+   */
+  const [quota, setQuota] = useState<ScanQuota | null>(lastKnownQuota());
+  const refreshQuota = useCallback(() => {
+    if (!usingProxy()) return;
+    void fetchQuota().then((q) => q && setQuota(q));
+  }, []);
+  useEffect(refreshQuota, [refreshQuota]);
   const lastPhoto = useRef<File | null>(null);
   // Set when the wait is cancelled or backed out of: the scan carries on and its result is still
   // kept, but the person is not dragged onto a screen they walked away from.
@@ -277,7 +295,7 @@ function Router() {
       return (
         <PaywallScreen
           tripId={still ? view.tripId : undefined}
-          quota={lastKnownQuota()}
+          quota={quota}
           go={setView}
         />
       );
@@ -352,18 +370,68 @@ function Router() {
       );
     }
     if (scanState === "picking") {
+      const empty = quota?.left === 0;
       return (
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
           <div className="topbar">
             <button className="btn btn-ghost" aria-label="Back" onClick={() => setScanState("idle")}>←</button>
             <h1 className="screen-title">Scan a receipt</h1>
           </div>
-          <p className="label">
-            Photograph the whole receipt, top to bottom. Billy reads the items and makes a split
-            named after the shop — nothing is saved until it has.
-          </p>
+
+          {/* The object the screen is about, in the middle of it. This used to be a paragraph at
+              the top, a bottom full of buttons, and nothing in between — which read as a form
+              rather than as the one moment where the app does something impressive. */}
+          <div className="scan-stage">
+            <div className="viewfinder">
+              <div className={`viewfinder-paper${empty ? " viewfinder-paper-empty" : ""}`}>
+                {empty ? (
+                  <>
+                    <span style={{ fontSize: 26, opacity: 0.6 }} aria-hidden="true">🎟</span>
+                    <p style={{ margin: 0, fontFamily: "var(--brand)", fontWeight: 700, fontSize: "12.5px" }}>
+                      Out of scans
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <span className="viewfinder-line viewfinder-line-head" style={{ width: "58%" }} />
+                    <span className="viewfinder-line" style={{ width: "34%", marginBottom: 4 }} />
+                    {["88%", "74%", "84%", "56%", "80%", "68%"].map((w, i) => (
+                      <span key={i} className="viewfinder-line" style={{ width: w }} />
+                    ))}
+                    <span
+                      className="viewfinder-line viewfinder-line-head"
+                      style={{ width: "44%", marginTop: "auto", height: 8 }}
+                    />
+                  </>
+                )}
+              </div>
+              {/* Brackets, not a border: a border says "here is a box", brackets say "point this
+                  at something". They stay put in the empty state too — the frame is still what
+                  the screen is, even when there is nothing to aim it at. */}
+              <span className="viewfinder-bracket viewfinder-tl" />
+              <span className="viewfinder-bracket viewfinder-tr" />
+              <span className="viewfinder-bracket viewfinder-bl" />
+              <span className="viewfinder-bracket viewfinder-br" />
+            </div>
+            {/* Deliberately not a number of seconds. A scan takes anywhere from five to twenty
+                depending on the connection and the length of the receipt, and an app that promises
+                eight and takes fifteen has broken a promise it never needed to make. */}
+            <p className="label" style={{ textAlign: "center", maxWidth: 216, margin: 0 }}>
+              {empty
+                ? "Buy a pack and the camera comes back. Adding a split by hand is always free."
+                : "Fit the whole receipt in frame. Billy reads it in a few seconds."}
+            </p>
+          </div>
+
           <Footerbar>
-            <PhotoPicker onPick={(f) => void quickScan(f)} />
+            <PhotoPicker
+              quota={quota}
+              onPick={(f) => void quickScan(f)}
+              onGetMore={() => {
+                setScanState("idle");
+                setView({ screen: "paywall" });
+              }}
+            />
           </Footerbar>
         </div>
       );
@@ -385,6 +453,7 @@ function Router() {
       {root && scanState === "idle" && (
         <TabBar
           current={view.screen === "profile" ? "profile" : "splits"}
+          scansLeft={quota?.left ?? null}
           onSplits={() => setView({ screen: "trips" })}
           onScan={() => setScanState("picking")}
           onProfile={() => setView({ screen: "profile" })}

@@ -61,14 +61,16 @@ afterEach(() => {
 beforeEach(() => localStorage.clear());
 
 describe("the scans-left counter", () => {
+  // It lives on the scan button now, as a chip, rather than on a grey line underneath it — so the
+  // wording is what fits there: "2 free", not "2 free scans left".
   it("shows how many are left once the server answers", async () => {
     await renderApp({ used: 1, left: 2, limit: 3 });
-    expect(await screen.findByText(/2 free scans left/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^2 free$/i)).toBeInTheDocument();
   });
 
-  it("says it in the singular for the last one", async () => {
+  it("still counts the last one, drawn with more weight rather than in a warning colour", async () => {
     await renderApp({ used: 2, left: 1, limit: 3 });
-    expect(await screen.findByText(/1 free scan left/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^1 free$/i)).toBeInTheDocument();
   });
 
   it("says nothing at all for a subscriber, who has no cap to count against", async () => {
@@ -84,16 +86,19 @@ describe("the paywall", () => {
     const user = await renderApp({ used: 3, left: 0, limit: 3 });
     // the file input is gone, so tapping cannot open the camera
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    expect(screen.getByText(/no scans left/i)).toBeInTheDocument();
+    // And the gallery goes with it: importing a photo costs a scan too, so leaving a dimmed 🖼
+    // there would imply a free path that does not exist.
+    expect(screen.queryByLabelText(/choose a photo/i)).toBeNull();
+    expect(screen.getByText(/scanning is unavailable/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    await user.click(screen.getByRole("button", { name: /get more scans/i }));
     expect(screen.getByText(/out of free scans/i)).toBeInTheDocument();
   });
 
   it("says why scanning costs something, and promises no reset it cannot deliver", async () => {
     const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    await user.click(screen.getByRole("button", { name: /get more scans/i }));
 
     expect(screen.getByText(/Billy is free. Reading a receipt isn't./i)).toBeInTheDocument();
     // The free scans are a trial, not an allowance: nothing here may imply they come back.
@@ -111,7 +116,7 @@ describe("the paywall", () => {
     // be looking at the wall and would reasonably conclude their money had gone nowhere.
     const user = await renderApp({ used: 3, left: 0, limit: 3, credits: 0 }, { boughtPack: 20 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    await user.click(screen.getByRole("button", { name: /get more scans/i }));
 
     await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
 
@@ -125,7 +130,7 @@ describe("the paywall", () => {
     // A client that can tell itself it owns 20 scans is a client that can say it a hundred times.
     const user = await renderApp({ used: 3, left: 0, limit: 3, credits: 0 }, { boughtPack: 20 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    await user.click(screen.getByRole("button", { name: /get more scans/i }));
     const before = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
 
     await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
@@ -138,7 +143,7 @@ describe("the paywall", () => {
   it("offers the honest way out and returns to the trip", async () => {
     const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    await user.click(screen.getByRole("button", { name: /get more scans/i }));
 
     expect(screen.getByText(/free and always will be/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /add a receipt by hand/i }));
@@ -149,7 +154,7 @@ describe("the paywall", () => {
   it("shows how much was used, so the number is never a mystery", async () => {
     const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
-    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    await user.click(screen.getByRole("button", { name: /get more scans/i }));
     expect(screen.getByText("3")).toBeInTheDocument();
     expect(screen.getByText(/of 3 free scans used/i)).toBeInTheDocument();
   });

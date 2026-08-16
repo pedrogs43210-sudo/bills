@@ -15,13 +15,26 @@ export type TabName = "splits" | "profile";
  * lib/useReservedBottom.ts. Only one of the two ever renders on a given screen, so there is never
  * more than one publisher of --footer-h at a time.
  */
+/**
+ * Below this many scans left, the Profile tab carries a badge.
+ *
+ * Two rather than one, deliberately. The price is not shown until the paywall, so the badge is the
+ * first warning somebody gets — and at one remaining it would appear and be spent in the same
+ * session, which is a notification rather than a warning. At two there is always a scan left after
+ * you have been told.
+ */
+export const BADGE_BELOW = 2;
+
 export function TabBar({
   current,
+  scansLeft = null,
   onSplits,
   onScan,
   onProfile,
 }: {
   current: TabName;
+  /** Null when there is no counter — no proxy configured, or a subscriber with no cap. */
+  scansLeft?: number | null;
   onSplits: () => void;
   onScan: () => void;
   onProfile: () => void;
@@ -66,10 +79,21 @@ export function TabBar({
         role="tab"
         aria-selected={current === "profile"}
         className={`tab${current === "profile" ? " selected" : ""}`}
+        style={{ position: "relative" }}
         onClick={onProfile}
       >
         <span className="tab-icon" aria-hidden="true">🙂</span>
+        {/* A count, not an alert. Filled ink rather than red, because nothing has gone wrong —
+            there are scans left, and Profile is where they can be topped up. Announced to a screen
+            reader through the tab's accessible name below, since a bare numeral read out on its own
+            says nothing about what it counts. */}
+        {scansLeft !== null && scansLeft <= BADGE_BELOW && (
+          <span className="tab-badge" aria-hidden="true">{scansLeft}</span>
+        )}
         Profile
+        {scansLeft !== null && scansLeft <= BADGE_BELOW && (
+          <span className="sr-only">{`, ${scansLeft} scan${scansLeft === 1 ? "" : "s"} left`}</span>
+        )}
       </button>
     </div>
   );

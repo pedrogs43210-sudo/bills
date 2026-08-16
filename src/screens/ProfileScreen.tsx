@@ -72,10 +72,7 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
       {/* Buying before you need it, rather than only at the wall. Someone packing for a holiday
           knows they are about to scan a fortnight of receipts; making them hit a wall mid-trip to
           discover they could have topped up is a worse experience and a worse conversion. */}
-      <div className="card">
-        <h3>Scans</h3>
-        <ScansSummary quota={scanQuota} />
-      </div>
+      <ScansSummary quota={scanQuota} />
       {/* Buying below has to move the number above it, or the card and the purchase disagree. */}
       <PackChooser onBought={refreshScanQuota} />
 
@@ -201,44 +198,51 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
 /**
  * How many scans are left, asked of the server rather than believed from the phone.
  *
+ * A headline with a face rather than a label-and-number row: this is the one number on the screen
+ * somebody came looking for, and it used to be set in the same small grey type as "Appearance".
+ *
  * Deliberately quiet when there is nothing to say: with no proxy configured there is no counter to
  * report, and inventing "unlimited" would be a promise this app cannot keep.
  */
 function ScansSummary({ quota }: { quota: ScanQuota | null }) {
-  if (!usingProxy()) {
-    return (
-      <p className="muted" style={{ margin: 0 }}>
-        This version scans with your own API key, so there is nothing to count.
-      </p>
-    );
-  }
-  if (quota === null) {
-    return (
-      <p className="muted" style={{ margin: 0 }}>
-        Counting…
-      </p>
-    );
-  }
-  if (quota.left === null) {
-    return (
-      <p className="muted" style={{ margin: 0 }}>
-        You have scans to spare.
-      </p>
-    );
-  }
+  if (!usingProxy()) return null;
+
+  const headline =
+    quota === null
+      ? "Counting…"
+      : quota.left === null
+        ? "Scans to spare"
+        : `${quota.left} scan${quota.left === 1 ? "" : "s"} left`;
+
+  /* Only worth saying when it adds something. "of your 3 free ones" explains where the number came
+     from to somebody who has never bought anything; once they have, the mix is the useful fact. */
+  const sub =
+    quota === null || quota.left === null
+      ? null
+      : quota.credits === 0
+        ? `of your ${FREE_TRIAL_HINT} free ones`
+        : quota.left > quota.credits
+          ? `${quota.left - quota.credits} free, ${quota.credits} bought`
+          : "Packs never expire";
+
   return (
-    <>
-      <div className="row">
-        <span className="micro">Scans left</span>
-        <span className="money-1">{quota.left}</span>
+    <div className="card">
+      <div className="row" style={{ justifyContent: "flex-start", gap: "var(--s3)" }}>
+        <span className="scans-tile" aria-hidden="true">🎟</span>
+        <span style={{ minWidth: 0 }}>
+          <span style={{ display: "block", fontFamily: "var(--brand)", fontWeight: 600, fontSize: "16px" }}>
+            {headline}
+          </span>
+          {sub && <span className="label" style={{ display: "block" }}>{sub}</span>}
+        </span>
       </div>
-      {/* Only worth breaking down when both kinds exist. "3 free" on its own is just the number
-          again, and "20 bought" on its own is not news to whoever bought them. */}
-      {quota.credits > 0 && quota.left > quota.credits && (
-        <p className="muted" style={{ margin: "var(--s1) 0 0" }}>
-          {quota.left - quota.credits} free, {quota.credits} bought
-        </p>
-      )}
-    </>
+    </div>
   );
 }
+
+/**
+ * What a new install starts with. Only ever used in the sentence above, which is why it is a
+ * display string rather than a number imported from the server — the server owns the real value,
+ * and a second source of truth for it would eventually disagree.
+ */
+const FREE_TRIAL_HINT = 3;

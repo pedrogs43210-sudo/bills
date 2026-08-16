@@ -15,7 +15,7 @@ import { downscaleToBase64Jpeg } from "../lib/image";
 import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanFailure, type ScanQuota } from "../lib/scan";
 import { ScanFailedScreen } from "./ScanFailedScreen";
 import { countsDiscountLines, discountConvention } from "../lib/discounts";
-import { LOW_SCANS, offerAfter, shouldOffer } from "../lib/promo";
+import { offerAfter, shouldOffer } from "../lib/promo";
 import type { View } from "../App";
 import type { Person, Receipt } from "../types";
 import { excludedReceipts } from "../lib/settle";
@@ -48,7 +48,6 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       stale = true;
     };
   }, []);
-  const outOfScans = quota !== null && quota.left !== null && quota.left <= 0;
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -527,38 +526,19 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       <Footerbar>
         {/* Out of scans means a button, not a file input: a file input opens the camera the
             moment it is touched, and the paywall has to come first. */}
-        {outOfScans ? (
-          <button
-            className="btn btn-primary"
-            style={{ marginBottom: 8 }}
-            onClick={() => go({ screen: "paywall", tripId })}
-          >
-            📸 Scan receipt
-          </button>
-        ) : (
-          /* The same pair the Scan tab opens with — see components/PhotoPicker.tsx. Disabled until
-             somebody is on the trip, because a scanned receipt needs a payer. */
-          <PhotoPicker disabled={trip.people.length === 0} onPick={(f) => void handlePhoto(f)} />
-        )}
-        {/* Only ever shown when there is a real number to show: no proxy means no counter, and
-            a subscriber has no cap to count against.
+        {/* The same pair the Scan tab opens with — see components/PhotoPicker.tsx. Disabled until
+            somebody is on the split, because a scanned receipt needs a payer.
 
-            It is a button, not a label. Someone watching this number fall is the most interested
-            person in the app, and a number they cannot tap is a number they cannot act on — they
-            would have to run out first to find out what the options are. Running out should never
-            be how anybody discovers the price. */}
-        {quota?.left !== null && quota?.left !== undefined && (
-          <button
-            className={`micro scans-left${quota.left <= LOW_SCANS ? " scans-left-low" : ""}`}
-            onClick={() => go({ screen: "paywall", tripId })}
-          >
-            {/* "free" only while they all are. Calling a scan somebody paid for free is a small
-                lie, and it is the kind that makes a person wonder what else is loose. */}
-            {quota.left === 0
-              ? "No scans left — get more"
-              : `${quota.left} ${quota.credits > 0 ? "" : "free "}scan${quota.left === 1 ? "" : "s"} left`}
-          </button>
-        )}
+            The count rides on the button now. It used to be a separate grey line underneath, which
+            read as an afterthought bolted onto the thing it describes despite being the only place
+            the price is mentioned before somebody runs out. PhotoPicker also owns the out-of-scans
+            state, so the button that cannot scan stops offering to. */}
+        <PhotoPicker
+          disabled={trip.people.length === 0}
+          quota={quota}
+          onPick={(f) => void handlePhoto(f)}
+          onGetMore={() => go({ screen: "paywall", tripId })}
+        />
         <div className="row">
           <button className="btn" style={{ flex: 1 }} disabled={trip.people.length === 0} onClick={addManualReceipt}>
             ✍️ Add items by hand
