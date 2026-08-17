@@ -1,4 +1,4 @@
-package app.bills.split;
+package app.billy.split;
 
 import com.getcapacitor.BridgeActivity;
 

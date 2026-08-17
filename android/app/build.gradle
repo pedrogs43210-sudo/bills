@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "app.bills.split"
+    namespace = "app.billy.split"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.bills.split"
+        applicationId "app.billy.split"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
