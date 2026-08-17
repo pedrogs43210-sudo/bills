@@ -111,15 +111,31 @@ describe("ticking what you had", () => {
   };
 
   /** The running total, not an item's price — both say €18.00 when only the bacalhau is ticked. */
-  const yoursSoFar = () => screen.getByText(/yours so far/i).parentElement!.textContent ?? "";
+  const total = () => screen.getByText(/^up to$/i).parentElement!.textContent ?? "";
 
   it("counts up as you tap, because that total is the reason to bother", async () => {
     await pickRui();
-    expect(yoursSoFar()).toMatch(/0[.,]00/);
+    expect(total()).toMatch(/0[.,]00/);
     await userEvent.click(screen.getByRole("button", { name: /bacalhau/i }));
-    expect(yoursSoFar()).toMatch(/18[.,]00/);
+    expect(total()).toMatch(/18[.,]00/);
     await userEvent.click(screen.getByRole("button", { name: /vinho/i }));
-    expect(yoursSoFar()).toMatch(/26[.,]00/);
+    expect(total()).toMatch(/26[.,]00/);
+  });
+
+  it("presents that total as a ceiling, because it can only ever come out lower", async () => {
+    // A guest cannot see anybody else's picks, so a shared item is counted here at full price and
+    // will be divided later. The number is always an overestimate — always in the alarming
+    // direction — so it must not read as a bill.
+    await pickRui();
+    expect(screen.getByText(/^up to$/i)).toBeTruthy();
+    expect(screen.queryByText(/yours so far/i)).toBeNull();
+  });
+
+  it("explains why it will be less, but only once there is something to explain", async () => {
+    await pickRui();
+    expect(screen.queryByText(/those get divided/i)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: /vinho/i }));
+    expect(screen.getByText(/those get divided/i)).toBeTruthy();
   });
 
   it("lets you change your mind", async () => {

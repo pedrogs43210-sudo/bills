@@ -210,13 +210,23 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
       {error && <div className="banner-warn">{error}</div>}
 
       <Footerbar>
-        {/* Their own total, and honestly labelled: they cannot see anybody else's picks, so an
-            item somebody else also claims will end up costing them less than this says. Calling it
-            "so far" is the difference between a running tally and a wrong bill. */}
+        {/* A ceiling, not a bill — and labelled as one.
+
+            A guest cannot see anybody else's picks, so this number is systematically an
+            OVERESTIMATE: every item somebody else also claims gets divided, and the true figure can
+            only ever come out lower. The error is always in the alarming direction, which is exactly
+            the wrong direction for a number somebody reads while deciding whether to keep tapping.
+
+            "Up to" costs two words and turns it from a frightening bill into a reassuring maximum. */}
         <div className="row" style={{ marginBottom: "var(--s2)" }}>
-          <span className="micro">Yours so far</span>
+          <span className="micro">Up to</span>
           <span className="money-1">{formatCents(runningTotal, currency)}</span>
         </div>
+        {picked.size > 0 && (
+          <p className="muted" style={{ margin: "0 0 var(--s2)" }}>
+            Less for anything you shared — those get divided.
+          </p>
+        )}
         <button className="btn btn-primary" disabled={busy} onClick={() => void submit()}>
           {saved ? "✓ Sent" : busy ? "Sending…" : "Send my picks"}
         </button>
