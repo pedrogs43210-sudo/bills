@@ -10,6 +10,8 @@ import { PaywallScreen } from "./screens/PaywallScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { HelpScreen } from "./screens/HelpScreen";
 import { WhosInScreen } from "./screens/WhosInScreen";
+import { InviteScreen } from "./screens/InviteScreen";
+import { JoinScreen } from "./screens/JoinScreen";
 import { ScanProgressScreen } from "./screens/ScanProgressScreen";
 import { ScanFailedScreen } from "./screens/ScanFailedScreen";
 import { PackOfferSheet } from "./components/PackOfferSheet";
@@ -44,6 +46,9 @@ export type View =
   | { screen: "receipt"; tripId: string; receiptId: string }
   | { screen: "settle"; tripId: string }
   | { screen: "whosin"; tripId: string }
+  | { screen: "invite"; tripId: string }
+  /* The code is optional: arriving from a link carries one, tapping "Join a split" does not. */
+  | { screen: "join"; code?: string }
   /* Optional, because a quick scan can hit the wall with no split to go back to: the scan is
      refused before anything has been created, which is exactly the point of creating nothing
      until it succeeds. */
@@ -320,6 +325,9 @@ function Router() {
     if (view.screen === "trips") return <TripListScreen go={setView} />;
     if (view.screen === "profile") return <ProfileScreen go={setView} />;
     if (view.screen === "help") return <HelpScreen go={setView} />;
+    // Before the trip lookup below: a guest joining has no trip of their own to find, and looking
+    // one up would send them to the splits list instead of the split they were invited to.
+    if (view.screen === "join") return <JoinScreen code={view.code} go={setView} />;
     // Ahead of the trip lookup, because this is the one screen that can be reached with no split
     // at all — and the lookup's "trip was deleted" fallback would send it to the list instead.
     if (view.screen === "paywall") {
@@ -338,6 +346,7 @@ function Router() {
 
     if (view.screen === "trip") return <TripScreen tripId={trip.id} go={setView} />;
     if (view.screen === "settle") return <SettleScreen tripId={trip.id} go={setView} />;
+    if (view.screen === "invite") return <InviteScreen tripId={trip.id} go={setView} />;
     if (view.screen === "whosin") {
       return (
         <WhosInScreen

@@ -543,6 +543,16 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
           <button className="btn" style={{ flex: 1 }} disabled={trip.people.length === 0} onClick={addManualReceipt}>
             ✍️ Add items by hand
           </button>
+          {/* Only once there is something to be asked about. Inviting friends to tick their items
+              on an empty split would send them a link to nothing. */}
+          <button
+            className="btn"
+            style={{ flex: 1 }}
+            disabled={trip.receipts.length === 0}
+            onClick={() => go({ screen: "invite", tripId })}
+          >
+            🔗 Invite
+          </button>
           <button className="btn" style={{ flex: 1 }} disabled={trip.receipts.length === 0} onClick={() => go({ screen: "settle", tripId })}>
             💸 Settle up
           </button>

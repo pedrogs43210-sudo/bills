@@ -13,8 +13,29 @@ import type { View } from "../App";
 
 export type Nav = { current: View; stack: View[] };
 
-export function initialNav(view: View = { screen: "trips" }): Nav {
+export function initialNav(view: View = openingView()): Nav {
   return { current: view, stack: [] };
+}
+
+/**
+ * Where the app opens.
+ *
+ * Normally the splits list — but an invite link carries `?join=CODE`, and somebody who has just
+ * been sent one wants the split, not a list of their own. Reading it here rather than in a screen
+ * means it is honoured on the very first render, before anything else has drawn.
+ *
+ * The query string is cleared afterwards so a reload does not re-enter the join flow, and so the
+ * code does not sit in the address bar of a shared screen.
+ */
+function openingView(): View {
+  try {
+    const code = new URLSearchParams(window.location.search).get("join");
+    if (!code) return { screen: "trips" };
+    window.history.replaceState(null, "", window.location.pathname);
+    return { screen: "join", code: code.toUpperCase() };
+  } catch {
+    return { screen: "trips" };
+  }
 }
 
 /** Same screen, same target — tapping the trip you are already on should not stack a duplicate. */

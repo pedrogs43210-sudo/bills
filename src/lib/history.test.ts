@@ -89,3 +89,31 @@ describe("the tab roots", () => {
     expect(nav.stack).toEqual([trips]);
   });
 });
+
+describe("opening from an invite link", () => {
+  const setSearch = (search: string) => {
+    // jsdom allows replacing location on the window object.
+    window.history.replaceState(null, "", `/${search}`);
+  };
+
+  it("goes straight to the split somebody invited you to", () => {
+    setSearch("?join=ABCD2345WXYZ");
+    expect(initialNav().current).toEqual({ screen: "join", code: "ABCD2345WXYZ" });
+  });
+
+  it("upper-cases it, because a link that has been through three apps arrives in any case", () => {
+    setSearch("?join=abcd2345wxyz");
+    expect(initialNav().current).toEqual({ screen: "join", code: "ABCD2345WXYZ" });
+  });
+
+  it("clears the code from the address bar, so a reload does not re-enter the flow", () => {
+    setSearch("?join=ABCD2345WXYZ");
+    initialNav();
+    expect(window.location.search).toBe("");
+  });
+
+  it("opens the splits list when there is no invite", () => {
+    setSearch("");
+    expect(initialNav().current).toEqual({ screen: "trips" });
+  });
+});
