@@ -5,7 +5,7 @@ import { newId } from "../lib/ids";
 import { formatCents } from "../lib/money";
 import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
-import { currencyOptions } from "../lib/currencies";
+import { currencyOptions, currencySymbol } from "../lib/currencies";
 import { Disc, personVars } from "../components/chips";
 import { Footerbar } from "../components/Footerbar";
 import { PhotoPicker } from "../components/PhotoPicker";
@@ -290,6 +290,28 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trips" })}>←</button>
         <h1 className="screen-title">{trip.emoji} {trip.name}</h1>
+        {/* Currency lives up here now, as the symbol it sets rather than a labelled row in a card of
+            its own. It belongs to the split rather than the phone — the next holiday may be
+            somewhere else — but it is chosen once and never touched again, and a full-width picker
+            near the bottom gave a decision nobody makes twice the same weight as the receipts.
+
+            A real <select> under an invisible layer, so the phone's own wheel opens: a custom sheet
+            would look tidier and be worse, since every Android keyboard and picker already knows
+            how to do this one. */}
+        <span className="currency-pick">
+          <span aria-hidden="true">{currencySymbol(trip.currency)}</span>
+          <select
+            aria-label={`Currency — currently ${trip.currency}`}
+            value={trip.currency}
+            onChange={(e) => dispatch({ type: "setCurrency", tripId, currency: e.target.value })}
+          >
+            {currencyOptions(trip.currency).map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.code} — {c.label}
+              </option>
+            ))}
+          </select>
+        </span>
       </div>
 
       <div className="card">
@@ -489,29 +511,13 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         )}
       </div>
 
-      {/* Currency belongs to a trip rather than to the phone — the same person's next holiday may
-          be somewhere else — but it is set once and then never touched, so it sits down here with
-          the other trip-level settings instead of being the first thing above the receipts. */}
+      {/* Deleting is the one irreversible thing on this screen, so it gets its own card rather than
+          sharing one with a setting. It used to sit inside "Split settings" underneath the currency
+          picker, where it read as part of choosing a currency — which is not what it does. */}
       <div className="card">
-        <h3>Split settings</h3>
-        <div className="row">
-          <label className="micro" htmlFor="currency">Currency</label>
-          <select
-            id="currency"
-            className="select-compact"
-            value={trip.currency}
-            onChange={(e) => dispatch({ type: "setCurrency", tripId, currency: e.target.value })}
-          >
-            {currencyOptions(trip.currency).map((c) => (
-              <option key={c.code} value={c.code}>
-                {c.code} — {c.label}
-              </option>
-            ))}
-          </select>
-        </div>
         <button
           className="btn btn-ghost"
-          style={{ width: "100%", marginTop: "var(--s3)", color: "var(--warn)" }}
+          style={{ width: "100%", color: "var(--warn)" }}
           onClick={() => {
             if (window.confirm(`Delete split "${trip.name}" and all its receipts? This can't be undone.`)) {
               dispatch({ type: "deleteTrip", tripId });

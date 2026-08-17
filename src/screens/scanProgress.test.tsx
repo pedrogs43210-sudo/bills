@@ -70,9 +70,13 @@ describe("while the receipt is being read", () => {
   it("keeps the animation out of the accessibility tree", async () => {
     await startScan();
     await screen.findByText(/reading the receipt/i);
-    const art = document.querySelector(".scanning");
+    // The paper is the Scan screen's viewfinder now, with the sweep running inside it, so that the
+    // photo you just took appears to be the thing being read rather than the app cutting to an
+    // unrelated card. Whatever it is drawn from, it is decoration.
+    const art = document.querySelector(".viewfinder-paper");
     expect(art).not.toBeNull();
     expect(art).toHaveAttribute("aria-hidden", "true");
+    expect(document.querySelector(".scanning-sweep")).not.toBeNull();
   });
 
   it("moves on to the review screen when the items arrive", async () => {

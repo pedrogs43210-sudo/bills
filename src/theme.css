@@ -988,7 +988,29 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
   align-items: center;
   justify-content: center;
   gap: 22px;
-  padding: var(--s6) var(--s5) var(--s7);
+  /* Optically centred, not mathematically. The bottom of this screen carries a 56px button, a
+     gallery line and the footer bar; splitting the remaining space evenly left the frame sitting
+     visibly low. Less padding above than below lifts it to where the eye expects the middle. */
+  padding: var(--s3) var(--s5) var(--s7);
+}
+
+/* Nothing on this screen scrolls. It is one frame, one line of text and the controls — all of it
+   fits, and a page that slides under a viewfinder reads as something having gone wrong.
+   `100dvh` rather than `100vh` so the phone's own address bar collapsing does not add a scrollable
+   strip at the bottom, which is exactly how this got scrollable in the first place. */
+.scan-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+/* The stage has to reserve the footer's height, because the footer is fixed and therefore out of
+   flow: without this the stage runs to the bottom of the viewport, centres its content in space the
+   footer is sitting on top of, and pushes the caption underneath it. `--footer-h` is whatever the
+   bar actually measured — see lib/useReservedBottom.ts — which matters here because the bar grew
+   when the gallery line moved into it. */
+.scan-screen .scan-stage {
+  padding-bottom: calc(var(--footer-h, 0px) + var(--s4));
 }
 
 /* ---------- The tab badge ----------
@@ -1044,4 +1066,89 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
   font-weight: 700;
   font-size: 13.5px;
   white-space: nowrap;
+}
+
+/* ---------- No blue anywhere ----------
+   Android's WebView paints its own translucent blue over anything tapped, and paints a blue
+   selection wash over any text a long-press catches. Both are Chrome's colours rather than Billy's,
+   and both showed up on the hold-to-select gesture: the item you held flashed blue and its label
+   went blue-highlighted, which read as the browser interrupting rather than as the app responding.
+
+   The app draws its own feedback for every tappable thing, so the platform's version is only ever a
+   second, wrong-coloured one on top. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Text inside a control is never something you want to select — long-pressing an item is the
+   multi-select gesture, and a text cursor mid-gesture is the browser fighting it. Left alone
+   everywhere else, so a receipt total can still be copied. */
+button, .tap-card, .receipt-row, .chip, .tab, label.btn {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+::selection { background: var(--note-bg); color: var(--ink); }
+
+/* ---------- The currency picker in a split's header ----------
+   The symbol, not a labelled row in a card of its own. A real <select> sits invisibly on top so the
+   phone's own picker wheel opens — a custom sheet would look tidier and behave worse. */
+.currency-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  font-family: var(--brand);
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--ink-2);
+}
+
+.currency-pick select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ---------- The gallery alternative ----------
+   Quiet, full width, and under the button it is an alternative to — see PhotoPicker.tsx for why it
+   is no longer a bordered square beside it. */
+.scan-gallery {
+  width: 100%;
+  margin-top: var(--s2);
+  min-height: var(--tap);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  border: 0;
+  background: none;
+}
+
+/* The sweep, now that it runs inside the viewfinder's paper rather than its own card. The paper is
+   already clipped by its clip-path, so the light disappears at the torn edge on its way out. */
+.viewfinder-paper { overflow: hidden; }
+.viewfinder .scanning-sweep { border-radius: inherit; }
+
+/* A screen that lays itself out full-height wants none of the page's chrome: not the 16px gutter,
+   not the reserved footer space, not the 100vh floor. Left in place, #root was 946px tall inside a
+   720px viewport — so the one screen in the app that must not scroll was the one that did, and the
+   frame it centres was pushed below the middle by padding it could not see.
+
+   `:has` rather than a class toggled from JS: the relationship is "this page contains that screen",
+   which is what the selector says, and nothing has to remember to remove it. */
+#root:has(> .scan-screen) {
+  padding: 0;
+  min-height: 0;
 }

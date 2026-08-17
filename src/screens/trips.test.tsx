@@ -89,7 +89,11 @@ describe("the trip list", () => {
         <TripListScreen go={() => {}} />
       </StoreProvider>
     );
-    expect(screen.getByText(/no splits yet/i)).toBeTruthy();
+    // The "No splits yet" line is gone: with nothing to list, the new-split form opens by itself,
+    // so a sentence telling you to tap a button sat directly above the button already open in front
+    // of you. The word still has to be right where it does appear.
+    expect(screen.getByRole("heading", { name: /new split/i })).toBeTruthy();
+    expect(screen.getByPlaceholderText(/split name/i)).toBeTruthy();
   });
 
   it("publishes no --footer-h of its own, now that the tab bar owns the bottom of the screen", () => {

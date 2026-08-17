@@ -205,7 +205,15 @@ export function AssignScreen({ tripId, receiptId, go }: { tripId: string; receip
             title="Select every item"
             onClick={() => setPicked(pickable.map((i) => i.id))}
           >
-            ☑
+            {/* Drawn, not the ☑ character. U+2611 has emoji presentation on Android, so Noto Color
+                Emoji paints it as a blue-filled box with a white tick — in the middle of a warm
+                cream palette, and immune to any colour this stylesheet could set. Exactly the same
+                trap as the ＋ that rendered as 16px of ink in a 56px circle: a typed glyph is a
+                picture chosen by whichever font happened to load. */}
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+              <path d="M7.5 12.5l3 3 6-6.5" />
+            </svg>
           </button>
         </div>
       ) : (

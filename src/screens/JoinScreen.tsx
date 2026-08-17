@@ -196,8 +196,25 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
               }
             >
               <span className="row">
-                <span style={{ minWidth: 0, fontWeight: on ? 700 : 500 }}>
-                  {on ? "☑ " : "☐ "}
+                <span className="row" style={{ minWidth: 0, gap: "var(--s2)", justifyContent: "flex-start", fontWeight: on ? 700 : 500 }}>
+                  {/* Drawn rather than ☑ / ☐. U+2611 has emoji presentation on Android, where it
+                      renders as a blue-filled box with a white tick that no stylesheet can recolour
+                      — and this is the control a guest taps twenty times in a row. */}
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke={on ? "var(--accent-ink)" : "var(--ink-3)"}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{ flex: "none" }}
+                    aria-hidden="true"
+                  >
+                    <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+                    {on && <path d="M7.5 12.5l3 3 6-6.5" />}
+                  </svg>
                   {i.name}
                 </span>
                 <span className="money-2">{formatCents(i.lineTotal, currency)}</span>

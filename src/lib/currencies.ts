@@ -58,3 +58,24 @@ export function currencyOptions(current: string): CurrencyOption[] {
   if (!code || CURRENCIES.some((c) => c.code === code)) return CURRENCIES;
   return [...CURRENCIES, { code, label: code }];
 }
+
+/**
+ * The symbol a currency prints, for the picker in a split's header.
+ *
+ * Asked of `Intl` rather than kept in a table beside the names above: a second list of currency
+ * facts is a second list to forget to update, and the platform already knows every one of these.
+ * Falls back to the code itself, which is what somebody using a currency `Intl` has never heard of
+ * would rather see than a blank.
+ */
+export function currencySymbol(code: string): string {
+  try {
+    const parts = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "narrowSymbol",
+    }).formatToParts(0);
+    return parts.find((p) => p.type === "currency")?.value ?? code;
+  } catch {
+    return code;
+  }
+}

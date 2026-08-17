@@ -118,10 +118,6 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
         </div>
       )}
 
-      {data.trips.length === 0 && (
-        <p className="muted">No splits yet — tap ＋ to start one.</p>
-      )}
-
       {newestFirst(data.trips).map((t) => (
         <button
           key={t.id}

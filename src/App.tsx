@@ -124,6 +124,19 @@ function Router() {
     void fetchQuota().then((q) => q && setQuota(q));
   }, []);
   useEffect(refreshQuota, [refreshQuota]);
+  /**
+   * A new screen starts at the top.
+   *
+   * The browser keeps the scroll position of the document, and the app replaces its contents rather
+   * than navigating — so tapping "Looks right" half way down a long receipt opened the next screen
+   * already scrolled, with its heading somewhere above the fold. It reads as a rendering fault.
+   *
+   * Keyed on the view rather than on every render, so scrolling within a screen is left alone.
+   */
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [view]);
+
   const lastPhoto = useRef<File | null>(null);
   // Set when the wait is cancelled or backed out of: the scan carries on and its result is still
   // kept, but the person is not dragged onto a screen they walked away from.
@@ -413,7 +426,7 @@ function Router() {
     if (scanState === "picking") {
       const empty = quota?.left === 0;
       return (
-        <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+        <div className="scan-screen">
           <div className="topbar">
             <button className="btn btn-ghost" aria-label="Back" onClick={() => setScanState("idle")}>←</button>
             <h1 className="screen-title">Scan a receipt</h1>

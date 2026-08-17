@@ -25,34 +25,47 @@ export function ScanProgressScreen({ onCancel }: { onCancel: () => void }) {
   }, []);
 
   return (
-    <div>
+    /* The same frame the Scan screen puts in the middle, with the sweep running down it — so the
+       photograph you just took appears to be the thing being read, rather than the app cutting to an
+       unrelated card. Same class, same no-scroll shell, same optical centring; only the contents of
+       the paper change. */
+    <div className="scan-screen">
       <div className="topbar">
         <h1 className="screen-title">Reading the receipt</h1>
       </div>
 
-      <div className="card" style={{ display: "flex", justifyContent: "center", padding: "var(--s6) var(--s4)" }}>
-        {/* Decoration: the words below carry the meaning for anyone who cannot see this. */}
-        <div className="scanning" aria-hidden="true">
-          <div className="scanning-line" style={{ width: "62%" }} />
-          <div className="scanning-line" style={{ width: "88%" }} />
-          <div className="scanning-line" style={{ width: "74%" }} />
-          <div className="scanning-line" style={{ width: "91%" }} />
-          <div className="scanning-line" style={{ width: "56%" }} />
-          <div className="scanning-line" style={{ width: "80%" }} />
-          <div className="scanning-line short" style={{ width: "40%" }} />
-          <div className="scanning-sweep" />
+      <div className="scan-stage">
+        <div className="viewfinder">
+          {/* Decoration: the words below carry the meaning for anyone who cannot see this. */}
+          <div className="viewfinder-paper" aria-hidden="true">
+            <span className="viewfinder-line viewfinder-line-head" style={{ width: "58%" }} />
+            <span className="viewfinder-line" style={{ width: "34%", marginBottom: 4 }} />
+            {["88%", "74%", "84%", "56%", "80%", "68%"].map((w, i) => (
+              <span key={i} className="viewfinder-line" style={{ width: w }} />
+            ))}
+            <span
+              className="viewfinder-line viewfinder-line-head"
+              style={{ width: "44%", marginTop: "auto", height: 8 }}
+            />
+            <div className="scanning-sweep" />
+          </div>
+          {/* The brackets stay: this is the same instrument, still pointed at the same receipt. */}
+          <span className="viewfinder-bracket viewfinder-tl" />
+          <span className="viewfinder-bracket viewfinder-tr" />
+          <span className="viewfinder-bracket viewfinder-bl" />
+          <span className="viewfinder-bracket viewfinder-br" />
         </div>
-      </div>
 
-      <div role="status" aria-live="polite" style={{ textAlign: "center" }}>
-        <p className="label" style={{ margin: 0 }}>
-          Finding the items, the quantities and the prices.
-        </p>
-        {slow && (
-          <p className="micro" style={{ marginTop: "var(--s2)" }}>
-            Still going — a long receipt takes a little longer
+        <div role="status" aria-live="polite" style={{ textAlign: "center", maxWidth: 216 }}>
+          <p className="label" style={{ margin: 0 }}>
+            Finding the items, the quantities and the prices.
           </p>
-        )}
+          {slow && (
+            <p className="micro" style={{ marginTop: "var(--s2)" }}>
+              Still going — a long receipt takes a little longer
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Reserved for a banner in the native apps. It renders nothing today, and whatever goes

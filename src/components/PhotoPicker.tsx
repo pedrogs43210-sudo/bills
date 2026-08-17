@@ -56,13 +56,13 @@ export function PhotoPicker({
   }
 
   return (
-    <div className="row" style={{ marginBottom: 8, gap: "var(--s2)" }}>
+    <div style={{ marginBottom: 8 }}>
       {/* capture="environment" is what actually opens the rear camera. Without it the browser
           shows a generic file picker, which on Android lands in the gallery — so "scan a receipt"
           meant hunting for a photo you had not taken yet. */}
       <label
         className={`btn btn-primary scan-btn${chip ? "" : " scan-btn-bare"}`}
-        style={{ opacity: disabled ? 0.45 : 1, flex: 1 }}
+        style={{ opacity: disabled ? 0.45 : 1 }}
       >
         <span className="scan-btn-label">📸 Scan receipt</span>
         {chip && <span className={`scan-chip${chip.tone === "last" ? " scan-chip-last" : ""}`}>{chip.text}</span>}
@@ -76,17 +76,27 @@ export function PhotoPicker({
           onChange={take}
         />
       </label>
+
+      {/* Underneath rather than beside, and it says what it costs.
+
+          As a 56px square next to the priced button it read as the free alternative — a plain
+          bordered icon beside a gradient button carrying a "3 free" chip looks like the option the
+          chip does not apply to. It does apply: reading a photo from the gallery costs exactly the
+          same scan as reading one from the camera, because it is the same request.
+
+          So it moves below the thing it is an alternative to, loses the border that made it look
+          like a peer, and states the price in its own label. One fewer control competing with the
+          primary action, and nobody can infer a free path that does not exist. */}
       <label
-        className="btn btn-square scan-square"
-        title="Choose a photo you already have"
+        className="btn btn-ghost scan-gallery"
         style={{ opacity: disabled ? 0.45 : 1 }}
       >
-        <span aria-hidden="true">🖼</span>
+        <span aria-hidden="true">🖼</span> Choose a photo — uses a scan
         <input
           hidden
           type="file"
           accept="image/*"
-          aria-label="Choose a photo of a receipt"
+          aria-label="Choose a photo of a receipt — uses a scan"
           disabled={disabled}
           onChange={take}
         />

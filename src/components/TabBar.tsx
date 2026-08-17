@@ -51,7 +51,15 @@ export function TabBar({
         className={`tab${current === "splits" ? " selected" : ""}`}
         onClick={onSplits}
       >
-        <span className="tab-icon" aria-hidden="true">🧾</span>
+        <span className="tab-icon" aria-hidden="true">
+          {/* A receipt with a torn foot, the app's own mark cut down to 22px. Drawn rather than the
+              🧾 emoji, which every phone renders as a different picture in a different colour and
+              which sat visibly heavier than the drawn Scan icon beside it. */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 3h12v16.5l-2 -1.5 -2 1.5 -2 -1.5 -2 1.5 -2 -1.5z" />
+            <path d="M9.5 8h5M9.5 12h5" />
+          </svg>
+        </span>
         Splits
       </button>
 
@@ -82,7 +90,14 @@ export function TabBar({
         style={{ position: "relative" }}
         onClick={onProfile}
       >
-        <span className="tab-icon" aria-hidden="true">🙂</span>
+        <span className="tab-icon" aria-hidden="true">
+          {/* A head and shoulders. The 🙂 emoji read as a reaction rather than as a destination —
+              and on some phones as a yellow disc bright enough to outweigh the selected tab. */}
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="8" r="3.6" />
+            <path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6" />
+          </svg>
+        </span>
         {/* A count, not an alert. Filled ink rather than red, because nothing has gone wrong —
             there are scans left, and Profile is where they can be topped up. Announced to a screen
             reader through the tab's accessible name below, since a bare numeral read out on its own
