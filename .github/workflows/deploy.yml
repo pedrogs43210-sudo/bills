@@ -27,6 +27,10 @@ jobs:
           # the build simply keeps the own-key behaviour, so this is a switch, not a cutover.
           VITE_SCAN_PROXY_URL: ${{ secrets.VITE_SCAN_PROXY_URL }}
           VITE_APP_TOKEN: ${{ secrets.VITE_APP_TOKEN }}
+          # Not a secret: it is the address printed in every shared summary and every invite. Here
+          # rather than in a repository secret so it is visible to anyone reading the workflow —
+          # a wrong value sends people somewhere that is not Billy, and that should be reviewable.
+          VITE_APP_LINK: https://splitwithbilly.com
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
