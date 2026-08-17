@@ -83,8 +83,10 @@ export function HelpScreen({ go }: { go: (v: View) => void }) {
         </p>
         <p className="label">
           Made by Pedro Santos. Questions, or something wrong with the numbers?{" "}
-          {/* Deliberately not a mailto with a guessed address — see docs/legal. */}
-          Get in touch at the address in the privacy policy.
+          {/* Said here rather than "the address in the privacy policy", which is what this said
+              while there was no address to give. Somebody who has found a wrong number wants to
+              report it, not to go looking for where to report it. */}
+          <a href="mailto:hello@splitwithbilly.com">hello@splitwithbilly.com</a>
         </p>
         {/* A relative path, so the same link works in the web build and inside the phone app, where
             public/ is bundled alongside the app. Google requires a reachable policy, and a person
