@@ -4,6 +4,7 @@ import { newId } from "../lib/ids";
 import type { View } from "../App";
 import type { Trip } from "../types";
 import { Disc } from "../components/chips";
+import { Mark } from "../components/Mark";
 
 const EMOJIS = ["🧾", "🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
 
@@ -43,13 +44,11 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           Settings moved to the Profile tab, so the corner that used to open it opens this instead.
           The same file the phone uses as the app icon, so there is one mark. */}
       <div className="topbar">
-        <img
-          className="app-mark"
-          src={`${import.meta.env.BASE_URL}icon.svg`}
-          alt=""
-          width={30}
-          height={30}
-        />
+        {/* The mark flat and untiled, in the accent, at 24px — drawing B. It used to be the tiled
+            icon.svg: a gradient badge of the app, inside the app, at the top of its own home
+            screen. The asset sheet is explicit that the tile belongs to the launcher, the store and
+            the splash, and nowhere in the product. */}
+        <Mark size={24} color="var(--accent)" className="app-mark" />
         <h1 className="screen-title">Billy</h1>
         {/* A labelled pill rather than a bare ＋. The glyph on its own was a mystery: the one
             control on this screen that creates anything, sitting in the corner hardest to reach,

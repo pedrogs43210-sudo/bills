@@ -1,18 +1,16 @@
 /**
  * Draws the source art the phone apps are built from, then hands it to @capacitor/assets.
  *
- * A script rather than five PNGs someone made once in an image editor: when the logo changes, this
+ * A script rather than five PNGs someone made once in an image editor: when the mark changes, this
  * regenerates every size for both platforms and nobody has to remember which of forty files was
  * hand-tweaked. Run it with `npm run assets`.
  *
- * The icon deliberately loses the receipt tear. Both stores mask app icons — iOS to a rounded
- * square, Android to whatever shape the launcher prefers — so a torn bottom edge would simply be
- * clipped, and a tear cut through a gradient onto a gradient is invisible anyway. The icon is
- * therefore the bold thing that survives at 40px: the sunset, and the B. The full silhouette, tear
- * and all, still exists where it can be seen properly — the browser tab and the app's own header.
+ * The mark here is the same 64-unit master as `public/icon.svg` and `src/components/Mark.tsx`. Three
+ * copies of one path is three chances to drift, and the alternative — importing a .ts module from a
+ * build script — costs more than it saves. If one changes, change all three.
  *
- * iOS additionally rejects any icon with an alpha channel, which is why the square is drawn opaque
- * rather than relying on the mask to cover the corners.
+ * iOS rejects any icon with an alpha channel, which is why the square is drawn opaque rather than
+ * relying on the mask to cover the corners.
  */
 import sharp from "sharp";
 import { mkdirSync, statSync } from "node:fs";
@@ -24,55 +22,83 @@ const SUNSET_1 = "#FF7059";
 const SUNSET_2 = "#FFB347";
 const CREAM = "#FFF8F0";
 const NIGHT = "#241A17";
+const INK = "#3D2B24";
 
-/** The B, as drawn in public/icon.svg — one shape, so the two files cannot drift apart. */
-const B_PATH =
-  "M35 24h20.5c8.9 0 14.6 4.6 14.6 12 0 4.6-2.3 8.2-6.1 10 4.8 1.6 7.7 5.6 7.7 11 0 8.2-6.1 " +
-  "13.2-16 13.2H35c-2.2 0-3.6-1.4-3.6-3.6V27.6c0-2.2 1.4-3.6 3.6-3.6zm5.4 8.6v10.2h13.2c4 0 " +
-  "6.4-1.9 6.4-5.1s-2.4-5.1-6.4-5.1zm0 18.4v11h14.2c4.4 0 7-2.1 7-5.5s-2.6-5.5-7-5.5z";
+/**
+ * Drawing A — the mark, as one path with fill-rule evenodd.
+ *
+ * Body x20→50, y8→52, top corners r6, five teeth landing exactly on both bottom corners, and three
+ * lines knocked OUT rather than painted on.
+ *
+ * Knocked out is the load-bearing part: the lines are holes, so they take whatever sits behind them.
+ * That is what lets one drawing serve the gradient launcher tile, the flat monochrome themed icon
+ * and the white-on-transparent notification icon without three separate files.
+ */
+const MARK =
+  "M20 8H44a6 6 0 0 1 6 6v34l-3 4-3-4-3 4-3-4-3 4-3-4-3 4-3-4-3 4-3-4V14a6 6 0 0 1 6-6Z " +
+  "M28 19h14a2.5 2.5 0 0 1 0 5H28a2.5 2.5 0 0 1 0-5z " +
+  "M28 27h9a2.5 2.5 0 0 1 0 5h-9a2.5 2.5 0 0 1 0-5z " +
+  "M28 35h14a2.5 2.5 0 0 1 0 5H28a2.5 2.5 0 0 1 0-5z";
+
+/** Drawing B — three fatter teeth and fatter lines, for anything that lands small. */
+const MARK_COMPACT =
+  "M20 8H44a6 6 0 0 1 6 6v34l-5 4-5-4-5 4-5-4-5 4-5-4V14a6 6 0 0 1 6-6Z " +
+  "M28 18h14a3 3 0 0 1 0 6H28a3 3 0 0 1 0-6z " +
+  "M28 27h8a3 3 0 0 1 0 6h-8a3 3 0 0 1 0-6z " +
+  "M28 36h14a3 3 0 0 1 0 6H28a3 3 0 0 1 0-6z";
 
 const gradient = `
   <linearGradient id="sunset" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="${SUNSET_1}"/><stop offset="1" stop-color="${SUNSET_2}"/>
   </linearGradient>`;
 
-/** The whole mark including the tear, free-standing — for the splash, where nothing masks it. */
-const fullMark = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>${gradient}</defs>
-  <path fill="url(#sunset)" d="M0 22A22 22 0 0 1 22 0h56a22 22 0 0 1 22 22v60l-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12z"/>
-  <path transform="translate(-1.4 0)" fill="#fff" d="${B_PATH}"/>
-</svg>`;
+/**
+ * The mark inset to 66% of its box.
+ *
+ * That number is Android's, not a preference: a 108dp adaptive icon reserves a 72dp safe circle, and
+ * 66% keeps the whole mark inside it under every launcher mask — circle, squircle, rounded square.
+ * Reused for the store tile and the maskable web icon so all three are the same picture.
+ */
+const inset = (path = MARK, fill = INK) => `
+  <g transform="translate(32 32) scale(0.66) translate(-32 -32)">
+    <path fill="${fill}" fill-rule="evenodd" d="${path}"/>
+  </g>`;
 
 /** Full-bleed square, no rounding and no alpha: the platforms do their own masking. */
 const iconSquare = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>${gradient}</defs>
-  <rect width="100" height="100" fill="url(#sunset)"/>
-  <path transform="translate(-1.4 0)" fill="#fff" d="${B_PATH}"/>
+  <rect width="64" height="64" fill="url(#sunset)"/>
+  ${inset()}
 </svg>`;
 
-/** Android's adaptive foreground. The B sits inside the safe circle, or a launcher crops it. */
+/** Android's adaptive foreground: the mark alone, transparent behind, at the same 66%. */
 const iconForeground = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <g transform="translate(50 50) scale(0.62) translate(-50 -50)">
-    <path transform="translate(-1.4 0)" fill="#fff" d="${B_PATH}"/>
-  </g>
-</svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${inset()}</svg>`;
 
 const iconBackground = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <defs>${gradient}</defs><rect width="100" height="100" fill="url(#sunset)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>${gradient}</defs><rect width="64" height="64" fill="url(#sunset)"/>
 </svg>`;
 
-/** The mark, small, centred on the app's own background — what a launch looks like. */
+/**
+ * The splash: a gradient disc with the mark knocked out of it, on the app's own background.
+ *
+ * A disc rather than a rounded tile, because the splash is the one place the icon is not being
+ * masked by anything — so it can be the shape it actually wants to be. Drawing B, because at this
+ * scale the five fine teeth would alias.
+ *
+ * The mark is filled with the page colour rather than left transparent: a hole would show the page
+ * anyway in light mode and betray the disc's edge in dark, and this way one SVG serves both.
+ */
 const splash = (bg) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="${bg}"/>
-  <g transform="translate(50 50) scale(0.17) translate(-50 -50)">
-    ${fullMark.replace(/<\/?svg[^>]*>/g, "").replace(/<defs>[\s\S]*?<\/defs>/, "")}
-  </g>
   <defs>${gradient}</defs>
+  <rect width="100" height="100" fill="${bg}"/>
+  <circle cx="50" cy="50" r="11" fill="url(#sunset)"/>
+  <g transform="translate(50 50) scale(0.229) translate(-32 -32)">
+    <path fill="${bg}" fill-rule="evenodd" d="${MARK_COMPACT}"/>
+  </g>
 </svg>`;
 
 const render = async (name, svg, size, flatten) => {

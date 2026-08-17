@@ -1,24 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Billy">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Billy">
   <!--
-    Billy's mark: the app's own sunset gradient, a rounded square, and a receipt torn off along the
-    bottom. The tear is cut out of the silhouette rather than painted over it, so the notches are
-    transparent and the icon sits on any backdrop — a launcher's wallpaper, a browser tab, a dark
-    home screen — without carrying a square of the wrong colour around with it.
+    Billy's mark, tiled. One 64-unit master: body x20-50, y8-52, top corners r6, five teeth landing
+    on both bottom corners, three lines knocked out with fill-rule evenodd so they take the tile's
+    colour rather than being painted over it.
 
-    The previous icon was the 🧾 emoji on a gradient. Emoji do not render in most icon contexts
-    (a favicon at 16px, an OS launcher, a store listing), so it was a blank square almost
-    everywhere it mattered.
+    This is the TILED form: gradient behind, ink mark on top. It belongs to the browser tab, the
+    launcher, the store listing and the splash. Inside the app the mark is used flat and untiled --
+    see src/components/Mark.tsx.
   -->
   <defs>
     <linearGradient id="sunset" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#FF7059"/>
-      <stop offset="1" stop-color="#FFB347"/>
+      <stop offset="0" stop-color="#ff7059"/><stop offset="1" stop-color="#ffb347"/>
     </linearGradient>
   </defs>
-  <path fill="url(#sunset)" d="M0 22A22 22 0 0 1 22 0h56a22 22 0 0 1 22 22v60l-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12-5 12-5-12z"/>
-  <!-- Fredoka is the brand face but cannot be relied on outside the app, so the B is a shape.
-       Drawn, not typed: a rounded stem with two bowls, in the same spirit as the type. The nudge
-       centres it — measured, because the two bowls are not the same width and the eye reads the
-       ink, not the box. Its vertical centre already matches the whole shape's, tear included. -->
-  <path transform="translate(-1.4 0)" fill="#fff" d="M35 24h20.5c8.9 0 14.6 4.6 14.6 12 0 4.6-2.3 8.2-6.1 10 4.8 1.6 7.7 5.6 7.7 11 0 8.2-6.1 13.2-16 13.2H35c-2.2 0-3.6-1.4-3.6-3.6V27.6c0-2.2 1.4-3.6 3.6-3.6zm5.4 8.6v10.2h13.2c4 0 6.4-1.9 6.4-5.1s-2.4-5.1-6.4-5.1zm0 18.4v11h14.2c4.4 0 7-2.1 7-5.5s-2.6-5.5-7-5.5z"/>
+  <rect width="64" height="64" rx="15.4" fill="url(#sunset)"/>
+  <g transform="translate(32 32) scale(0.66) translate(-32 -32)">
+    <path fill="#3d2b24" fill-rule="evenodd" d="M20 8H44a6 6 0 0 1 6 6v34l-3 4-3-4-3 4-3-4-3 4-3-4-3 4-3-4-3 4-3-4V14a6 6 0 0 1 6-6Z M28 19h14a2.5 2.5 0 0 1 0 5H28a2.5 2.5 0 0 1 0-5z M28 27h9a2.5 2.5 0 0 1 0 5h-9a2.5 2.5 0 0 1 0-5z M28 35h14a2.5 2.5 0 0 1 0 5H28a2.5 2.5 0 0 1 0-5z"/>
+  </g>
 </svg>

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useReservedBottom } from "../lib/useReservedBottom";
+import { Mark } from "./Mark";
 
 export type TabName = "splits" | "profile";
 
@@ -52,13 +53,10 @@ export function TabBar({
         onClick={onSplits}
       >
         <span className="tab-icon" aria-hidden="true">
-          {/* A receipt with a torn foot, the app's own mark cut down to 22px. Drawn rather than the
-              🧾 emoji, which every phone renders as a different picture in a different colour and
-              which sat visibly heavier than the drawn Scan icon beside it. */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 3h12v16.5l-2 -1.5 -2 1.5 -2 -1.5 -2 1.5 -2 -1.5z" />
-            <path d="M9.5 8h5M9.5 12h5" />
-          </svg>
+          {/* The mark itself at 20px, which is drawing B — see components/Mark.tsx. It inherits the
+              tab's colour, so the selected state costs no extra rule. The sheet is explicit that no
+              gradient tile appears inside the product: the app already is the app. */}
+          <Mark size={20} />
         </span>
         Splits
       </button>
