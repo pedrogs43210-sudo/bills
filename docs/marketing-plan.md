@@ -5,20 +5,27 @@ Instagram designed (templates) · the app is **Billy**, not Spleceit.
 
 ---
 
-## The one rule that governs everything right now
+## Produce in bulk now, publish at launch
 
-**Billy is not on the Play Store yet.** Until it is, no post says "download".
+**Decided:** everything gets made while Google verifies the account, and nothing is posted until
+Billy is downloadable.
 
-You get one first impression per person. Sending somebody to a store listing that does not exist
-spends it for nothing, and they do not come back. So until launch:
+That is the right call and it removes a problem rather than delaying one. You get exactly one first
+impression per person, and spending it by sending somebody to a store listing that does not exist is
+spending it for nothing. Posting from a standing start with a back catalogue also means the first
+three weeks are not simultaneously the first three weeks of learning the format.
 
-- Content stands on its own — the drama is the post, Billy is a signature at most.
-- The call to action is **splitwithbilly.com**, which needs to become a waitlist page rather than the
-  app itself. It currently serves the app, which is worse than useless to a stranger: the web build
-  can no longer scan, so anybody who taps Scan gets an error.
-- The day the listing goes live, the back catalogue stops being a warm-up and starts being a funnel.
+Two consequences worth holding on to:
 
-This is an advantage, not a delay. The content gets tested and improved before it has a job.
+- **The waitlist page is no longer urgent.** It only mattered as somewhere to send people before the
+  store existed. Worth knowing that `splitwithbilly.com` currently serves the app itself, and since
+  the public origin was closed the web build can no longer scan — so a stranger who lands there and
+  taps Scan gets an error. Fix it before the first post goes out, whether as a waitlist or a proper
+  landing page.
+- **Posts can say "download".** The whole "hold the punchline" constraint disappears, so the app can
+  be the payoff rather than a signature.
+
+**Target before publishing:** a bank of about 20 posts. Enough for a month at this cadence.
 
 ## Positioning
 
@@ -29,8 +36,15 @@ target **item-level scanning** as the named weakness of the incumbents, and posi
 That does not belong on TikTok — nobody scrolls for a feature comparison. It belongs on the website,
 the store listing, and about one Instagram post in ten.
 
-**Campaign line:** *Billy knows who had what.*
-**Sign-off on the receipt series:** *Billy remembers.*
+**Campaign line:** *Billy remembers.*
+
+Two words, faintly ominous, and it makes Billy a character rather than a utility — the friend who
+quietly keeps score. It also works on every format without modification: after an argument, under a
+receipt, at the end of a list.
+
+**The explanatory line:** *Billy knows who had what.* — for the store listing and the website, where
+somebody needs to understand what the thing does before they are charmed by it. Not on social.
+
 **Voice:** deadpan. Billy is the friend who is quietly, annoyingly correct about money. "The point is
 €8" is exactly right. Billy never sells, never uses an exclamation mark, and is never the loudest
 thing in the post.
@@ -49,16 +63,26 @@ Faceless, all of them. Each should take under 30 minutes once the template exist
 
 **A week:** 2 × argument, 1 × receipt hell, 1 × list, 1 × proof or group-chat.
 
-## Two corrections to the original brief
+## Carousels work on both platforms
 
-**It was labelled a TikTok plan but thirteen of sixteen concepts were static carousels** — that is an
-Instagram plan. TikTok is video-first and sound-first. Format 1 is the one that genuinely becomes
-video: a screen recording of a chat, one message at a time, over a trending sound. Everything else
-listed is Instagram unless it is deliberately rebuilt.
+I had this wrong first time and said the carousel concepts were an Instagram plan mislabelled.
+TikTok's photo carousels perform well, so the same posts serve both — which makes the whole plan
+cheaper than it looked, because one design run covers two accounts.
 
-**Do not mock up real WhatsApp or iMessage UI.** Trademark risk, and platforms sometimes suppress it.
-Build a Billy-flavoured chat look instead — cream bubbles, the app's own palette. It becomes
-recognisable, which a screenshot of somebody else's app never can.
+**What that costs: every carousel has to work at 9:16 as well as 4:5.** TikTok is taller than
+Instagram, so a layout composed for 4:5 gets padded or cropped. Design at 9:16 and let 4:5 be the
+crop — the safe area is the middle, and nothing important goes near the top or bottom edge where
+TikTok's own chrome sits.
+
+The one thing that genuinely differs: **TikTok wants sound on everything, including carousels.** A
+silent photo carousel gets less reach than the same one with a trending sound under it. That costs
+nothing and is easy to forget.
+
+## Do not mock up real WhatsApp or iMessage UI
+
+Trademark risk, and platforms sometimes suppress it. Build a Billy-flavoured chat look instead —
+cream bubbles, the app's own palette. It becomes recognisable, which a screenshot of somebody else's
+app never can.
 
 ## The thing missing from all sixteen concepts
 

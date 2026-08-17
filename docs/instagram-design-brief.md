@@ -1,16 +1,21 @@
-# Billy — Instagram post templates
+# Billy — social post templates
 
-I need a set of reusable Instagram post templates for a small app's brand account. Give me the
-designs and your reasoning, not code.
+I need a set of reusable post templates for a small app's brand account, serving **both Instagram and
+TikTok** — TikTok's photo carousels perform well, so one design run covers both. Give me the designs
+and your reasoning, not code.
 
 ## What the app is
 
 **Billy** splits restaurant and supermarket receipts between friends. You photograph the receipt, an
 AI reads the items, you tap who had what, and it tells you who owes whom. It is a phone app.
 
-The product exists and is nearly launched. This is the brand account that will run alongside it.
+The product exists and is nearly launched. Everything is being produced in bulk now and published
+the week it goes live, so these templates need to survive a month of use from day one rather than be
+tuned as they go.
 
-**Campaign line:** *Billy knows who had what.*
+**Campaign line:** *Billy remembers.* — two words, faintly ominous, and it makes Billy a character
+rather than a utility: the friend who quietly keeps score. *Billy knows who had what* is the
+explanatory version, kept for the store listing and the website, not for social.
 **Voice:** deadpan. Billy is the friend who is quietly, annoyingly correct about money. Never sells,
 never uses an exclamation mark, never the loudest thing in the post. When a post is funny, the
 situation is funny — Billy just states the fact at the end.
@@ -54,8 +59,11 @@ never as a gradient badge stamped on a post.
 
 ## Hard constraints
 
-1. **Square 1080×1080 and 4:5 portrait 1080×1350.** Portrait is the one that matters; design for it
-   and let square be the crop.
+1. **Design at 9:16 (1080×1920), and make 4:5 (1080×1350) a safe crop of it.** The same carousels run
+   on TikTok, which is taller than Instagram — so compose for the tall frame and keep everything
+   that matters in the middle. Nothing important goes near the top or bottom edge, where TikTok's
+   own chrome (caption, buttons, username) sits over the image. Show me the safe area you are
+   working to, because it is the constraint that will break these if it is ignored.
 2. **Carousels are up to 10 slides.** Assume most are 5–7.
 3. **Text must survive a phone-sized thumbnail.** If the first slide's hook is not readable at
    150px wide, it does not work.
@@ -139,7 +147,7 @@ The one that demonstrates the product without being a demo. It needs to read in 
 ## Template 5 — The end slide
 
 Every carousel ends on Billy. One slide, reusable, doing as little as possible: the mark, the name,
-the line *Billy knows who had what*. Show me the version that works after a funny post and after a
+the line *Billy remembers*. Show me the version that works after a funny post and after a
 serious one — or argue that it should be the same slide either way.
 
 ---
