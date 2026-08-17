@@ -14,7 +14,18 @@ preview_urls = false
 # The two localhost entries are the native shells, not a mistake: Capacitor serves the bundled
 # app from capacitor://localhost on iOS and https://localhost on Android. Without them every
 # scan from the phone apps is refused by CORS.
-ALLOWED_ORIGINS = "https://pedrogs43210-sudo.github.io,http://localhost:5173,capacitor://localhost,https://localhost"
+# Deliberately NOT the public web address.
+#
+# Billy is a phone app; the web build exists so it can be developed and reviewed. Any origin listed
+# here can spend scans, and a scan costs about three cents of somebody's real money — so a public
+# URL in this list means every stranger who finds it gets three free scans on the card behind the
+# Anthropic key. `pedrogs43210-sudo.github.io` was in here for weeks and was exactly that door.
+#
+# What remains: localhost for development, and the two Capacitor origins the native shells serve
+# themselves from (capacitor://localhost on iOS, https://localhost on Android). Adding
+# splitwithbilly.com would open web scanning to anybody; that is a decision to take deliberately,
+# not by leaving a line in a config file.
+ALLOWED_ORIGINS = "http://localhost:5173,capacitor://localhost,https://localhost"
 # Free scans per install, once, for the life of the install — not per month. A monthly allowance
 # is a recurring bill for every user who never pays.
 FREE_SCANS = "3"
