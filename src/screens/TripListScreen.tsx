@@ -106,6 +106,15 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           <button className="btn btn-primary" onClick={create}>
             Create split
           </button>
+          {/* Here rather than in a menu, because somebody who has been sent a code arrives with an
+              empty app and this card is what opens in front of them. */}
+          <button
+            className="btn btn-ghost"
+            style={{ width: "100%", marginTop: "var(--s2)" }}
+            onClick={() => go({ screen: "join" })}
+          >
+            Somebody sent you a code? Join their split
+          </button>
         </div>
       )}
 

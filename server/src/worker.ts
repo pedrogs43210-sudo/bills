@@ -82,7 +82,10 @@ function corsHeaders(origin: string | null, env: Env): Record<string, string> {
   return {
     "access-control-allow-origin": ok ? origin! : allowed[0] ?? "",
     "access-control-allow-headers": "content-type, x-install-id, x-app-token, x-host-token",
-    "access-control-allow-methods": "POST, GET, OPTIONS",
+    /* PUT and DELETE are here for shared splits — a guest replacing their claims, and a host
+       revoking a link. Both were invisible to `simulate-share.mjs`, which is node and sends no
+       preflight; a browser asks first and was being told no. */
+    "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
     "access-control-max-age": "86400",
     vary: "origin",
   };
