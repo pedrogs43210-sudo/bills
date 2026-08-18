@@ -16,7 +16,19 @@ import { AdSlot } from "../components/AdSlot";
 /** After this long the wait stops feeling normal, so the screen acknowledges it. */
 const PATIENCE_MS = 9000;
 
-export function ScanProgressScreen({ onCancel }: { onCancel: () => void }) {
+/**
+ * How long the tick stays up before the items appear.
+ *
+ * Short on purpose. This is a full stop, not a celebration — somebody has just waited eight seconds
+ * and the reward for waiting is their receipt, not a longer wait with a nicer picture on it. Long
+ * enough to register that it worked, too short to be in the way.
+ *
+ * Exported so the screens that navigate away hold for exactly as long as the animation runs, rather
+ * than two numbers drifting apart until the tick is cut off half-drawn.
+ */
+export const SCAN_DONE_MS = 700;
+
+export function ScanProgressScreen({ onCancel, done = false }: { onCancel: () => void; done?: boolean }) {
   const [slow, setSlow] = useState(false);
 
   useEffect(() => {
@@ -34,7 +46,7 @@ export function ScanProgressScreen({ onCancel }: { onCancel: () => void }) {
         <h1 className="screen-title">Reading the receipt</h1>
       </div>
 
-      <div className="scan-stage">
+      <div className={`scan-stage${done ? " scan-stage-done" : ""}`}>
         <div className="viewfinder">
           {/* Decoration: the words below carry the meaning for anyone who cannot see this. */}
           <div className="viewfinder-paper" aria-hidden="true">
@@ -47,7 +59,16 @@ export function ScanProgressScreen({ onCancel }: { onCancel: () => void }) {
               className="viewfinder-line viewfinder-line-head"
               style={{ width: "44%", marginTop: "auto", height: 8 }}
             />
-            <div className="scanning-sweep" />
+            {/* The sweep stops the moment it worked. A light still travelling over a receipt that
+                has already been read says the app has not noticed it finished. */}
+            {!done && <div className="scanning-sweep" />}
+            {done && (
+              <span className="scan-tick" aria-hidden="true">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 12.5l5.2 5.2L20 6.8" />
+                </svg>
+              </span>
+            )}
           </div>
           {/* The brackets stay: this is the same instrument, still pointed at the same receipt. */}
           <span className="viewfinder-bracket viewfinder-tl" />
@@ -57,13 +78,21 @@ export function ScanProgressScreen({ onCancel }: { onCancel: () => void }) {
         </div>
 
         <div role="status" aria-live="polite" style={{ textAlign: "center", maxWidth: 216 }}>
-          <p className="label" style={{ margin: 0 }}>
-            Finding the items, the quantities and the prices.
-          </p>
-          {slow && (
-            <p className="micro" style={{ marginTop: "var(--s2)" }}>
-              Still going — a long receipt takes a little longer
+          {done ? (
+            <p className="label" style={{ margin: 0, fontFamily: "var(--brand)", fontWeight: 700, fontSize: "15px", color: "var(--good-strong)" }}>
+              Got it
             </p>
+          ) : (
+            <>
+              <p className="label" style={{ margin: 0 }}>
+                Finding the items, the quantities and the prices.
+              </p>
+              {slow && (
+                <p className="micro" style={{ marginTop: "var(--s2)" }}>
+                  Still going — a long receipt takes a little longer
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -74,10 +103,14 @@ export function ScanProgressScreen({ onCancel }: { onCancel: () => void }) {
 
       <Footerbar>
         {/* A way out. A scan that has gone wrong should never trap someone on a screen whose
-            only content is a moving light. */}
-        <button className="btn" style={{ width: "100%" }} onClick={onCancel}>
-          Cancel and add by hand
-        </button>
+            only content is a moving light. Gone once it has worked: there is nothing left to
+            cancel, and offering it for the last beat invites a mis-tap that throws away a scan
+            somebody has already paid for. */}
+        {!done && (
+          <button className="btn" style={{ width: "100%" }} onClick={onCancel}>
+            Cancel and add by hand
+          </button>
+        )}
       </Footerbar>
     </div>
   );

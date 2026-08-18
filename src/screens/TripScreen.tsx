@@ -9,7 +9,7 @@ import { currencyOptions, currencySymbol } from "../lib/currencies";
 import { Disc, personVars } from "../components/chips";
 import { Footerbar } from "../components/Footerbar";
 import { PhotoPicker } from "../components/PhotoPicker";
-import { ScanProgressScreen } from "./ScanProgressScreen";
+import { ScanProgressScreen, SCAN_DONE_MS } from "./ScanProgressScreen";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
 import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanFailure, type ScanQuota } from "../lib/scan";
@@ -26,7 +26,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [personName, setPersonName] = useState("");
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [scanState, setScanState] = useState<"idle" | "busy" | "error">("idle");
+  const [scanState, setScanState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
   const [scanFailure, setScanFailure] = useState<ScanFailure | null>(null);
   const [groupForm, setGroupForm] = useState<{ id: string | null; name: string; personIds: string[] } | null>(null);
@@ -96,9 +96,10 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     );
   }
 
-  if (scanState === "busy") {
+  if (scanState === "busy" || scanState === "done") {
     return (
       <ScanProgressScreen
+        done={scanState === "done"}
         onCancel={() => {
           // The request carries on — its result is still stored if it lands — but the user is
           // no longer held on a screen whose only content is a moving light.
@@ -157,7 +158,6 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       // euros that is the user's call to make, not a guess from a photograph.
       dispatch({ type: "addReceipt", tripId, receipt });
       if (!alive.current) return; // user left this screen — keep the data, skip the navigation
-      setScanState("idle");
       const after = lastKnownQuota();
       setQuota(after);
       // The scan that just landed was the last one. Say so on the screen they are about to reach,
@@ -167,8 +167,16 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       // to do.
       if (shouldOffer("last-scan", receipt.id, after)) offerAfter(receipt.id);
       // Same reasoning as leaving the screen: they asked to stop waiting, so the receipt is
-      // kept and listed, but they are not dragged into it.
-      if (abandoned.current) return;
+      // kept and listed, but they are not dragged into it — and there is nobody to show a tick to.
+      if (abandoned.current) {
+        setScanState("idle");
+        return;
+      }
+      // A beat on the tick before the items — see ScanProgressScreen.SCAN_DONE_MS.
+      setScanState("done");
+      await new Promise((r) => setTimeout(r, SCAN_DONE_MS));
+      if (!alive.current) return;
+      setScanState("idle");
       go({ screen: "receipt", tripId, receiptId: receipt.id });
     } catch (err) {
       if (!alive.current) return;

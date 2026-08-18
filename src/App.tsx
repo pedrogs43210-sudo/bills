@@ -12,7 +12,7 @@ import { HelpScreen } from "./screens/HelpScreen";
 import { WhosInScreen } from "./screens/WhosInScreen";
 import { InviteScreen } from "./screens/InviteScreen";
 import { JoinScreen } from "./screens/JoinScreen";
-import { ScanProgressScreen } from "./screens/ScanProgressScreen";
+import { ScanProgressScreen, SCAN_DONE_MS } from "./screens/ScanProgressScreen";
 import { ScanFailedScreen } from "./screens/ScanFailedScreen";
 import { PackOfferSheet } from "./components/PackOfferSheet";
 import { PhotoPicker } from "./components/PhotoPicker";
@@ -57,7 +57,7 @@ export type View =
   | { screen: "help" };
 
 /** Where the quick scan has got to. `picking` is the camera/gallery screen the Scan tab opens. */
-type ScanState = "idle" | "picking" | "busy" | "error";
+type ScanState = "idle" | "picking" | "busy" | "done" | "error";
 
 /**
  * The offer sheet, wherever the person happens to be standing.
@@ -280,10 +280,17 @@ function Router() {
       dispatch({ type: "addPerson", tripId, personId, name: "You" });
       dispatch({ type: "addReceipt", tripId, receipt });
 
-      setScanState("idle");
       // They asked to stop waiting, so the split is kept and listed — the scan was paid for and
-      // did work — but they are not dragged into it.
-      if (abandoned.current) return;
+      // did work — but they are not dragged into it, and there is nobody to show a tick to.
+      if (abandoned.current) {
+        setScanState("idle");
+        return;
+      }
+      // A beat on the tick before the items. Long enough to register that it worked, short enough
+      // not to be in the way of the thing they waited for — see ScanProgressScreen.SCAN_DONE_MS.
+      setScanState("done");
+      await new Promise((r) => setTimeout(r, SCAN_DONE_MS));
+      setScanState("idle");
       setView({ screen: "whosin", tripId });
     } catch (err) {
       if (err instanceof ScanError && err.reason === "out-of-scans") {
@@ -393,9 +400,10 @@ function Router() {
    * never be a screen somebody is stuck on.
    */
   function body() {
-    if (scanState === "busy") {
+    if (scanState === "busy" || scanState === "done") {
       return (
         <ScanProgressScreen
+          done={scanState === "done"}
           onCancel={() => {
             abandoned.current = true;
             setScanState("idle");

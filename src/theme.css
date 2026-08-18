@@ -1152,3 +1152,41 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   padding: 0;
   min-height: 0;
 }
+
+/* ---------- The tick at the end of a scan ----------
+   A full stop, not a celebration. Somebody has waited eight seconds and the reward is their
+   receipt, not a longer wait with a nicer picture on it — so this draws fast and gets out of the
+   way. Timing lives in ScanProgressScreen.SCAN_DONE_MS; if one changes, change both. */
+.scan-tick {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--good-strong);
+  /* Over the lines rather than beside them: the paper has just been read, and the tick is the
+     answer to what was on it. */
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  animation: tick-in 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes tick-in {
+  from { opacity: 0; transform: scale(0.72); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* The frame acknowledges it too — one small settle, and the brackets go green. */
+.scan-stage-done .viewfinder-bracket { border-color: var(--good-strong); transition: border-color 180ms ease; }
+.scan-stage-done .viewfinder { animation: frame-settle 260ms ease both; }
+
+@keyframes frame-settle {
+  from { transform: scale(1); }
+  50%  { transform: scale(1.035); }
+  to   { transform: scale(1); }
+}
+
+/* Somebody who has asked for less motion gets the state without the movement — the tick still
+   appears, it just does not spring. */
+@media (prefers-reduced-motion: reduce) {
+  .scan-tick, .scan-stage-done .viewfinder { animation: none; }
+}
