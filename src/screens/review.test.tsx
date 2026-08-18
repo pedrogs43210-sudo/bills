@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { saveData } from "../lib/storage";
 import type { Trip } from "../types";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 function seedTrip(): Trip {
   return {
@@ -40,6 +41,7 @@ describe("review screen", () => {
   it("shows items and a matching total", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.getByDisplayValue("Fries")).toBeInTheDocument();
     expect(screen.getByText(/matches/i)).toBeInTheDocument();
@@ -48,6 +50,7 @@ describe("review screen", () => {
   it("warns when items do not sum to the printed total", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     const price = screen.getByLabelText("Fries price");
     await user.clear(price);
@@ -59,6 +62,7 @@ describe("review screen", () => {
   it("adds and removes items", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add item/i }));
     expect(screen.getAllByPlaceholderText(/item name/i)).toHaveLength(3);
@@ -69,6 +73,7 @@ describe("review screen", () => {
   it("allows clearing the quantity and retyping", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     const qty = screen.getByLabelText("Juice quantity");
     await user.clear(qty);
@@ -80,6 +85,7 @@ describe("review screen", () => {
   it("moves to assigning on confirm", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /looks right/i }));
     expect(screen.getByText(/who got what/i)).toBeInTheDocument(); // AssignScreen placeholder heading (Task 9)
@@ -89,6 +95,7 @@ describe("review screen", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /delete receipt/i }));
     expect(screen.queryByText(/lidl/i)).toBeNull(); // back on trip screen, receipt gone
@@ -98,6 +105,7 @@ describe("review screen", () => {
   it("adopts the items' sum with one tap", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     const total = screen.getByLabelText("Receipt total");
     await user.clear(total);
@@ -112,6 +120,7 @@ describe("review screen", () => {
   it("keeps a lone payer's amount equal to the total", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     // one payer: no amount field is shown at all
     expect(screen.queryByLabelText("Payer 1 amount")).toBeNull();
@@ -125,6 +134,7 @@ describe("review screen", () => {
   it("blocks the confirm button until the payers cover the total", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     const first = screen.getByLabelText("Payer 1 amount");
@@ -139,6 +149,7 @@ describe("review screen", () => {
   it("removing the second payer restores the implicit amount", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     await user.click(screen.getByRole("button", { name: /remove payer 2/i }));
@@ -149,6 +160,7 @@ describe("review screen", () => {
   it("does not offer a payer twice", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     // trip has exactly two people, so both are now paying
@@ -163,6 +175,7 @@ describe("review screen", () => {
     saveData({ schemaVersion: 2, trips: [trip] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     // no payer is implied — the placeholder is shown, not the first person in the list
     expect(screen.getByLabelText("Payer 1")).toHaveDisplayValue("Nobody yet — pick a payer");
@@ -177,6 +190,7 @@ describe("review screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.queryByLabelText("Payer 1 amount")).toBeNull(); // still implicit
     expect(screen.getByRole("button", { name: /looks right/i })).toBeEnabled();
@@ -185,6 +199,7 @@ describe("review screen", () => {
   it("refuses a negative receipt total", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     const total = screen.getByLabelText("Receipt total");
     await user.clear(total);
@@ -197,6 +212,7 @@ describe("review screen", () => {
   it("refuses a negative payer amount", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     const first = screen.getByLabelText("Payer 1 amount");
@@ -213,6 +229,7 @@ describe("review screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.getByText(/re-pick who paid/i)).toBeInTheDocument();
     expect(screen.queryByText(/payer's amount can't be negative/i)).toBeNull();
@@ -224,6 +241,7 @@ describe("review screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.getByText(/isn't in this split/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
@@ -233,6 +251,7 @@ describe("review screen", () => {
   it("allows a fully discounted receipt totalling zero", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     const total = screen.getByLabelText("Receipt total");
     await user.clear(total);
@@ -245,6 +264,7 @@ describe("review screen", () => {
   it("names Split evenly as the way to fix short coverage", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     const first = screen.getByLabelText("Payer 1 amount");
@@ -263,6 +283,7 @@ describe("review screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     const first = screen.getByLabelText("Payer 1 amount");
@@ -279,6 +300,7 @@ describe("review screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.queryByRole("button", { name: /add another payer/i })).toBeNull();
   });
@@ -286,6 +308,7 @@ describe("review screen", () => {
   it("hides the one-tap fix when the items sum is negative", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     const price = screen.getByLabelText("Fries price");
     await user.clear(price);
@@ -301,6 +324,7 @@ describe("review screen", () => {
   it("announces coverage changes to screen readers", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /add another payer/i }));
     expect(screen.getByRole("status")).toHaveTextContent(/payers cover/i);
@@ -315,6 +339,7 @@ describe("review screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.getByRole("button", { name: /looks right/i })).toBeDisabled();
     const status = screen.getByRole("status");
@@ -340,6 +365,7 @@ describe("a receipt typed in by hand", () => {
   it("adds the items up into the total by itself", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await addByHand(user);
 
     await user.click(screen.getByRole("button", { name: /add item/i }));
@@ -357,6 +383,7 @@ describe("a receipt typed in by hand", () => {
   it("keeps the payer's amount in step with the automatic total", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await addByHand(user);
     await user.click(screen.getByRole("button", { name: /add item/i }));
     await typePrice(user, "price", "4.00");
@@ -370,6 +397,7 @@ describe("a receipt typed in by hand", () => {
   it("stops adding up once the total is typed over, and resumes on Use", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await addByHand(user);
     await user.click(screen.getByRole("button", { name: /add item/i }));
     await typePrice(user, "price", "4.00");
@@ -394,6 +422,7 @@ describe("a receipt typed in by hand", () => {
   it("leaves a scanned receipt's printed total alone when an item is corrected", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByText(/lidl/i)); // seeded, came from a scan
     await typePrice(user, "Fries price", "3.00");
@@ -426,6 +455,7 @@ describe("the discount-convention band", () => {
     saveData({ schemaVersion: 2, trips: [continenteTrip()] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.getByText(/prices already include the discount/i)).toBeInTheDocument();
     expect(screen.getByText(/left that line out/i)).toBeInTheDocument();
@@ -437,6 +467,7 @@ describe("the discount-convention band", () => {
     saveData({ schemaVersion: 2, trips: [continenteTrip()] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /count them/i }));
 
@@ -450,6 +481,7 @@ describe("the discount-convention band", () => {
     saveData({ schemaVersion: 2, trips: [continenteTrip()] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     await user.click(screen.getByRole("button", { name: /count them/i }));
     await user.click(screen.getByRole("button", { name: /already included/i }));
@@ -464,6 +496,7 @@ describe("the discount-convention band", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user);
     expect(screen.getByText(/couldn't tell whether/i)).toBeInTheDocument();
     expect(screen.getByText(/It's counted/i)).toBeInTheDocument();
@@ -472,6 +505,7 @@ describe("the discount-convention band", () => {
   it("says nothing at all on a receipt with no discount lines", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openReceipt(user); // the plain seeded receipt
     expect(screen.queryByText(/discount/i)).toBeNull();
   });

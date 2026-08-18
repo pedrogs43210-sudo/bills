@@ -5,6 +5,7 @@ import App from "../App";
 import { loadData, saveData } from "../lib/storage";
 import type { Trip } from "../types";
 import { runBackIntercept } from "../lib/backIntercept";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 /**
  * Holding an item to pick several, then assigning the lot in one tap.
@@ -89,6 +90,7 @@ const assignments = () => {
 describe("holding an item to pick several", () => {
   it("picks the held item and offers the same chips as a single one", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -107,6 +109,7 @@ describe("holding an item to pick several", () => {
     // jsdom cannot scroll, so what is asserted is the sticky treatment; the behaviour itself is
     // measured in a real browser.
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -117,6 +120,7 @@ describe("holding an item to pick several", () => {
 
   it("does not open the held item's own panel as well", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -128,6 +132,7 @@ describe("holding an item to pick several", () => {
 
   it("adds more items with a tap, and counts the money as it goes", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -140,6 +145,7 @@ describe("holding an item to pick several", () => {
 
   it("assigns every picked item to the name tapped, in one go", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -156,6 +162,7 @@ describe("holding an item to pick several", () => {
 
   it("assigns a whole selection to a saved group", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -169,6 +176,7 @@ describe("holding an item to pick several", () => {
 
   it("keeps adding names to the selection rather than replacing them", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -183,6 +191,7 @@ describe("holding an item to pick several", () => {
 
   it("says so when the picked items are not assigned the same way", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -196,6 +205,7 @@ describe("holding an item to pick several", () => {
 
   it("selects every item at once when asked", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -213,6 +223,7 @@ describe("holding an item to pick several", () => {
 describe("getting out of a selection", () => {
   it("leaves when the last picked item is tapped off", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -225,6 +236,7 @@ describe("getting out of a selection", () => {
 
   it("leaves on cancel, changing nothing", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -237,6 +249,7 @@ describe("getting out of a selection", () => {
 
   it("gives the hardware back button to the selection before the app navigates", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -251,6 +264,7 @@ describe("getting out of a selection", () => {
 
   it("still opens an item's own panel on a plain tap once the selection is gone", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -265,6 +279,7 @@ describe("getting out of a selection", () => {
 describe("a press that is not a hold", () => {
   it("does not pick anything when the finger is dragged away", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -281,6 +296,7 @@ describe("a press that is not a hold", () => {
 
   it("does not pick anything when the finger lifts too soon", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     vi.useFakeTimers();
 
@@ -297,6 +313,7 @@ describe("a press that is not a hold", () => {
 
   it("tells you the gesture exists", async () => {
     render(<App />);
+  leaveScanScreen();
     await openAssign();
     expect(screen.getByText(/hold an item to pick several/i)).toBeInTheDocument();
   });

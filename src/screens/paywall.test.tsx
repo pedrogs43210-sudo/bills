@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Trip } from "../types";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 /**
  * The scans-left counter and the paywall, driven through a fake proxy. scan.ts reads its env var
@@ -60,6 +61,7 @@ async function renderApp(
   saveApiKey("sk-ant-test");
   const App = (await import("../App")).default;
   render(<App />);
+  leaveScanScreen();
   const user = userEvent.setup();
   await user.click(screen.getByText(/algarve/i));
   return user;
@@ -185,6 +187,7 @@ describe("with no proxy configured", () => {
     saveApiKey("sk-ant-test");
     const App = (await import("../App")).default;
     render(<App />);
+  leaveScanScreen();
     await userEvent.setup().click(screen.getByText(/algarve/i));
 
     expect(screen.getByLabelText(/scan receipt/i)).toBeInTheDocument();
@@ -215,6 +218,7 @@ describe("scanning with a proxy and no API key of your own", () => {
     saveData({ schemaVersion: 2, trips: [seedTrip()] }); // note: no API key saved at all
     const App = (await import("../App")).default;
     render(<App />);
+  leaveScanScreen();
     const user = userEvent.setup();
     await user.click(screen.getByText(/algarve/i));
     await user.upload(screen.getByLabelText(/scan receipt/i), new File(["x"], "r.jpg", { type: "image/jpeg" }));
@@ -239,6 +243,7 @@ describe("Settings once the app scans on the user's behalf", () => {
     saveData({ schemaVersion: 2, trips: [seedTrip()] });
     const App = (await import("../App")).default;
     render(<App />);
+  leaveScanScreen();
     const user = userEvent.setup();
     await user.click(screen.getByRole("tab", { name: /profile/i }));
 

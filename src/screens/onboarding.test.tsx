@@ -5,6 +5,7 @@ import App from "../App";
 import { saveData } from "../lib/storage";
 import { setOnboarded } from "../lib/onboarding";
 import type { Trip } from "../types";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 function seedTrip(): Trip {
   return {
@@ -36,6 +37,10 @@ describe("the first-run introduction", () => {
     expect(screen.getByText(/see who owes whom/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /start splitting/i }));
+    // The introduction hands over to the camera, which is where the app now opens. The splits list
+    // is one tab away, and this test is about the introduction's three panels rather than where
+    // they let go.
+    leaveScanScreen();
     expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
   });
 
@@ -43,6 +48,7 @@ describe("the first-run introduction", () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole("button", { name: /skip/i }));
+    leaveScanScreen();
     expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
   });
 
@@ -50,9 +56,11 @@ describe("the first-run introduction", () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
     await user.click(screen.getByRole("button", { name: /skip/i }));
+    leaveScanScreen();
     unmount();
 
-    render(<App />); // a fresh launch reads localStorage again
+    render(<App />);
+  leaveScanScreen(); // a fresh launch reads localStorage again
     expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
     expect(screen.queryByText(/photograph the receipt/i)).toBeNull();
   });
@@ -62,6 +70,7 @@ describe("the first-run introduction", () => {
     // app they have been using all summer
     saveData({ schemaVersion: 2, trips: [seedTrip()] });
     render(<App />);
+  leaveScanScreen();
     expect(screen.queryByText(/photograph the receipt/i)).toBeNull();
     expect(screen.getByText(/algarve/i)).toBeInTheDocument();
   });
@@ -72,6 +81,7 @@ describe("the first-run introduction", () => {
     saveData({ schemaVersion: 2, trips: [seedTrip()] });
     vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /delete split/i }));
     // back to an empty app, but not back to being a stranger
@@ -83,6 +93,7 @@ describe("the first-run introduction", () => {
   it("says the trust part on the last panel, and only there", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     expect(screen.queryByText(/no account, no sign-up/i)).toBeNull();
     await user.click(screen.getByRole("button", { name: /next/i }));
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -97,6 +108,7 @@ describe("the first-run introduction", () => {
     });
     render(<App />);
     await user.click(screen.getByRole("button", { name: /skip/i }));
+    leaveScanScreen();
     // it still gets out of the way for this session
     expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
     setItem.mockRestore();

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { setOnboarded } from "../lib/onboarding";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 beforeEach(() => {
   localStorage.clear();
@@ -12,6 +13,7 @@ beforeEach(() => {
 async function openHelp() {
   const user = userEvent.setup();
   render(<App />);
+  leaveScanScreen();
   await user.click(screen.getByRole("tab", { name: /profile/i }));
   await user.click(screen.getByRole("button", { name: /open help/i }));
   return user;

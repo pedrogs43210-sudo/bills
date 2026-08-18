@@ -33,6 +33,12 @@ function adviceFor(reason: ScanFailure | null, fallback: string): Advice {
         body: "Creased paper, low light or an unusual layout will do it. A straighter, brighter photo of the whole receipt often works — or type the items in, which always does.",
         primary: "by-hand",
       };
+    case "too-fast":
+      return {
+        head: "One at a time.",
+        body: "Billy only reads one receipt every couple of seconds — a guard against runaway scanning, not against you. Wait a moment and try the same photo again; nothing has been used up.",
+        primary: "retry",
+      };
     case "busy":
       return {
         head: "Billy is having a busy day.",

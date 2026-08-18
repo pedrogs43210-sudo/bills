@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { saveData } from "../lib/storage";
 import type { Trip } from "../types";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 function seedTrip(): Trip {
   return {
@@ -41,6 +42,7 @@ describe("assign screen", () => {
   it("shows unassigned count and disables done", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     expect(screen.getByText(/2 of 2 items unassigned/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /done/i })).toBeDisabled();
@@ -49,6 +51,7 @@ describe("assign screen", () => {
   it("assigns an item to one person by tapping their chip", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Pedro" }));
@@ -58,6 +61,7 @@ describe("assign screen", () => {
   it("toggles a second person into an equal split, and out again", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Pedro" }));
@@ -71,6 +75,7 @@ describe("assign screen", () => {
   it("assigns to everyone", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: /everyone/i }));
@@ -81,6 +86,7 @@ describe("assign screen", () => {
   it("splits quantity lines by units", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Juice"));
     await user.click(screen.getByRole("button", { name: /split units/i }));
@@ -94,6 +100,7 @@ describe("assign screen", () => {
   it("enables done when everything is assigned, then reaches settle", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: /everyone/i }));
@@ -115,6 +122,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 1, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Pedro" }));
@@ -132,6 +140,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 1, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Pedro" }));
@@ -150,6 +159,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 1, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Pedro" }));
@@ -163,6 +173,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Breakfast" }));
@@ -175,6 +186,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     const chip = screen.getByRole("button", { name: "Breakfast" });
@@ -190,6 +202,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Breakfast" }));
@@ -207,6 +220,7 @@ describe("assign screen", () => {
   it("highlights every name after an Everyone tap, so one person can be dropped", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Everyone" }));
@@ -232,6 +246,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     await user.click(screen.getByRole("button", { name: "Everyone" }));
@@ -249,6 +264,7 @@ describe("assign screen", () => {
     saveData({ schemaVersion: 2, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await openAssign(user);
     await user.click(screen.getByText("Fries"));
     expect(screen.queryByRole("button", { name: /Ghosts/ })).toBeNull();

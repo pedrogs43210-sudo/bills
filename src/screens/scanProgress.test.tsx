@@ -14,6 +14,7 @@ vi.mock("../lib/scan", async (importOriginal) => {
   return { ...actual, scanReceipt: vi.fn() };
 });
 import { scanReceipt } from "../lib/scan";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 function seedTrip(): Trip {
   return {
@@ -45,6 +46,7 @@ async function startScan() {
   vi.mocked(scanReceipt).mockReturnValue(new Promise((r) => (resolve = r)));
   const user = userEvent.setup();
   render(<App />);
+  leaveScanScreen();
   await user.click(screen.getByText(/algarve/i));
   await user.upload(screen.getByLabelText(/scan receipt/i), photo);
   return { user, resolve };

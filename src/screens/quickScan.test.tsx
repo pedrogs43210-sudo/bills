@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 /**
  * Scanning a receipt with no split to put it in.
@@ -32,6 +33,7 @@ async function renderApp() {
   const { ScanError } = await import("../lib/scan");
   const { default: App } = await import("../App");
   render(<App />);
+  leaveScanScreen();
   return { user: userEvent.setup(), ScanError };
 }
 

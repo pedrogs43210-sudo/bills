@@ -7,6 +7,7 @@ import { StoreProvider } from "../state/StoreProvider";
 import { saveData } from "../lib/storage";
 import type { Trip } from "../types";
 import { setOnboarded } from "../lib/onboarding";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 beforeEach(() => {
   localStorage.clear();
@@ -33,6 +34,7 @@ describe("the trip list", () => {
       ],
     });
     render(<App />);
+  leaveScanScreen();
     const shown = screen.getAllByRole("button", { name: /Oldest|Middle|Newest/ }).map((b) => b.textContent);
     expect(shown[0]).toContain("Newest");
     expect(shown[1]).toContain("Middle");
@@ -45,6 +47,7 @@ describe("the trip list", () => {
       trips: [tripNamed("t1", "First added", ""), tripNamed("t2", "Last added", "")],
     });
     render(<App />);
+  leaveScanScreen();
     const shown = screen.getAllByRole("button", { name: /added/ }).map((b) => b.textContent);
     expect(shown[0]).toContain("Last added"); // most recently added still comes first
   });
@@ -55,6 +58,7 @@ describe("the trip list", () => {
     saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     expect(screen.queryByPlaceholderText(/split name/i)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Algarve/ })).toBeInTheDocument();
 
@@ -71,6 +75,7 @@ describe("the trip list", () => {
   it("opens the form by itself for someone with no trips", () => {
     // Nothing else to look at, and exactly one thing to do.
     render(<App />);
+  leaveScanScreen();
     expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
   });
 
@@ -114,6 +119,7 @@ describe("trip management", () => {
   it("creates a trip and lands on the trip screen", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.type(screen.getByPlaceholderText(/split name/i), "Algarve 2026");
     await user.click(screen.getByRole("button", { name: /create split/i }));
     expect(screen.getByText(/algarve 2026/i)).toBeInTheDocument();
@@ -123,6 +129,7 @@ describe("trip management", () => {
   it("adds friends and persists across remount", async () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
+  leaveScanScreen();
     await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
     await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.type(screen.getByPlaceholderText(/add friend/i), "Pedro");
@@ -133,13 +140,15 @@ describe("trip management", () => {
     expect(screen.getByText("Ana")).toBeInTheDocument();
 
     unmount();
-    render(<App />); // fresh mount reads localStorage
+    render(<App />);
+  leaveScanScreen(); // fresh mount reads localStorage
     expect(screen.getByText(/algarve/i)).toBeInTheDocument();
   });
 
   it("disables adding receipts until there is at least one person", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
     await user.click(screen.getByRole("button", { name: /create split/i }));
     expect(screen.getByRole("button", { name: /add items by hand/i })).toBeDisabled();
@@ -151,6 +160,7 @@ describe("trip management", () => {
   it("renames a friend inline", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
     await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.type(screen.getByPlaceholderText(/add friend/i), "Pedor");
@@ -167,6 +177,7 @@ describe("trip management", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
     await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.click(screen.getByRole("button", { name: /delete split/i }));
@@ -199,6 +210,7 @@ describe("trip management", () => {
     };
     saveData({ schemaVersion: 2, trips: [trip] });
     render(<App />);
+  leaveScanScreen();
     await userEvent.setup().click(screen.getByText(/algarve/i));
     expect(screen.getByText(/paid by Pedro \+ Ana/i)).toBeInTheDocument();
     expect(screen.getByText(/not counted/i)).toBeInTheDocument();
@@ -211,6 +223,7 @@ describe("trip management", () => {
 /** Creates a trip named "Algarve" with Pedro and Ana already added, and renders it. */
 async function tripWithTwoFriends(user: ReturnType<typeof userEvent.setup>) {
   render(<App />);
+  leaveScanScreen();
   await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
   await user.click(screen.getByRole("button", { name: /create split/i }));
   for (const name of ["Pedro", "Ana"]) {
@@ -281,6 +294,7 @@ describe("groups on the trip screen", () => {
   it("hides groups until there are two friends", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
     await user.click(screen.getByRole("button", { name: /create split/i }));
     await user.type(screen.getByPlaceholderText(/add friend/i), "Pedro");

@@ -1009,8 +1009,15 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
    footer is sitting on top of, and pushes the caption underneath it. `--footer-h` is whatever the
    bar actually measured — see lib/useReservedBottom.ts — which matters here because the bar grew
    when the gallery line moved into it. */
-.scan-screen .scan-stage {
-  padding-bottom: calc(var(--footer-h, 0px) + var(--s4));
+/* The controls sit in normal flow now, so the stage no longer dodges a fixed bar. */
+.scan-screen .scan-stage { padding-bottom: var(--s3); }
+
+/* The scan screen's controls: in flow at the bottom of the flex column rather than a Footerbar, so
+   the tab bar stays the only element publishing --footer-h. They clear the bar by its measured
+   height rather than a guess, which is the whole reason that variable exists. */
+.scan-actions {
+  flex: none;
+  padding: 0 var(--s4) calc(var(--footer-h, 0px) + var(--s3));
 }
 
 /* ---------- The tab badge ----------

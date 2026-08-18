@@ -15,6 +15,7 @@ vi.mock("../lib/scan", async (importOriginal) => {
 });
 
 import { scanReceipt } from "../lib/scan";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 function seedTrip(): Trip {
   return {
@@ -45,6 +46,7 @@ describe("discount conventions from a scan", () => {
   async function scan() {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.upload(screen.getByLabelText(/scan receipt/i), photo);
     await screen.findByDisplayValue("Sumo laranja");
@@ -104,6 +106,7 @@ describe("scan flow", () => {
     });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.upload(screen.getByLabelText(/scan receipt/i), photo);
     // lands on the review screen with the scanned items
@@ -115,6 +118,7 @@ describe("scan flow", () => {
     vi.mocked(scanReceipt).mockRejectedValue(new ScanError("network", "The scanning service had a problem — try again"));
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.upload(screen.getByLabelText(/scan receipt/i), photo);
     expect(await screen.findByText(/had a problem/i)).toBeInTheDocument();
@@ -133,6 +137,7 @@ describe("scan flow", () => {
     vi.mocked(scanReceipt).mockImplementation(() => new Promise((res) => { resolveScan = res; }) as never);
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.upload(screen.getByLabelText(/scan receipt/i), photo);
     // Leaving mid-scan is now two steps, because the wait has a screen of its own: stop
@@ -153,6 +158,7 @@ describe("scan flow", () => {
     localStorage.removeItem("bills.apiKey");
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.upload(screen.getByLabelText(/scan receipt/i), photo);
     expect(await screen.findByLabelText(/anthropic api key/i)).toBeInTheDocument();

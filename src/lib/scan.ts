@@ -17,7 +17,11 @@ export type ScanFailure =
   | "out-of-scans"
   /** The proxy hit its own ceiling for the day. Nothing the person did, and nothing they can buy
    *  their way out of — so it must never be mistaken for having run out of their own scans. */
-  | "busy";
+  | "busy"
+  /** Two scans within two seconds — the burst check, which exists to stop a script rather than to
+   *  inconvenience anybody. It clears by itself, so it is the one failure whose honest advice is
+   *  simply to wait a moment. */
+  | "too-fast";
 
 /**
  * Where scanning happens.
@@ -101,6 +105,7 @@ const PROXY_ERRORS: Record<string, { reason: ScanFailure; message: string }> = {
   unparseable: { reason: "unparseable", message: "Could not read the receipt — try again or enter items by hand" },
   "image-too-large": { reason: "unparseable", message: "That photo was too big to read — try again." },
   forbidden: { reason: "bad-key", message: "This copy of the app couldn't be verified." },
+  "too-fast": { reason: "too-fast", message: "That was quick — give it a couple of seconds." },
 };
 
 async function scanViaProxy(imageBase64: string): Promise<ScanResult> {

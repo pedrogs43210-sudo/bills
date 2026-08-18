@@ -14,6 +14,7 @@ vi.mock("../lib/scan", async (importOriginal) => {
   return { ...actual, scanReceipt: vi.fn() };
 });
 import { scanReceipt, ScanError } from "../lib/scan";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 function seedTrip(currency = "EUR"): Trip {
   return {
@@ -36,6 +37,7 @@ beforeEach(() => {
 async function openTrip() {
   const user = userEvent.setup();
   render(<App />);
+  leaveScanScreen();
   await user.click(screen.getByText(/algarve/i));
   return user;
 }
@@ -161,6 +163,7 @@ describe("when a scan fails", () => {
       // Mounted and unmounted per reason so each iteration starts from one clean app.
       const user = userEvent.setup();
       const { unmount } = render(<App />);
+  leaveScanScreen();
       await user.click(screen.getByText(/algarve/i));
       await user.upload(screen.getByLabelText("Scan receipt"), photo);
       expect(

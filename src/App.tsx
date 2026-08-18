@@ -16,7 +16,7 @@ import { ScanProgressScreen, SCAN_DONE_MS } from "./screens/ScanProgressScreen";
 import { ScanFailedScreen } from "./screens/ScanFailedScreen";
 import { PackOfferSheet } from "./components/PackOfferSheet";
 import { PhotoPicker } from "./components/PhotoPicker";
-import { Footerbar } from "./components/Footerbar";
+
 import { TabBar } from "./components/TabBar";
 import { hasOnboarded } from "./lib/onboarding";
 import { clearOffer, decline, usePendingOffer } from "./lib/promo";
@@ -104,7 +104,16 @@ function Router() {
   // The quick scan: the Scan tab opens the camera with no split behind it, and one is made only
   // once a receipt has actually been read. Orchestrated here rather than in a screen because at
   // the moment the shutter goes there is no screen that owns it.
-  const [scanState, setScanState] = useState<ScanState>("idle");
+  /* Billy opens on the camera.
+     It is a scan-first app: the common reason to launch it is a receipt in your hand, so that is
+     the destination rather than a stop on the way. Nothing is spent by landing here — the screen is
+     a viewfinder with a button, not an open shutter — and anybody who wanted their splits has the
+     tab bar right there.
+
+     Not when arriving from an invite link, which already knows where it is going. */
+  const [scanState, setScanState] = useState<ScanState>(() =>
+    nav.current.screen === "trips" ? "picking" : "idle"
+  );
   const [scanFailure, setScanFailure] = useState<ScanFailure | null>(null);
   const [scanMessage, setScanMessage] = useState("");
 
@@ -485,7 +494,9 @@ function Router() {
             </p>
           </div>
 
-          <Footerbar>
+          {/* Not a Footerbar. Two fixed bars would both publish --footer-h and whichever measured
+              last would win, so the tab bar owns the bottom and these sit in flow above it. */}
+          <div className="scan-actions">
             <PhotoPicker
               quota={quota}
               onPick={(f) => void quickScan(f)}
@@ -501,7 +512,7 @@ function Router() {
             <button className="btn" style={{ width: "100%" }} onClick={quickManual}>
               ✍️ Add items by hand
             </button>
-          </Footerbar>
+          </div>
         </div>
       );
     }
@@ -511,7 +522,12 @@ function Router() {
   // Only the two roots get the bar. Every other screen has a Footerbar of its own, and exactly one
   // element per screen may publish `--footer-h` — see lib/useReservedBottom.ts. The scan states
   // count as other screens: each brings its own footer.
-  const root = view.screen === "trips" || view.screen === "profile";
+  /* The scan screen is a root: it is where the app opens, and landing on a screen with no
+     navigation would be a dead end. It does NOT use a Footerbar — its controls sit in normal flow
+     at the bottom of the flex column — so the tab bar stays the only publisher of --footer-h and
+     the one-per-screen rule survives. */
+  const root =
+    view.screen === "trips" || view.screen === "profile" || scanState === "picking";
 
   return (
     <>
@@ -519,13 +535,24 @@ function Router() {
       {/* Never on the paywall: that screen is already the ask, and a sheet over it would be the
           same offer twice, one of them covering the other. */}
       {view.screen !== "paywall" && <PendingOffer />}
-      {root && scanState === "idle" && (
+      {/* Splits and Profile clear the scan state as well as setting the view, and that is not
+          belt-and-braces. The app now OPENS on the camera with the view already set to `trips`, so
+          "go to trips" is a no-op there — `navigate` returns the same state for the same view — and
+          the Splits tab did nothing at all on the one screen everybody starts on. What has to
+          change is the scan state, not the view. */}
+      {root && (scanState === "idle" || scanState === "picking") && (
         <TabBar
           current={view.screen === "profile" ? "profile" : "splits"}
           scansLeft={quota?.left ?? null}
-          onSplits={() => setView({ screen: "trips" })}
+          onSplits={() => {
+            setScanState("idle");
+            setView({ screen: "trips" });
+          }}
           onScan={() => setScanState("picking")}
-          onProfile={() => setView({ screen: "profile" })}
+          onProfile={() => {
+            setScanState("idle");
+            setView({ screen: "profile" });
+          }}
         />
       )}
     </>

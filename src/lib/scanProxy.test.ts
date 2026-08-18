@@ -65,6 +65,15 @@ describe("scanning through the proxy", () => {
     expect(lastKnownQuota()).toEqual({ used: 5, left: 0, limit: 5, credits: 0 });
   });
 
+  it("reports the burst check as its own failure, not as the service being broken", async () => {
+    // Two scans within two seconds. Unmapped, this fell through to "the scanning service had a
+    // problem" — blaming Billy for something that clears itself in a moment, and sending somebody
+    // to retry a photo they were told had failed for a reason that was not true.
+    const { scanReceipt } = await loadScanner();
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(respond({ error: "too-fast" }, 429)));
+    await expect(scanReceipt("", "img")).rejects.toMatchObject({ reason: "too-fast" });
+  });
+
   it("still normalises an unsigned discount, wherever the scan happened", async () => {
     const { scanReceipt } = await loadScanner();
     vi.stubGlobal("fetch", vi.fn().mockReturnValue(respond({

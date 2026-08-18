@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { saveData } from "../lib/storage";
 import type { Trip } from "../types";
+import { leaveScanScreen } from "../test/leaveScanScreen";
 
 function seedTrip(): Trip {
   return {
@@ -33,6 +34,7 @@ describe("settle screen", () => {
     // Settling up is rarely the end of the holiday, and the topbar's arrow is in the far corner.
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
     await user.click(screen.getByRole("button", { name: /back to the split/i }));
@@ -44,6 +46,7 @@ describe("settle screen", () => {
   it("shows per-person totals and transfers", async () => {
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
     // Pedro appears in both the transfer row and his own share row
@@ -64,6 +67,7 @@ describe("settle screen", () => {
     // our mock instead of user-event's internal clipboard stub.
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
     await user.click(screen.getByRole("button", { name: /share/i }));
@@ -78,6 +82,7 @@ describe("settle screen", () => {
     saveData({ schemaVersion: 1, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
     expect(screen.getByText(/aren't assigned to anyone/i)).toBeInTheDocument();
@@ -94,6 +99,7 @@ describe("settle screen", () => {
     saveData({ schemaVersion: 1, trips: [t] });
     const user = userEvent.setup();
     render(<App />);
+  leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
     await user.click(screen.getByRole("button", { name: /settle up/i }));
     expect(screen.getByText(/isn't counted yet/i)).toBeInTheDocument();
