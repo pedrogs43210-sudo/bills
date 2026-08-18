@@ -28,11 +28,17 @@ async function renderApp(
 ) {
   vi.resetModules();
   vi.stubEnv("VITE_SCAN_PROXY_URL", PROXY);
+  /* Mutable, because the app now waits for the SERVER to confirm a purchase rather than believing
+     the phone — see lib/awaitCredits.ts. A fixed quota never rises, so the wait would run to its
+     timeout and the test would be exercising the "your scans are on their way" path instead.
+     Bumping it inside buyPack mirrors what really happens: the webhook lands, then the balance
+     changes. */
+  const live = { ...quota, credits: quota.credits ?? 0 };
   vi.stubGlobal(
     "fetch",
     vi.fn().mockImplementation((url: string) =>
       Promise.resolve(
-        new Response(JSON.stringify(url.includes("/v1/quota") ? { ...quota, month: "2026-08", subscribed: false } : {}), {
+        new Response(JSON.stringify(url.includes("/v1/quota") ? { ...live, month: "2026-08", subscribed: false } : {}), {
           status: 200,
         })
       )
@@ -40,8 +46,13 @@ async function renderApp(
   );
   if (opts.boughtPack !== undefined) {
     const purchase = await import("../lib/purchase");
+    const added = opts.boughtPack;
     vi.spyOn(purchase, "canBuy").mockReturnValue(true);
-    vi.spyOn(purchase, "buyPack").mockResolvedValue({ kind: "bought", scansAdded: opts.boughtPack });
+    vi.spyOn(purchase, "buyPack").mockImplementation(async () => {
+      live.credits += added;
+      live.left = (live.left ?? 0) + added;
+      return { kind: "bought", scansAdded: added };
+    });
   }
   const { saveData, saveApiKey } = await import("../lib/storage");
   localStorage.clear();

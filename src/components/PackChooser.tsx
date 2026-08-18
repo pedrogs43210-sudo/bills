@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { awaitCredits } from "../lib/awaitCredits";
+import { fetchQuota, lastKnownQuota } from "../lib/scan";
 import { PACKS, bestValuePack, displayPerScan, displayPrice, featuredPack, type Pack } from "../lib/packs";
 import { buyPack, canBuy, restorePurchases, whyCannotBuy, type PurchaseOutcome } from "../lib/purchase";
 
@@ -40,15 +42,35 @@ export function PackChooser({
   const bestValue = bestValuePack();
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<PurchaseOutcome | null>(null);
+  const [waiting, setWaiting] = useState(false);
+  const [slow, setSlow] = useState(false);
   const buyable = canBuy();
 
   async function run(action: () => Promise<PurchaseOutcome>) {
     setBusy(true);
     setOutcome(null);
+    setWaiting(false);
+    setSlow(false);
+    /* Captured BEFORE the purchase, and that ordering is the whole of it.
+       The wait below asks "is the balance higher than it was", so the baseline has to predate the
+       money moving. Read afterwards, any quota refresh landing in between sets the baseline to the
+       NEW total — after which the balance can never rise above itself, the wait runs to its
+       timeout, and somebody whose scans already arrived is told they are delayed. */
+    const before = lastKnownQuota()?.credits ?? 0;
     try {
       const result = await action();
       setOutcome(result);
-      if (result.kind === "bought") onBought?.(result.scansAdded);
+      if (result.kind === "bought") {
+        /* Google has the money; the scans do not exist yet. They arrive when RevenueCat's webhook
+           reaches the Worker — a second usually, longer if a delivery is retried. Until this
+           existed the screen showed the old count, which is the worst state in the app: somebody's
+           money has left their account and nothing has visibly happened. */
+        setWaiting(true);
+        const landed = await awaitCredits(before, fetchQuota);
+        setWaiting(false);
+        setSlow(landed.kind === "slow");
+        onBought?.(result.scansAdded);
+      }
     } catch {
       // A thrown error from a payment sheet is still just "it did not work" to the person holding
       // the phone. What must never happen is a spinner that never stops.
@@ -131,7 +153,25 @@ export function PackChooser({
               : "That didn't work."}
         </div>
       )}
-      {outcome?.kind === "bought" && (
+      {waiting && (
+        <div className="banner-good" role="status">
+          Payment received — adding your scans…
+        </div>
+      )}
+
+      {/* Not an error, and worded so it cannot be read as one. The money is not at risk and the
+          scans are coming; only the confirmation is slower than the app would like. The address is
+          here because this is the one screen where somebody may genuinely need to write to a human
+          about money. */}
+      {slow && !waiting && (
+        <div className="banner-warn" role="status">
+          Your payment went through and your scans are on their way — they can take a minute to
+          appear. Reopen Billy shortly, and if they still aren't here write to
+          hello@splitwithbilly.com and they'll be added by hand.
+        </div>
+      )}
+
+      {outcome?.kind === "bought" && !waiting && !slow && (
         <div className="banner-good" role="status">
           Added {outcome.scansAdded} scans. Thank you — that keeps Billy running.
         </div>

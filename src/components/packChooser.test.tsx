@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { PackChooser } from "./PackChooser";
 import { PACKS, bestValuePack, displayPerScan, displayPrice, featuredPack } from "../lib/packs";
 import * as purchase from "../lib/purchase";
+import * as scan from "../lib/scan";
 
 afterEach(() => {
   cleanup();
@@ -88,6 +89,12 @@ describe("when buying is possible", () => {
   it("charges for the pack that is selected, and says thank you", async () => {
     vi.spyOn(purchase, "canBuy").mockReturnValue(true);
     const buy = vi.spyOn(purchase, "buyPack").mockResolvedValue({ kind: "bought", scansAdded: 20 });
+    // The scans are not real until the server agrees, so the screen waits for the balance to rise
+    // before thanking anybody — see lib/awaitCredits.ts. Without a server that agrees, the wait
+    // times out into the "on their way" message, which is correct behaviour and not what this test
+    // is about.
+    vi.spyOn(scan, "lastKnownQuota").mockReturnValue({ used: 0, left: 0, limit: 3, credits: 0 });
+    vi.spyOn(scan, "fetchQuota").mockResolvedValue({ used: 0, left: 20, limit: 3, credits: 20 });
     const onBought = vi.fn();
     const user = userEvent.setup();
     render(<PackChooser onBought={onBought} />);
@@ -98,6 +105,31 @@ describe("when buying is possible", () => {
     expect(onBought).toHaveBeenCalledWith(20);
     expect(await screen.findByText(/added 20 scans/i)).toBeInTheDocument();
   });
+
+  it("never calls a slow webhook a failed payment", async () => {
+    /* The state this exists for. Google has taken the money and the scans have not appeared yet,
+       because RevenueCat's webhook is retrying. The screen must say the scans are coming — never
+       that anything went wrong, because nothing has: telling somebody their payment failed when the
+       money has gone is the worst thing this component can do. */
+    vi.spyOn(purchase, "canBuy").mockReturnValue(true);
+    vi.spyOn(purchase, "buyPack").mockResolvedValue({ kind: "bought", scansAdded: 20 });
+    vi.spyOn(scan, "lastKnownQuota").mockReturnValue({ used: 0, left: 0, limit: 3, credits: 0 });
+    // A server that never agrees, so the wait runs out.
+    vi.spyOn(scan, "fetchQuota").mockResolvedValue({ used: 0, left: 0, limit: 3, credits: 0 });
+
+    const user = userEvent.setup();
+    render(<PackChooser />);
+    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+
+    // While waiting, it says the payment landed rather than leaving a silent spinner.
+    expect(await screen.findByText(/payment received/i)).toBeInTheDocument();
+
+    const slow = await screen.findByText(/on their way/i, {}, { timeout: 30_000 });
+    expect(slow).toBeInTheDocument();
+    // Says where to write, and never uses the language of failure.
+    expect(slow.textContent).toMatch(/hello@splitwithbilly.com/);
+    expect(slow.textContent).not.toMatch(/fail|error|wrong|declin/i);
+  }, 40_000);
 
   it("says nothing was charged when someone backs out", async () => {
     vi.spyOn(purchase, "canBuy").mockReturnValue(true);
