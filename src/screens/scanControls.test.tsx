@@ -15,6 +15,7 @@ vi.mock("../lib/scan", async (importOriginal) => {
 });
 import { scanReceipt, ScanError } from "../lib/scan";
 import { leaveScanScreen } from "../test/leaveScanScreen";
+import { scanPhoto } from "../test/scanPhoto";
 
 function seedTrip(currency = "EUR"): Trip {
   return {
@@ -44,17 +45,21 @@ async function openTrip() {
 
 describe("opening the camera", () => {
   it("asks for the rear camera, which is what the gallery-only picker was missing", async () => {
-    await openTrip();
-    const camera = screen.getByLabelText("Scan receipt");
+    const user = await openTrip();
+    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    const camera = screen.getByLabelText(/take a photo of the receipt/i);
     // Without capture, a browser shows a generic file picker and Android lands in the gallery.
     expect(camera).toHaveAttribute("capture", "environment");
     expect(camera).toHaveAttribute("accept", "image/*");
   });
 
   it("still offers a photo you already have, since capture hides the gallery", async () => {
-    await openTrip();
-    const gallery = screen.getByLabelText(/choose a photo of a receipt/i);
-    expect(gallery).not.toHaveAttribute("capture");
+    const user = await openTrip();
+    // Behind the button now rather than beside it: a permanent second control saying what it cost
+    // put a caveat about pricing on the screen, for the rarer of the two paths.
+    expect(screen.queryByLabelText(/choose a photo of a receipt/i)).toBeNull();
+    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    expect(screen.getByLabelText(/choose a photo of a receipt/i)).not.toHaveAttribute("capture");
   });
 
   it("scans from either control", async () => {
@@ -64,15 +69,20 @@ describe("opening the camera", () => {
     };
     vi.mocked(scanReceipt).mockResolvedValue(scanned);
     const user = await openTrip();
-    await user.upload(screen.getByLabelText(/choose a photo of a receipt/i), photo);
+    await scanPhoto(user, photo, "gallery");
     expect(await screen.findByDisplayValue("Pane")).toBeInTheDocument();
   });
 
-  it("disables both until somebody is on the trip", async () => {
+  it("stays shut until somebody is on the trip", async () => {
     saveData({ schemaVersion: 2, trips: [{ ...seedTrip(), people: [] }] });
-    await openTrip();
-    expect(screen.getByLabelText("Scan receipt")).toBeDisabled();
-    expect(screen.getByLabelText(/choose a photo of a receipt/i)).toBeDisabled();
+    const user = await openTrip();
+    const scan = screen.getByRole("button", { name: /scan receipt/i });
+    expect(scan).toBeDisabled();
+    // One disabled control rather than two, and the sheet behind it never opens — so neither
+    // source can be reached, which is what disabling both used to say.
+    await user.click(scan);
+    expect(screen.queryByLabelText(/take a photo of the receipt/i)).toBeNull();
+    expect(screen.queryByLabelText(/choose a photo of a receipt/i)).toBeNull();
   });
 });
 
@@ -111,7 +121,7 @@ describe("when a scan fails", () => {
       new ScanError("unparseable", "Could not read the receipt — try again or enter items by hand")
     );
     const user = await openTrip();
-    await user.upload(screen.getByLabelText("Scan receipt"), photo);
+    await scanPhoto(user, photo);
 
     expect(await screen.findByText(/that photo couldn't be read/i)).toBeInTheDocument();
     // typing it in is the primary action here — retrying the same photo just fails again
@@ -122,7 +132,7 @@ describe("when a scan fails", () => {
   it("treats a network failure as worth retrying, and keeps the photo", async () => {
     vi.mocked(scanReceipt).mockRejectedValue(new ScanError("network", "offline"));
     const user = await openTrip();
-    await user.upload(screen.getByLabelText("Scan receipt"), photo);
+    await scanPhoto(user, photo);
 
     expect(await screen.findByText(/couldn't reach the scanning service/i)).toBeInTheDocument();
     const retry = screen.getByRole("button", { name: /try again/i });
@@ -134,7 +144,7 @@ describe("when a scan fails", () => {
     // lie, and would push someone towards buying something that would not help.
     vi.mocked(scanReceipt).mockRejectedValue(new ScanError("busy", "closed today"));
     const user = await openTrip();
-    await user.upload(screen.getByLabelText("Scan receipt"), photo);
+    await scanPhoto(user, photo);
 
     expect(await screen.findByText(/busy day/i)).toBeInTheDocument();
     expect(screen.getByText(/a limit on our side, not on yours/i)).toBeInTheDocument();
@@ -145,7 +155,7 @@ describe("when a scan fails", () => {
   it("sends a rejected key to Settings rather than asking for another photo", async () => {
     vi.mocked(scanReceipt).mockRejectedValue(new ScanError("bad-key", "rejected"));
     const user = await openTrip();
-    await user.upload(screen.getByLabelText("Scan receipt"), photo);
+    await scanPhoto(user, photo);
 
     expect(await screen.findByText(/api key was rejected/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: /open settings/i }));
@@ -165,7 +175,7 @@ describe("when a scan fails", () => {
       const { unmount } = render(<App />);
   leaveScanScreen();
       await user.click(screen.getByText(/algarve/i));
-      await user.upload(screen.getByLabelText("Scan receipt"), photo);
+      await scanPhoto(user, photo);
       expect(
         await screen.findByRole("button", { name: /add items by hand/i }),
         `${reason} must still offer it`
@@ -177,7 +187,7 @@ describe("when a scan fails", () => {
   it("takes the way out straight to a receipt to type into", async () => {
     vi.mocked(scanReceipt).mockRejectedValue(new ScanError("unparseable", "nope"));
     const user = await openTrip();
-    await user.upload(screen.getByLabelText("Scan receipt"), photo);
+    await scanPhoto(user, photo);
     await user.click(await screen.findByRole("button", { name: /add items by hand/i }));
     // lands on the review screen, where items are typed
     expect(screen.getByPlaceholderText(/store name/i)).toBeInTheDocument();
@@ -186,8 +196,8 @@ describe("when a scan fails", () => {
   it("goes back to the trip without leaving a broken state behind", async () => {
     vi.mocked(scanReceipt).mockRejectedValue(new ScanError("network", "offline"));
     const user = await openTrip();
-    await user.upload(screen.getByLabelText("Scan receipt"), photo);
+    await scanPhoto(user, photo);
     await user.click(await screen.findByRole("button", { name: /back/i }));
-    expect(screen.getByLabelText("Scan receipt")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /scan receipt/i })).toBeInTheDocument();
   });
 });

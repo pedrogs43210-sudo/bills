@@ -50,29 +50,10 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
             the splash, and nowhere in the product. */}
         <Mark size={24} color="var(--accent)" className="app-mark" />
         <h1 className="screen-title">Billy</h1>
-        {/* A labelled pill rather than a bare ＋. The glyph on its own was a mystery: the one
-            control on this screen that creates anything, sitting in the corner hardest to reach,
-            saying nothing about what it does. The word costs 40px and removes the guess.
-
-            aria-label keeps the fuller "New split" for a screen reader, which reads it out of
-            context where "New" alone means nothing. */}
-        <button
-          className="btn btn-pill"
-          aria-label="New split"
-          onClick={() => {
-            setAdding(true);
-            // The form appears under the header. From half way down a long list that would be
-            // off-screen, so the tap takes you to it.
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          <span aria-hidden="true" style={{ fontSize: "17px", fontWeight: 600 }}>＋</span>
-          New
-        </button>
       </div>
 
       {adding && (
-        <div className="card">
+        <div className="card card-form">
           <div className="row">
             <h3 style={{ margin: 0 }}>New split</h3>
             {/* The header button opens this; closing it belongs here, next to what it closes. */}
@@ -89,7 +70,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && create()}
           />
-          <div style={{ margin: "10px 0" }}>
+          <div className="emoji-row">
             {EMOJIS.map((e) => (
               <button
                 key={e}
@@ -109,10 +90,50 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
               empty app and this card is what opens in front of them. */}
           <button
             className="btn btn-ghost"
-            style={{ width: "100%", marginTop: "var(--s2)" }}
+            style={{ width: "100%" }}
             onClick={() => go({ screen: "join" })}
           >
             Somebody sent you a code? Join their split
+          </button>
+        </div>
+      )}
+
+      {/* Bottom-right, thumb-height, above the tab bar: the place people reach for an add button
+          without reading anything, in Gmail, Photos, Keep and every Material app since. The header
+          pill this replaces was legible but in the corner hardest to reach on a large phone, and it
+          made the one action on the screen look like a setting.
+
+          The word is gone, so the label has to carry it: "New split" rather than "New", because a
+          screen reader reads this out of a context where "New" alone means nothing. */}
+      {!adding && (
+        <div className="fab-slot">
+          <button
+            className="fab"
+            aria-label="New split"
+            onClick={() => {
+              setAdding(true);
+              // The form opens under the header. From half way down a long list that is off-screen,
+              // so the tap takes you to it.
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          >
+            {/* Drawn, with the gradient on the stroke. A typed ＋ was a guess about which font
+                loaded and how much ink it put inside a 56px circle, and no font can carry a
+                gradient across a glyph in the first place. */}
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <defs>
+                <linearGradient id="fab-plus" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="var(--sunset-1)" />
+                  <stop offset="100%" stopColor="var(--sunset-2)" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M12 5v14M5 12h14"
+                stroke="url(#fab-plus)"
+                strokeWidth="2.6"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
       )}

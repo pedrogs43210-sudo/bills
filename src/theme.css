@@ -348,8 +348,13 @@ h3 { font-size: 15.5px; }
      than any native FAB looks. max() supplies what the system bar would have: the home indicator's
      own inset once installed, and a nav bar's worth of room when there is none.
      Carried in padding rather than in `bottom`, so the slot's measured height includes the gap and
-     the page reserves the right amount without anyone hard-coding it. */
-  padding: 0 var(--s4) calc(var(--s4) + max(env(safe-area-inset-bottom), var(--s6)));
+     the page reserves the right amount without anyone hard-coding it.
+
+     Above the tab bar rather than beside it. --footer-h is the bar's measured height including its
+     own safe-area padding, published by whichever bar is on screen, so the gap is the same 16px
+     whether the bar is 56px or 82px and nobody has to guess the phone. The fallback is for a screen
+     with no bar at all, where the FAB has to supply the inset itself. */
+  padding: 0 var(--s4) calc(var(--footer-h, max(env(safe-area-inset-bottom), var(--s6))) + var(--s4));
   display: flex;
   justify-content: flex-end;
   pointer-events: none;
@@ -360,10 +365,17 @@ h3 { font-size: 15.5px; }
   height: 56px;
   border: 0;
   border-radius: var(--r-pill);
-  background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
-  /* The same cocoa as the primary button: white on the amber end of this gradient measures
-     1.78:1, and a ＋ nobody can see is not a button. */
-  color: #4a1f10;
+  /* A solid disc of the theme's own surface, with the gradient in the ＋ instead. The gradient
+     circle was the loudest object on the splits list and it competed with the Scan button
+     directly below it — two large warm shapes in the same corner, one of which spends money.
+     The mark still carries the brand, at a fraction of the area.
+
+     Surface rather than a fixed white, so it inverts with the theme: light disc in daylight, dark
+     disc at night, both a step off the page behind them. */
+  background: var(--surface);
+  /* The shadow is what separates it from the page. On the dark theme shadows barely register, so a
+     hairline carries the edge instead — without it the disc dissolves into the background. */
+  border: 1px solid var(--line);
   display: grid;
   place-items: center;
   box-shadow: var(--sh-2);
@@ -882,14 +894,24 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
    before somebody runs out. */
 
 .scan-btn {
+  position: relative;
   height: 56px;
   border-radius: var(--r-lg);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* The label sits in the middle of the button, not shoved against the left edge by a chip that
+     is only sometimes there. space-between made the words move sideways depending on whether you
+     had scans left, so the app's main button was never in the same place twice. The chip is taken
+     out of the flow instead and pinned to the right, which leaves the label centred on the whole
+     button and identical with or without it. */
+  justify-content: center;
   gap: var(--s2);
-  padding: 0 10px 0 var(--s4);
+  padding: 0 var(--s4);
   width: 100%;
+}
+.scan-btn .scan-chip {
+  position: absolute;
+  right: 10px;
 }
 
 /* No chip means nothing to balance against, so the label takes the middle. */
@@ -1280,4 +1302,19 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
 .row-add .btn {
   flex: 0 0 auto;
   width: auto;
+}
+
+/* A card that is a form rather than a list.
+   Every gap inside it comes from here. Before this the title row sat flush against the name field
+   — 28px of air above the heading and none below it, which is what made "New split" look pressed
+   into the top of the box — while the emoji row and the join button each carried their own
+   hand-picked margin. One gap, one place, and the spacing above and below the heading match. */
+.card-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+/* The chips wrap and bring their own vertical rhythm, so they need no margin of their own. */
+.emoji-row {
+  margin: 0;
 }

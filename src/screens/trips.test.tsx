@@ -79,13 +79,20 @@ describe("the trip list", () => {
     expect(screen.getByPlaceholderText(/split name/i)).toBeInTheDocument();
   });
 
-  it("starts a split from the header, not a floating button — the bar owns the bottom now", () => {
+  it("starts a split from the corner every phone puts an add button in", () => {
+    // With a split already saved the form is closed, which is when the button has a job to do. On
+    // an empty app the form is open in front of you and a button to open it would be pointing at
+    // itself, so it is not rendered — that absence is the assertion at the end.
+    saveData({ schemaVersion: 2, trips: [tripNamed("t1", "Algarve", "2026-01-01T00:00:00Z")] });
     render(
       <StoreProvider>
         <TripListScreen go={() => {}} />
       </StoreProvider>
     );
-    expect(screen.getByRole("button", { name: /new split/i })).toBeTruthy();
+    const fab = screen.getByRole("button", { name: /new split/i });
+    expect(fab).toHaveClass("fab");
+
+    localStorage.clear();
   });
 
   it("calls a split a split", () => {

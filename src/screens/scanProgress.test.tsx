@@ -15,6 +15,7 @@ vi.mock("../lib/scan", async (importOriginal) => {
 });
 import { scanReceipt } from "../lib/scan";
 import { leaveScanScreen } from "../test/leaveScanScreen";
+import { scanPhoto } from "../test/scanPhoto";
 
 function seedTrip(): Trip {
   return {
@@ -48,7 +49,7 @@ async function startScan() {
   render(<App />);
   leaveScanScreen();
   await user.click(screen.getByText(/algarve/i));
-  await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+  await scanPhoto(user, photo);
   return { user, resolve };
 }
 
@@ -58,7 +59,7 @@ describe("while the receipt is being read", () => {
     expect(await screen.findByText(/reading the receipt/i)).toBeInTheDocument();
     expect(screen.getByText(/finding the items/i)).toBeInTheDocument();
     // the trip screen is gone, so nothing invites a second scan mid-scan
-    expect(screen.queryByLabelText(/scan receipt/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /scan receipt/i })).toBeNull();
   });
 
   it("announces itself politely rather than interrupting a screen reader", async () => {
@@ -103,7 +104,7 @@ describe("while the receipt is being read", () => {
     await user.click(screen.getByRole("button", { name: /cancel and add by hand/i }));
 
     // back on the trip, able to act again
-    expect(screen.getByLabelText(/scan receipt/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /scan receipt/i })).toBeInTheDocument();
 
     // and when the abandoned scan lands, the receipt is kept without hijacking the screen
     resolve(scanned);

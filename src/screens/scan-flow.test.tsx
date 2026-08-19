@@ -16,6 +16,7 @@ vi.mock("../lib/scan", async (importOriginal) => {
 
 import { scanReceipt } from "../lib/scan";
 import { leaveScanScreen } from "../test/leaveScanScreen";
+import { scanPhoto } from "../test/scanPhoto";
 
 function seedTrip(): Trip {
   return {
@@ -48,7 +49,7 @@ describe("discount conventions from a scan", () => {
     render(<App />);
   leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
-    await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+    await scanPhoto(user, photo);
     await screen.findByDisplayValue("Sumo laranja");
   }
 
@@ -108,7 +109,7 @@ describe("scan flow", () => {
     render(<App />);
   leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
-    await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+    await scanPhoto(user, photo);
     // lands on the review screen with the scanned items
     expect(await screen.findByDisplayValue("Sumo laranja")).toBeInTheDocument();
     expect(screen.getByText(/matches/i)).toBeInTheDocument();
@@ -120,7 +121,7 @@ describe("scan flow", () => {
     render(<App />);
   leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
-    await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+    await scanPhoto(user, photo);
     expect(await screen.findByText(/had a problem/i)).toBeInTheDocument();
     // retry uses the kept photo
     vi.mocked(scanReceipt).mockResolvedValue({
@@ -139,7 +140,7 @@ describe("scan flow", () => {
     render(<App />);
   leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
-    await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+    await scanPhoto(user, photo);
     // Leaving mid-scan is now two steps, because the wait has a screen of its own: stop
     // waiting, then leave the trip.
     await user.click(screen.getByRole("button", { name: /cancel and add by hand/i }));
@@ -160,7 +161,7 @@ describe("scan flow", () => {
     render(<App />);
   leaveScanScreen();
     await user.click(screen.getByText(/algarve/i));
-    await user.upload(screen.getByLabelText(/scan receipt/i), photo);
+    await scanPhoto(user, photo);
     expect(await screen.findByLabelText(/anthropic api key/i)).toBeInTheDocument();
   });
 });

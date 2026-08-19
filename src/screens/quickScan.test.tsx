@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { leaveScanScreen } from "../test/leaveScanScreen";
+import { scanPhoto } from "../test/scanPhoto";
 
 /**
  * Scanning a receipt with no split to put it in.
@@ -57,7 +58,7 @@ const storedTrips = () => {
 /** Tap Scan, then hand over a photo. */
 async function scan(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("tab", { name: /scan/i }));
-  await user.upload(screen.getByLabelText("Scan receipt"), photo());
+  await scanPhoto(user, photo());
 }
 
 beforeEach(() => {

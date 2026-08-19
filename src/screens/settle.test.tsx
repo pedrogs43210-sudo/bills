@@ -40,7 +40,7 @@ describe("settle screen", () => {
     await user.click(screen.getByRole("button", { name: /back to the split/i }));
     // back on the trip screen, where receipts get added
     expect(screen.getByRole("heading", { name: /Algarve/ })).toBeInTheDocument();
-    expect(screen.getByLabelText(/scan receipt/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /scan receipt/i })).toBeInTheDocument();
   });
 
   it("shows per-person totals and transfers", async () => {

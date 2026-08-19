@@ -1,22 +1,25 @@
+import { useEffect, useRef, useState } from "react";
 import { scanChip } from "../lib/scanChip";
 import type { ScanQuota } from "../lib/scan";
 
 /**
- * The scan control: take a photo, or pick one you already have — and how many scans that leaves.
+ * The scan control: one button, and how many scans it leaves.
  *
  * The count lives on the button rather than under it. It used to be a small grey line below the
  * controls, which read as an afterthought bolted onto the thing it describes despite being the
  * app's entire commercial surface. On the button you read "this action, and you have three of
  * them" in one glance.
  *
- * They cannot be one control: `capture` forces the camera and hides the gallery on some browsers,
- * so the photo you already took would be unreachable. Taking the photo is the thing you came to
- * do, so it keeps the primary button; picking an existing one is the rarer path and only needs a
- * 56px square beside it.
+ * The two sources — camera and gallery — cannot be one input: `capture` forces the camera and
+ * hides the gallery on some browsers, so a photo you had already taken would be unreachable. They
+ * used to be two controls on the screen, the second a permanent line of text reading "Choose a
+ * photo — uses a scan", which put a caveat about pricing on the home screen of a scanning app and
+ * made the rarer path as loud as the common one. Now the button asks, once, after it is pressed:
+ * one thing to tap, and the choice arrives at the moment it is a real choice.
  *
- * The labels are the ones the rest of the app already knows this control by, and are load-bearing
- * for anyone using a screen reader: "Scan receipt" for the camera, "Choose a photo of a receipt"
- * for the gallery.
+ * The sheet's two options are still labels wrapping their own file inputs, because opening a
+ * camera needs a direct user gesture on the input's own label — routing it through a click handler
+ * would be blocked on iOS.
  */
 export function PhotoPicker({
   disabled = false,
@@ -30,20 +33,32 @@ export function PhotoPicker({
   /** Where "get more scans" goes. Without it the out-of-scans button is not offered. */
   onGetMore?: () => void;
 }) {
+  const [asking, setAsking] = useState(false);
+  const sheet = useRef<HTMLDivElement>(null);
+
   /** Cleared after every pick, so choosing the same photo twice still fires a change. */
   const take = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    setAsking(false);
     if (file) onPick(file);
     e.target.value = "";
   };
 
+  // Escape closes it, and focus moves in when it opens: the sheet covers the only other control on
+  // the screen, so leaving focus behind it would strand a keyboard entirely.
+  useEffect(() => {
+    if (!asking) return;
+    sheet.current?.focus();
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setAsking(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [asking]);
+
   const chip = scanChip(quota);
   const outOfScans = quota?.left === 0 && onGetMore !== undefined;
 
-  // At zero the button stops offering a thing it cannot do and offers the fix instead. The gallery
-  // button leaves entirely rather than sitting there dimmed: importing a photo costs a scan too, so
-  // a greyed-out 🖼 would imply a free path that does not exist — and its absence gives the offer
-  // the full width it needs.
+  // At zero the button stops offering a thing it cannot do and offers the fix instead — before the
+  // camera opens, rather than after a photo has been taken and the server has refused it.
   if (outOfScans) {
     return (
       <div style={{ marginBottom: 8 }}>
@@ -57,50 +72,44 @@ export function PhotoPicker({
 
   return (
     <div style={{ marginBottom: 8 }}>
-      {/* capture="environment" is what actually opens the rear camera. Without it the browser
-          shows a generic file picker, which on Android lands in the gallery — so "scan a receipt"
-          meant hunting for a photo you had not taken yet. */}
-      <label
+      <button
         className={`btn btn-primary scan-btn${chip ? "" : " scan-btn-bare"}`}
         style={{ opacity: disabled ? 0.45 : 1 }}
+        disabled={disabled}
+        aria-haspopup="dialog"
+        aria-expanded={asking}
+        onClick={() => setAsking(true)}
       >
         <span className="scan-btn-label">📸 Scan receipt</span>
         {chip && <span className={`scan-chip${chip.tone === "last" ? " scan-chip-last" : ""}`}>{chip.text}</span>}
-        <input
-          hidden
-          type="file"
-          accept="image/*"
-          capture="environment"
-          aria-label="Scan receipt"
-          disabled={disabled}
-          onChange={take}
-        />
-      </label>
+      </button>
 
-      {/* Underneath rather than beside, and it says what it costs.
+      {asking && (
+        <>
+          <div className="sheet-backdrop" onClick={() => setAsking(false)} />
+          <div className="sheet" role="dialog" aria-label="Where is the receipt?" tabIndex={-1} ref={sheet}>
+            <div className="sheet-grip" aria-hidden="true" />
+            <h3 style={{ marginTop: 0 }}>Where is the receipt?</h3>
 
-          As a 56px square next to the priced button it read as the free alternative — a plain
-          bordered icon beside a gradient button carrying a "3 free" chip looks like the option the
-          chip does not apply to. It does apply: reading a photo from the gallery costs exactly the
-          same scan as reading one from the camera, because it is the same request.
+            {/* capture="environment" is what actually opens the rear camera. Without it the browser
+                shows a generic file picker, which on Android lands in the gallery — so "take a
+                photo" would mean hunting for one you had not taken yet. */}
+            <label className="btn btn-primary" style={{ width: "100%" }}>
+              📸 Take a photo
+              <input hidden type="file" accept="image/*" capture="environment" aria-label="Take a photo of the receipt" onChange={take} />
+            </label>
 
-          So it moves below the thing it is an alternative to, loses the border that made it look
-          like a peer, and states the price in its own label. One fewer control competing with the
-          primary action, and nobody can infer a free path that does not exist. */}
-      <label
-        className="btn btn-ghost scan-gallery"
-        style={{ opacity: disabled ? 0.45 : 1 }}
-      >
-        <span aria-hidden="true">🖼</span> Choose a photo — uses a scan
-        <input
-          hidden
-          type="file"
-          accept="image/*"
-          aria-label="Choose a photo of a receipt — uses a scan"
-          disabled={disabled}
-          onChange={take}
-        />
-      </label>
+            <label className="btn btn-secondary" style={{ width: "100%", marginTop: "var(--s2)" }}>
+              🖼 Choose from gallery
+              <input hidden type="file" accept="image/*" aria-label="Choose a photo of a receipt" onChange={take} />
+            </label>
+
+            <button className="btn btn-ghost" style={{ width: "100%", marginTop: "var(--s2)" }} onClick={() => setAsking(false)}>
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
