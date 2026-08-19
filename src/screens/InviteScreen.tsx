@@ -96,8 +96,8 @@ export function InviteScreen({ tripId, go }: { tripId: string; go: (v: View) => 
             fish. They need Billy installed — the link takes them to it.
           </p>
           <p className="muted">
-            The split is copied to Billy's server so their phones can read it, and deleted after a
-            week. You can take it back at any time.
+            Everyone who joins keeps their own copy of the split, for good. The link itself stops
+            working after a week, and you can take it back before then.
           </p>
           {error && <div className="banner-warn">{error}</div>}
           <button className="btn btn-primary" disabled={busy} onClick={() => void publish()}>

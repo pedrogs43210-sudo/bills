@@ -1173,12 +1173,18 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   min-height: 0;
 }
 
-/* ...which means this screen owes its own gutter, and for a while it did not pay it: the stage and
-   the controls carry their own padding, so the back arrow and the title were the only things left
-   sitting flush against the glass. Everything else in the app gets 16px from #root. */
+/* ...which means this screen owes its own gutter, and .topbar cannot supply it: it uses NEGATIVE
+   horizontal margins to reach the edges of #root's padding box, so with no padding to escape it
+   hung 16px off each side of the screen. Zero the margin and pay the gutter directly.
+
+   The top matters as much. Everywhere else #root contributes 16px above the bar, so the title
+   clears the status bar comfortably; here there was only 8px plus the inset, which on a real phone
+   put "Scan a receipt" right under the clock. */
 .scan-screen > .topbar {
+  margin-inline: 0;
   padding-left: var(--s4);
   padding-right: var(--s4);
+  padding-top: calc(var(--s4) + env(safe-area-inset-top));
 }
 
 /* ---------- The tick at the end of a scan ----------
@@ -1195,12 +1201,47 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   /* Over the lines rather than beside them: the paper has just been read, and the tick is the
      answer to what was on it. */
   background: color-mix(in srgb, var(--surface) 82%, transparent);
-  animation: tick-in 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  animation: tick-in 300ms cubic-bezier(0.2, 1.5, 0.35, 1) both;
 }
 
 @keyframes tick-in {
-  from { opacity: 0; transform: scale(0.72); }
+  from { opacity: 0; transform: scale(0.68); }
+  60%  { transform: scale(1.06); }
   to   { opacity: 1; transform: scale(1); }
+}
+
+/* The stroke draws itself. 34 is a little over the path's own length, so the line is fully hidden
+   at the start and fully shown at the end with nothing left dangling. */
+.scan-tick-path {
+  stroke-dasharray: 34;
+  stroke-dashoffset: 34;
+  animation: tick-draw 380ms cubic-bezier(0.65, 0, 0.35, 1) 120ms both;
+}
+@keyframes tick-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.scan-tick-ring {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--good-strong);
+  animation: tick-ring 420ms ease-out 140ms both;
+  pointer-events: none;
+}
+@keyframes tick-ring {
+  from { opacity: 0.85; transform: scale(0.6); }
+  to   { opacity: 0; transform: scale(2.1); }
+}
+
+/* The word arrives after the mark, not with it — first the tick, then what it means. */
+.scan-got-it {
+  animation: got-it 300ms cubic-bezier(0.2, 1.4, 0.4, 1) 380ms both;
+}
+@keyframes got-it {
+  from { opacity: 0; transform: translateY(5px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
 }
 
 /* The frame acknowledges it too — one small settle, and the brackets go green. */
@@ -1216,5 +1257,27 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
 /* Somebody who has asked for less motion gets the state without the movement — the tick still
    appears, it just does not spring. */
 @media (prefers-reduced-motion: reduce) {
-  .scan-tick, .scan-stage-done .viewfinder { animation: none; }
+  .scan-tick, .scan-stage-done .viewfinder, .scan-got-it { animation: none; }
+  /* The ring is motion and nothing else, so for anyone who asked for less of it there is nothing
+     to keep. The tick's stroke is shown outright rather than drawn. */
+  .scan-tick-ring { display: none; }
+  .scan-tick-path { stroke-dashoffset: 0; animation: none; }
+}
+
+/* A text field with a button beside it, sharing a line.
+   The field takes the slack and the button keeps its own width, so a long name never squeezes
+   "Add" down to an unreadable sliver. min-width: 0 because a flex item's default is to refuse to
+   shrink below its content, which pushes the button off the right edge on a narrow phone. */
+.row-add {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+}
+.row-add input {
+  flex: 1;
+  min-width: 0;
+}
+.row-add .btn {
+  flex: 0 0 auto;
+  width: auto;
 }

@@ -2,7 +2,14 @@ import { useRef } from "react";
 import { useReservedBottom } from "../lib/useReservedBottom";
 import { Mark } from "./Mark";
 
-export type TabName = "splits" | "profile";
+/**
+ * Which tab is showing — or "none".
+ *
+ * The camera is a root and carries the bar, but it is not a tab: the view underneath it is still
+ * the splits list, so without this Splits sat highlighted on the one screen the app opens on,
+ * pointing at somewhere the user was not.
+ */
+export type TabName = "splits" | "profile" | "none";
 
 /**
  * The bottom tab bar for the two root screens: Splits and Profile.

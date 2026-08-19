@@ -1,6 +1,20 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
+import { cleanup, configure } from "@testing-library/react";
+
+/**
+ * How long findBy* waits before giving up.
+ *
+ * The library's default is one second, chosen for apps whose screens appear as fast as the code can
+ * render them. Billy deliberately holds the "Got it" tick for SCAN_DONE_MS after a scan succeeds,
+ * so the review screen is a beat behind the scan by design — at the default, eleven tests failed on
+ * a hold that was working exactly as intended. Raised rather than patched at each call site: the
+ * alternative is every test that scans carrying a timeout argument that restates a fact about the
+ * app, and the next such pause failing them all again.
+ *
+ * A test that genuinely hangs still fails; it just takes three seconds to say so.
+ */
+configure({ asyncUtilTimeout: 3000 });
 
 /**
  * jsdom has no layout, so it has no scrolling: calling scrollTo or scrollBy prints

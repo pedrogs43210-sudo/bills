@@ -142,9 +142,25 @@ function Router() {
    *
    * Keyed on the view rather than on every render, so scrolling within a screen is left alone.
    */
+  /**
+   * ...including the two screens that share one view.
+   *
+   * "Looks right" moves the receipt from review to assign without changing the view — same trip,
+   * same receipt id — so keying on the view alone meant the one transition people actually
+   * complained about was the one that never fired. Half way down a long receipt, the assign screen
+   * opened mid-list with its heading above the fold. The status is part of which screen you are on,
+   * so it is part of the key.
+   */
+  const screenKey = (() => {
+    if (view.screen !== "receipt") return JSON.stringify(view);
+    const status = data.trips
+      .find((t) => t.id === view.tripId)
+      ?.receipts.find((r) => r.id === view.receiptId)?.status;
+    return `receipt:${view.receiptId}:${status ?? ""}`;
+  })();
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
-  }, [view]);
+  }, [screenKey]);
 
   const lastPhoto = useRef<File | null>(null);
   // Set when the wait is cancelled or backed out of: the scan carries on and its result is still
@@ -297,6 +313,9 @@ function Router() {
       }
       // A beat on the tick before the items. Long enough to register that it worked, short enough
       // not to be in the way of the thing they waited for — see ScanProgressScreen.SCAN_DONE_MS.
+      // The count has just changed. Nothing else re-reads it, so the chip on the button and the
+      // badge on the tab would both keep reporting the number from launch.
+      refreshQuota();
       setScanState("done");
       await new Promise((r) => setTimeout(r, SCAN_DONE_MS));
       setScanState("idle");
@@ -542,7 +561,7 @@ function Router() {
           change is the scan state, not the view. */}
       {root && (scanState === "idle" || scanState === "picking") && (
         <TabBar
-          current={view.screen === "profile" ? "profile" : "splits"}
+          current={scanState === "picking" ? "none" : view.screen === "profile" ? "profile" : "splits"}
           scansLeft={quota?.left ?? null}
           onSplits={() => {
             setScanState("idle");

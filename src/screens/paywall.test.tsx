@@ -110,12 +110,15 @@ describe("the paywall", () => {
     expect(screen.getByText(/out of free scans/i)).toBeInTheDocument();
   });
 
-  it("says why scanning costs something, and promises no reset it cannot deliver", async () => {
+  it("says what is paid for without explaining the bill, and promises no reset it cannot deliver", async () => {
     const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByLabelText(/scan receipt/i)).toBeNull());
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
 
-    expect(screen.getByText(/Billy is free. Reading a receipt isn't./i)).toBeInTheDocument();
+    expect(screen.getByText(/scans are the only paid part/i)).toBeInTheDocument();
+    // Somebody standing at a till being asked to pay is not the audience for Billy's cost base.
+    // Volunteering it reads as an apology for the price, so the numbers behind it stay out.
+    expect(screen.queryByText(/few cents|costs us|AI service/i)).toBeNull();
     // The free scans are a trial, not an allowance: nothing here may imply they come back.
     expect(screen.queryByText(/scanning is back|next month|this month/i)).toBeNull();
 

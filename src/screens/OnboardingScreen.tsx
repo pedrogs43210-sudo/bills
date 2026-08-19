@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Mark } from "../components/Mark";
 import { Footerbar } from "../components/Footerbar";
 import { setOnboarded } from "../lib/onboarding";
 
@@ -45,7 +46,11 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
   return (
     <div>
       <div className="topbar">
-        <img className="app-mark" src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={30} height={30} />
+        {/* Inline rather than an <img> of icon.svg. The file loads over a relative path, which
+            resolves against a different scheme inside the Capacitor WebView — so the mark simply
+            did not appear in the phone build, on the first screen anybody ever sees. Drawn in the
+            bundle, it cannot fail to load. */}
+        <Mark size={30} color="var(--accent)" className="app-mark" />
         <h1 className="screen-title">Billy</h1>
         {/* Available from the very first panel: someone who already knows what this is should
             never have to tap through three screens to get started. */}

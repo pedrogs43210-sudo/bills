@@ -89,10 +89,9 @@ export function PaywallScreen({
           <div className="note" role="status">
             <span className="note-dot" aria-hidden="true">!</span>
             <div>
-              <span className="note-head">Billy is free. Reading a receipt isn't. </span>
-              Every photo goes off to be read by an AI service, and that costs a few cents each
-              time — so scanning is the one part that has to be paid for. Everything else stays
-              free.
+              <span className="note-head">Scans are the only paid part. </span>
+              Splitting, settling, sharing and adding items by hand all stay free, for as long as
+              you use Billy.
             </div>
           </div>
 

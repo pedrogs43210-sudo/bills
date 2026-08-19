@@ -33,6 +33,19 @@ export function WhosInScreen({
     setName("");
   }
 
+  /**
+   * Done takes the name still in the field with it.
+   *
+   * Losing it was the whole failure: with no Add button, the only way to commit a name was the
+   * keyboard's Enter key, which nobody found. People typed a name, pressed the Done they could see,
+   * and left — the person was never added, so only one ever existed and the name never appeared on
+   * the assign screen. Two symptoms, one dropped string.
+   */
+  function done() {
+    submit();
+    onDone();
+  }
+
   return (
     <div>
       <div className="topbar">
@@ -71,17 +84,30 @@ export function WhosInScreen({
         <label className="micro" htmlFor="whosin-name" style={{ display: "block", marginBottom: "var(--s2)" }}>
           Add someone
         </label>
-        <input
-          id="whosin-name"
-          placeholder="Type a name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-        />
+        {/* The field and its Add button on one line. The button is what makes "add several people"
+            discoverable: it stays put after each name, so adding a fourth looks exactly like adding
+            the first, and the field is empty and waiting each time. */}
+        <div className="row-add">
+          <input
+            id="whosin-name"
+            placeholder="Type a name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={submit}
+            disabled={name.trim() === ""}
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       <Footerbar>
-        <button className="btn btn-primary" onClick={onDone}>
+        <button className="btn btn-primary" onClick={done}>
           Done
         </button>
       </Footerbar>

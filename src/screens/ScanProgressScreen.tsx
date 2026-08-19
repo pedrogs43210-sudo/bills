@@ -26,7 +26,7 @@ const PATIENCE_MS = 9000;
  * Exported so the screens that navigate away hold for exactly as long as the animation runs, rather
  * than two numbers drifting apart until the tick is cut off half-drawn.
  */
-export const SCAN_DONE_MS = 700;
+export const SCAN_DONE_MS = 1150;
 
 export function ScanProgressScreen({ onCancel, done = false }: { onCancel: () => void; done?: boolean }) {
   const [slow, setSlow] = useState(false);
@@ -64,8 +64,14 @@ export function ScanProgressScreen({ onCancel, done = false }: { onCancel: () =>
             {!done && <div className="scanning-sweep" />}
             {done && (
               <span className="scan-tick" aria-hidden="true">
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 12.5l5.2 5.2L20 6.8" />
+                {/* A ring thrown outwards from the tick and gone. It is the only part of the
+                    sequence that is pure celebration — it carries no information — which is why it
+                    is over in a third of a second and never blocks the way forward. */}
+                <span className="scan-tick-ring" />
+                <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                  {/* Drawn rather than faded in: the stroke travels the way a hand would, which is
+                      what makes it read as a mark being made instead of an icon appearing. */}
+                  <path className="scan-tick-path" d="M4 12.5l5.2 5.2L20 6.8" />
                 </svg>
               </span>
             )}
@@ -79,7 +85,7 @@ export function ScanProgressScreen({ onCancel, done = false }: { onCancel: () =>
 
         <div role="status" aria-live="polite" style={{ textAlign: "center", maxWidth: 216 }}>
           {done ? (
-            <p className="label" style={{ margin: 0, fontFamily: "var(--brand)", fontWeight: 700, fontSize: "15px", color: "var(--good-strong)" }}>
+            <p className="label scan-got-it" style={{ margin: 0, fontFamily: "var(--brand)", fontWeight: 700, fontSize: "17px", color: "var(--good-strong)" }}>
               Got it
             </p>
           ) : (
