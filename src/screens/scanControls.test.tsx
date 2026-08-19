@@ -62,6 +62,38 @@ describe("opening the camera", () => {
     expect(screen.getByLabelText(/choose a photo of a receipt/i)).not.toHaveAttribute("capture");
   });
 
+  it("puts the sheet inside its backdrop, where the tap can reach it", async () => {
+    const user = await openTrip();
+    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+
+    const sheet = document.querySelector(".sheet");
+    const backdrop = document.querySelector(".sheet-backdrop");
+    expect(sheet).not.toBeNull();
+    // .sheet carries no position of its own — .sheet-backdrop is the fixed, full-screen flex
+    // container and the sheet is its child. As siblings the sheet stayed in normal flow underneath
+    // and the backdrop swallowed every tap: the two options rendered, dimmed, and did nothing.
+    //
+    // jsdom has no layout, so it cannot tell what is on top of what and no rendering test could
+    // have caught this. The structure is what was wrong, and the structure is checkable here.
+    expect(backdrop!.contains(sheet!)).toBe(true);
+  });
+
+  it("does not close when the tap lands on the sheet itself", async () => {
+    const user = await openTrip();
+    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    // The backdrop closes on click and the sheet sits inside it, so without stopPropagation every
+    // tap aimed at an option would dismiss the thing it was aimed at.
+    await user.click(screen.getByRole("dialog"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("closes when the tap lands outside it", async () => {
+    const user = await openTrip();
+    await user.click(screen.getByRole("button", { name: /scan receipt/i }));
+    await user.click(document.querySelector(".sheet-backdrop") as HTMLElement);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("scans from either control", async () => {
     const scanned = {
       storeName: "Conad", date: "2026-08-11", currency: "EUR", preDiscountTotal: null, paidTotal: 249,

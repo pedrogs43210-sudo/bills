@@ -85,9 +85,22 @@ export function PhotoPicker({
       </button>
 
       {asking && (
-        <>
-          <div className="sheet-backdrop" onClick={() => setAsking(false)} />
-          <div className="sheet" role="dialog" aria-label="Where is the receipt?" tabIndex={-1} ref={sheet}>
+        /* The sheet goes INSIDE the backdrop, not beside it. .sheet-backdrop is the fixed,
+           full-screen flex container and .sheet is its child — the sheet carries no position of its
+           own, so as a sibling it stayed in normal flow underneath and the backdrop ate every tap:
+           the options were visible, dimmed, and completely dead. */
+        <div className="sheet-backdrop" onClick={() => setAsking(false)}>
+          <div
+            className="sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Where is the receipt?"
+            tabIndex={-1}
+            ref={sheet}
+            /* The backdrop closes; the sheet itself must not, or the tap that picks an option would
+               dismiss the thing it was aimed at. */
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="sheet-grip" aria-hidden="true" />
             <h3 style={{ marginTop: 0 }}>Where is the receipt?</h3>
 
@@ -108,7 +121,7 @@ export function PhotoPicker({
               Cancel
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
