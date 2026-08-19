@@ -1318,3 +1318,59 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
 .emoji-row {
   margin: 0;
 }
+
+/* ---------- The three welcome panels ---------- */
+
+/* Still and silent, they read as a slideshow somebody forgot to finish. The motion here is the
+   only thing in the app that exists purely to be pleasant, so it is small, it is over in half a
+   second, and it never delays the button — everything is tappable from the first frame. */
+.onboard-card {
+  animation: onboard-card-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes onboard-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.onboard-art {
+  font-size: 56px;
+  line-height: 1.1;
+  margin-bottom: var(--s4);
+  /* Arrives with a bounce, then breathes. The second animation is infinite but tiny — a 3px rise
+     over three seconds — which reads as the page being alive rather than as something moving. */
+  animation:
+    onboard-art-in 460ms cubic-bezier(0.2, 1.5, 0.35, 1) both,
+    onboard-art-float 3.2s ease-in-out 460ms infinite;
+}
+@keyframes onboard-art-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.7) rotate(-8deg); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes onboard-art-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+.onboard-title { animation: onboard-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) 90ms both; }
+.onboard-body  { animation: onboard-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) 170ms both; }
+@keyframes onboard-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* All of it. None of this carries information, so for anyone who asked for less movement there
+     is nothing lost by removing every frame — the panels simply are, rather than arrive. */
+  .onboard-card, .onboard-art, .onboard-title, .onboard-body { animation: none; }
+}
+
+/* A heading over a run of cards, rather than inside one.
+   Sits in the page's own margin, so it groups the cards below it without looking like a card that
+   lost its body. */
+.section-head {
+  margin: var(--s5) 0 var(--s2);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}

@@ -10,6 +10,7 @@ import {
   ShareError,
   type SharedSplitView,
 } from "../lib/sharedSplit";
+import { keepSplit, keptSplit } from "../lib/keptSplits";
 import { Disc } from "../components/chips";
 import type { View } from "../App";
 
@@ -32,16 +33,34 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  /** Set when what is on screen came off this phone rather than off the server. */
+  const [frozenAt, setFrozenAt] = useState<string | null>(null);
 
   const load = useCallback(async (c: string) => {
     setBusy(true);
     setError("");
     try {
-      setView(await readSharedSplit(c));
+      const fresh = await readSharedSplit(c);
+      setView(fresh);
       setCode(c);
+      setFrozenAt(null);
+      // Written on every successful read, not only on the first: while the link is alive the
+      // guest's copy tracks it, so what they are left holding is the last true state of the split
+      // rather than whatever it looked like the minute they joined.
+      keepSplit(c, fresh);
     } catch (err) {
-      setError(err instanceof ShareError ? err.message : "That code didn't work.");
-      setView(null);
+      // The postbox is emptied after a week, and the guest keeps their own copy precisely so that
+      // this is not the end of the receipt for them. Their copy is read-only from here — there is
+      // nothing left to send picks to — but it is theirs, and it does not expire.
+      const kept = keptSplit(c);
+      if (kept) {
+        setView(kept.view);
+        setCode(c);
+        setFrozenAt(kept.keptAt);
+      } else {
+        setError(err instanceof ShareError ? err.message : "That code didn't work.");
+        setView(null);
+      }
     } finally {
       setBusy(false);
     }
@@ -115,7 +134,7 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
   }
 
   // --- step two: which one are you? ----------------------------------------------------------
-  if (!personId) {
+  if (!personId && !frozenAt) {
     return (
       <div>
         <div className="topbar">
@@ -173,18 +192,33 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
         <h1 className="screen-title">{view.split.emoji} {view.split.name}</h1>
       </div>
 
+      {frozenAt && (
+        <div className="note" role="status">
+          <span className="note-dot" aria-hidden="true">!</span>
+          <div>
+            <span className="note-head">Your saved copy. </span>
+            The link stopped working, so this is the split as it stood on{" "}
+            {new Date(frozenAt).toLocaleDateString()}. It stays on your phone — nothing here
+            expires.
+          </div>
+        </div>
+      )}
+
       <div className="card">
-        <h3>What did you have?</h3>
-        <p className="label" style={{ marginTop: 0 }}>
-          Tap everything that was yours. Anything two of you shared, you both tap.
-        </p>
+        <h3>{frozenAt ? "What was on the receipt" : "What did you have?"}</h3>
+        {!frozenAt && (
+          <p className="label" style={{ marginTop: 0 }}>
+            Tap everything that was yours. Anything two of you shared, you both tap.
+          </p>
+        )}
         {items.map((i) => {
           const on = picked.has(i.id);
           return (
             <button
               key={i.id}
               className="receipt-row"
-              aria-pressed={on}
+              aria-pressed={frozenAt ? undefined : on}
+              disabled={frozenAt !== null}
               style={{ borderLeftColor: on ? "var(--accent)" : "transparent" }}
               onClick={() =>
                 setPicked((was) => {
@@ -226,6 +260,7 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
 
       {error && <div className="banner-warn">{error}</div>}
 
+      {frozenAt ? null : (
       <Footerbar>
         {/* A ceiling, not a bill — and labelled as one.
 
@@ -248,6 +283,7 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
           {saved ? "✓ Sent" : busy ? "Sending…" : "Send my picks"}
         </button>
       </Footerbar>
+      )}
     </div>
   );
 }

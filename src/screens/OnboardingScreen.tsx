@@ -59,12 +59,22 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         </button>
       </div>
 
-      <div className="card" style={{ textAlign: "center", paddingTop: "var(--s6)", paddingBottom: "var(--s6)" }}>
-        <div aria-hidden="true" style={{ fontSize: 56, lineHeight: 1.1, marginBottom: "var(--s4)" }}>
+      {/* key={step} is what makes this move at all: without it React reuses the same three nodes
+          and swaps their text, so a CSS entrance animation plays once on the first panel and never
+          again. Keyed, each panel is a new element that arrives — which is also what makes the
+          three feel like three, rather than one card whose words keep changing. */}
+      <div
+        key={step}
+        className="card onboard-card"
+        style={{ textAlign: "center", paddingTop: "var(--s6)", paddingBottom: "var(--s6)" }}
+      >
+        {/* Three arrivals a beat apart rather than one block sliding in: the eye lands on the
+            picture, then the claim, then the detail, which is the order they should be read in. */}
+        <div className="onboard-art" aria-hidden="true">
           {current.art}
         </div>
-        <h2 style={{ fontSize: 21 }}>{current.title}</h2>
-        <p className="label" style={{ maxWidth: 300, margin: "0 auto", textWrap: "pretty" }}>
+        <h2 className="onboard-title" style={{ fontSize: 21 }}>{current.title}</h2>
+        <p className="label onboard-body" style={{ maxWidth: 300, margin: "0 auto", textWrap: "pretty" }}>
           {current.body}
         </p>
       </div>

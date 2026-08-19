@@ -5,6 +5,7 @@ import type { View } from "../App";
 import type { Trip } from "../types";
 import { Disc } from "../components/chips";
 import { Mark } from "../components/Mark";
+import { keptSplits } from "../lib/keptSplits";
 
 const EMOJIS = ["🧾", "🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
 
@@ -37,6 +38,8 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
     setAdding(false);
     go({ screen: "trip", tripId: id });
   }
+
+  const joined = keptSplits();
 
   return (
     <div>
@@ -174,6 +177,37 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
           )}
         </button>
       ))}
+
+      {/* Splits somebody else made and sent you.
+          Separated from your own because they behave differently: you did not create them, you
+          cannot add receipts to them, and while the link is alive your picks go to somebody else's
+          phone. Listed at all because the alternative — which is what shipped — was that a guest's
+          only route back to a receipt was the original message, and after a week not even that. */}
+      {joined.length > 0 && (
+        <>
+          <h3 className="section-head">Shared with you</h3>
+          {joined.map((k) => (
+            <button
+              key={k.code}
+              className="card tap-card"
+              onClick={() => go({ screen: "join", code: k.code })}
+            >
+              <span className="row" style={{ alignItems: "flex-start" }}>
+                <span className="trip-name">
+                  <span aria-hidden="true" style={{ marginRight: 6 }}>{k.view.split.emoji}</span>
+                  {k.view.split.name}
+                </span>
+                <span className="micro">
+                  {k.view.split.receipts.length} receipt{k.view.split.receipts.length === 1 ? "" : "s"}
+                </span>
+              </span>
+              <span className="label" style={{ display: "block", marginTop: 8 }}>
+                Shared by {k.view.split.people[0]?.name ?? "a friend"} — your copy, kept on this phone.
+              </span>
+            </button>
+          ))}
+        </>
+      )}
     </div>
   );
 }
