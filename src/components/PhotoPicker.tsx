@@ -62,9 +62,8 @@ export function PhotoPicker({
   if (outOfScans) {
     return (
       <div style={{ marginBottom: 8 }}>
-        <button className="btn btn-primary scan-btn" onClick={onGetMore}>
+        <button className="btn btn-primary scan-btn scan-btn-bare" onClick={onGetMore}>
           <span className="scan-btn-label">🎟 Get more scans</span>
-          <span className="scan-chip">from €1.99</span>
         </button>
       </div>
     );

@@ -74,7 +74,10 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
           discover they could have topped up is a worse experience and a worse conversion. */}
       <ScansSummary quota={scanQuota} />
       {/* Buying below has to move the number above it, or the card and the purchase disagree. */}
-      <PackChooser onBought={refreshScanQuota} />
+      {/* The bonus is real wherever the packs are sold, so it is shown wherever they are. Offering
+          it only at the wall would mean somebody who topped up early — the most willing customer
+          there is — quietly got less for the same money than somebody who waited to run out. */}
+      <PackChooser onBought={refreshScanQuota} firstPack={scanQuota?.firstPack ?? false} />
 
       {/* Light and dark both exist; this is the choice between them. "Auto" follows the phone,
           which is right most of the time and wrong at a sunny kitchen table. */}

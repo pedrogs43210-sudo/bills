@@ -1374,3 +1374,127 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   text-transform: uppercase;
   color: var(--ink-3);
 }
+
+/* ---------- The paywall, and the packs on it ---------- */
+
+/* The value line, straight under the heading. Larger than body copy because it is the argument —
+   everything below it is mechanism. */
+.paywall-pitch {
+  margin: 0 0 var(--s3);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.paywall-left {
+  /* A plain margin, not a negative one pulling it up under the line above. The .topbar in this
+     same file spent a release hanging 16px off both edges of a screen for exactly that reason:
+     a negative margin encodes an assumption about a neighbour that stops being true. */
+  margin: 0 0 var(--s4);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* The way out. Present, readable, and not competing — the difference between a door and a second
+   front entrance. */
+.paywall-out {
+  margin: var(--s4) 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.linklike {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+/* Room for the flag that sits on the top border, and for the selected state to grow into without
+   nudging its neighbours. */
+.pack {
+  position: relative;
+  margin-bottom: var(--s3);
+  padding: var(--s4) var(--s3);
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pack { transition: none; }
+}
+.pack-selected { padding: calc(var(--s4) - 1px) calc(var(--s3) - 1px); }
+
+.pack-left { display: block; min-width: 0; }
+.pack-right {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: none;
+}
+
+.pack-scans { display: block; font: 700 17px/1.25 var(--brand); }
+/* The old number, struck through. The offer is the arithmetic — 20 becoming 25 — and showing both
+   is what makes it one. Muted so it reads as a former price rather than as a correction. */
+.pack-was { color: var(--ink-3); font-weight: 500; text-decoration-thickness: 1.5px; }
+
+.pack-bonus {
+  display: block;
+  margin-top: 3px;
+  font: 700 12px/1.4 var(--text);
+  color: var(--good-strong);
+}
+.pack-each { display: block; margin-top: 3px; }
+
+/* The radio, drawn. A 22px target is fine here because the whole 56px row is the control — this is
+   the indicator, not the hit area. */
+.pack-dot {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  color: #fff;
+}
+.pack-selected .pack-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+/* Sits astride the top border of its option. Half in, half out, which is what makes it read as a
+   label attached to the card rather than a first line inside it. */
+.pack-flag {
+  position: absolute;
+  top: -9px;
+  left: var(--s3);
+  padding: 2px var(--s2);
+  border-radius: var(--r-pill);
+  background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
+  /* The same cocoa as .btn-primary and .fab — white on the amber end of this gradient measures
+     1.78:1 and would be unreadable at 10px. */
+  color: #4a1f10;
+  font: 700 10.5px/1.5 var(--text);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+/* Best value is a fact about the arithmetic, not the recommendation — so it is stated in ink
+   rather than in the brand gradient, which belongs to the one option being suggested. */
+.pack-flag-value {
+  background: var(--good-bg);
+  color: var(--ink);
+  border: 1px solid var(--good);
+}
+
+/* The answer to the only real objection, immediately above the button that asks for the money. */
+.pack-promise {
+  margin: var(--s3) 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-2);
+}

@@ -43,6 +43,14 @@ export type ScanQuota = {
   limit: number | null;
   /** Of `left`, how many were paid for — so the app can avoid calling a bought scan free. */
   credits: number;
+  /**
+   * Whether this install has never bought a pack, and so is still owed the first-pack bonus.
+   *
+   * The server's answer, from a column the client cannot write. Absent from an older Worker that
+   * has not been redeployed, which is why it is optional and read as false: a missing field has to
+   * mean "no offer", never "help yourself".
+   */
+  firstPack?: boolean;
 };
 let lastQuota: ScanQuota | null = null;
 export const lastKnownQuota = (): ScanQuota | null => lastQuota;

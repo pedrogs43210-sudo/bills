@@ -35,6 +35,26 @@ export const PACKS: Pack[] = [
 export const featuredPack = (): Pack => PACKS.find((p) => p.featured) ?? PACKS[0];
 
 /**
+ * Extra scans on somebody's first pack, ever.
+ *
+ * A quarter more, whichever pack they pick — so it rewards the decision to buy rather than steering
+ * them into a bigger box than they wanted. The first purchase is the hardest one to get: everything
+ * after it is a repeat of a decision already made, and this is the cheapest place in the whole
+ * funnel to spend margin.
+ *
+ * A rate rather than a flat number, so it survives a price change and cannot quietly become a
+ * rounding joke on the small pack or an act of charity on the big one.
+ *
+ * IMPORTANT: this is display arithmetic. Whether a given purchase actually earns the bonus is the
+ * server's decision alone, taken from a column the client cannot write — see grantCredits in
+ * server/src/worker.ts. If the phone decided, the phone could claim a first purchase forever.
+ */
+export const FIRST_PACK_BONUS_RATE = 0.25;
+
+/** The bonus scans on `pack`, if this is the buyer's first. Always a whole number. */
+export const bonusScans = (pack: Pack): number => Math.round(pack.scans * FIRST_PACK_BONUS_RATE);
+
+/**
  * The pack with the lowest price per scan.
  *
  * Computed rather than flagged, so the "Best value" label cannot become a lie. A hand-written flag
@@ -69,8 +89,12 @@ export function displayPrice(pack: Pack): string {
 }
 
 /** "15c each" — the number that makes a pack legible as value rather than as a toll. */
-export function displayPerScan(pack: Pack): string {
-  const each = pack.askingPrice / pack.scans;
+export function displayPerScan(pack: Pack, withBonus = false): string {
+  /* Divided by the scans they actually receive.
+     With the first-pack bonus on, the row says "13 scans" beside "€1.99", and a per-scan figure
+     worked out from ten made the three numbers fail to multiply out — the one arithmetic slip a
+     reader is guaranteed to try, on the one screen where being trusted is the whole job. */
+  const each = pack.askingPrice / (pack.scans + (withBonus ? bonusScans(pack) : 0));
   try {
     return new Intl.NumberFormat(undefined, {
       style: "currency",

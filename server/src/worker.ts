@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { PACKS, bonusScans } from "../../src/lib/packs";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { PROMPT, SCAN_MODEL, ScanResultSchema, normaliseDiscountSigns } from "../../src/lib/receipt";
 import { interpretEvent } from "./webhook";
@@ -99,10 +100,12 @@ function json(body: Json, status: number, headers: Record<string, string>): Resp
 }
 
 /** Reads the install's counter row. Returns null when this install has never scanned. */
-async function readRow(env: Env, installId: string): Promise<QuotaRow & { last_scan_at: number | null } | null> {
-  const row = await env.DB.prepare("SELECT used, credits, last_scan_at FROM installs WHERE install_id = ?")
+async function readRow(env: Env, installId: string): Promise<QuotaRow & { last_scan_at: number | null; has_purchased: number } | null> {
+  const row = await env.DB.prepare(
+    "SELECT used, credits, last_scan_at, has_purchased FROM installs WHERE install_id = ?"
+  )
     .bind(installId)
-    .first<{ used: number; credits: number; last_scan_at: number | null }>();
+    .first<{ used: number; credits: number; last_scan_at: number | null; has_purchased: number }>();
   return row ?? null;
 }
 
@@ -167,7 +170,9 @@ export default {
     if (request.method === "GET" && url.pathname === "/v1/quota") {
       const [row, subscribed] = await Promise.all([readRow(env, id), isSubscribed(env, id, now.getTime())]);
       const q = peekQuota(row, subscribed, limit);
-      return json({ ...q, limit: subscribed ? null : limit, subscribed }, 200, cors);
+      // A row that does not exist yet has never bought anything, so the offer stands.
+      const firstPack = (row?.has_purchased ?? 0) === 0;
+      return json({ ...q, limit: subscribed ? null : limit, subscribed, firstPack }, 200, cors);
     }
 
     if (request.method === "POST" && url.pathname === "/v1/scan") {
@@ -327,6 +332,7 @@ async function handleScan(
         left: decision.left,
         credits: decision.credits,
         limit: subscribed ? null : limit,
+        firstPack: (row?.has_purchased ?? 0) === 0,
       },
       200,
       cors
@@ -398,7 +404,15 @@ async function handlePurchase(request: Request, env: Env, now: Date): Promise<Re
   }
 
   if (outcome.kind === "grant") {
-    await grantCredits(env, outcome.installId, outcome.scans, now.getTime());
+    // What a first pack would earn. Whether this one IS a first pack is settled in SQL.
+    const pack = PACKS.find((p) => p.id === outcome.productId);
+    await grantCredits(
+      env,
+      outcome.installId,
+      outcome.scans,
+      pack ? bonusScans(pack) : 0,
+      now.getTime()
+    );
   } else {
     // A refund takes back what is left, never more. Somebody who bought twenty, used five and was
     // refunded keeps nothing, but they do not go into debt either — a negative balance would follow
@@ -714,13 +728,34 @@ async function reserve(
  * shared secret. There is deliberately no route by which a client can ask for credits — the number
  * always comes from our own catalogue, keyed by a product id the store confirmed was bought.
  */
-async function grantCredits(env: Env, installId: string, scans: number, nowMs: number): Promise<void> {
+async function grantCredits(
+  env: Env,
+  installId: string,
+  scans: number,
+  bonus: number,
+  nowMs: number
+): Promise<void> {
+  /* The bonus is decided inside the statement that pays it.
+     Reading has_purchased first and deciding in JavaScript would leave a window between the read
+     and the write: two purchases landing together would both read 0 and both be granted a first-
+     pack bonus. Here the CASE and the assignment are the same write, so the second one sees a 1
+     that the first one has already committed and takes the base amount.
+     A row that does not exist yet — somebody who paid before ever scanning — is a first purchase
+     by definition, so the INSERT branch pays the bonus outright. */
   await env.DB.prepare(
-    `INSERT INTO installs (install_id, month, used, credits, created_at)
-     VALUES (?1, ?2, 0, ?3, ?4)
-     ON CONFLICT(install_id) DO UPDATE SET credits = credits + ?3`
+    `INSERT INTO installs (install_id, month, used, credits, has_purchased, created_at)
+     VALUES (?1, ?2, 0, ?3 + ?5, 1, ?4)
+     ON CONFLICT(install_id) DO UPDATE SET
+       credits = credits + ?3 + (CASE WHEN installs.has_purchased = 0 THEN ?5 ELSE 0 END),
+       has_purchased = 1`
   )
-    .bind(installId, monthKey(new Date(nowMs)), Math.max(0, Math.trunc(scans)), nowMs)
+    .bind(
+      installId,
+      monthKey(new Date(nowMs)),
+      Math.max(0, Math.trunc(scans)),
+      nowMs,
+      Math.max(0, Math.trunc(bonus))
+    )
     .run();
 }
 

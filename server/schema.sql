@@ -14,12 +14,18 @@ CREATE TABLE IF NOT EXISTS installs (
   -- there is deliberately no endpoint a client can call to give itself credits.
   credits      INTEGER NOT NULL DEFAULT 0,
   last_scan_at INTEGER,                   -- ms epoch, for the burst check
+  -- Whether this install has ever completed a purchase. Drives the first-pack bonus, and is the
+  -- reason the bonus cannot be farmed: the client never writes this, and the same UPDATE that
+  -- grants the bonus sets it, so the two can never disagree. Refunds deliberately leave it at 1 —
+  -- somebody who bought and refunded has bought before.
+  has_purchased INTEGER NOT NULL DEFAULT 0,
   created_at   INTEGER NOT NULL
 );
 
 -- For a database created before credits existed, run this once (SQLite has no
 -- ADD COLUMN IF NOT EXISTS, so it errors harmlessly on a table that already has it):
 -- ALTER TABLE installs ADD COLUMN credits INTEGER NOT NULL DEFAULT 0;
+-- ALTER TABLE installs ADD COLUMN has_purchased INTEGER NOT NULL DEFAULT 0;
 
 -- The brake. One row per UTC day, counting every scan the proxy served to anybody.
 --

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PackChooser } from "./PackChooser";
-import { PACKS, bestValuePack, displayPerScan, displayPrice, featuredPack } from "../lib/packs";
+import { PACKS, bestValuePack, displayPerScan, displayPrice, featuredPack, bonusScans } from "../lib/packs";
 import * as purchase from "../lib/purchase";
 import * as scan from "../lib/scan";
 
@@ -17,8 +17,40 @@ describe("choosing a pack", () => {
     for (const pack of PACKS) {
       const row = screen.getByRole("radio", { name: new RegExp(`${pack.scans} scans`) });
       expect(row).toHaveTextContent(displayPrice(pack));
-      expect(row).toHaveTextContent(`${displayPerScan(pack)} each`);
+      // "a receipt", not "each" — the unit price is only persuasive when the unit is the thing the
+      // reader came to do, rather than an abstract count of scans.
+      expect(row).toHaveTextContent(`${displayPerScan(pack)} a receipt`);
     }
+  });
+
+  it("shows the first-pack bonus as arithmetic rather than as a claim", () => {
+    render(<PackChooser firstPack />);
+    for (const pack of PACKS) {
+      const row = screen.getByRole("radio", { name: new RegExp(`${pack.scans + bonusScans(pack)} scans`) });
+      // Both numbers, so the offer is visible as a change rather than asserted as a kindness.
+      expect(row).toHaveTextContent(String(pack.scans));
+      expect(row).toHaveTextContent(`+${bonusScans(pack)} free on your first pack`);
+    }
+  });
+
+  it("prices each scan by what you actually receive, so the row multiplies out", () => {
+    render(<PackChooser firstPack />);
+    const pack = featuredPack();
+    const row = screen.getByRole("radio", {
+      name: new RegExp(`${pack.scans + bonusScans(pack)} scans`),
+    });
+    // A reader who divides €2.99 by the 25 in front of them must land on the figure beside it.
+    expect(row).toHaveTextContent(`${displayPerScan(pack, true)} a receipt`);
+    expect(row).not.toHaveTextContent(`${displayPerScan(pack, false)} a receipt`);
+  });
+
+  it("says nothing about a bonus once somebody has bought before", () => {
+    render(<PackChooser firstPack={false} />);
+    expect(screen.queryByText(/free on your first pack/i)).toBeNull();
+    // And the button offers the plain pack, not the one the server would refuse to honour.
+    expect(
+      screen.getByRole("button", { name: new RegExp(`Get ${featuredPack().scans} scans`) })
+    ).toBeInTheDocument();
   });
 
   it("pre-selects exactly one pack — the easy yes, not the biggest", () => {
@@ -58,14 +90,14 @@ describe("choosing a pack", () => {
     );
     // The button must never offer to charge for something other than what is selected.
     expect(
-      screen.getByRole("button", { name: new RegExp(`Buy ${biggest.scans} scans.*${biggest.askingPrice}`) })
+      screen.getByRole("button", { name: new RegExp(`Get ${biggest.scans} scans.*${biggest.askingPrice}`) })
     ).toBeInTheDocument();
   });
 
   it("promises that scans do not expire, and does not assume a holiday", () => {
     render(<PackChooser />);
     // "your next receipt", not "your next trip" — plenty of these will be restaurant bills.
-    expect(screen.getByText(/never expire — they wait for your next receipt/i)).toBeInTheDocument();
+    expect(screen.getByText(/never expire. No subscription/i)).toBeInTheDocument();
   });
 });
 
@@ -77,7 +109,7 @@ describe("when buying is not possible", () => {
     render(<PackChooser />);
 
     expect(screen.getByText(displayPrice(featuredPack()))).toBeInTheDocument();
-    const buy = screen.getByRole("button", { name: /Buy \d+ scans/ });
+    const buy = screen.getByRole("button", { name: /Get \d+ scans/ });
     expect(buy).toBeDisabled();
     expect(screen.getByText(/aren't ready to buy yet/i)).toBeInTheDocument();
     // Billy is a phone app. Nothing may mention that a web build exists.
@@ -99,7 +131,7 @@ describe("when buying is possible", () => {
     const user = userEvent.setup();
     render(<PackChooser onBought={onBought} />);
 
-    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+    await user.click(screen.getByRole("button", { name: /Get \d+ scans/ }));
 
     expect(buy).toHaveBeenCalledWith(expect.objectContaining({ id: featuredPack().id }));
     expect(onBought).toHaveBeenCalledWith(20);
@@ -119,7 +151,7 @@ describe("when buying is possible", () => {
 
     const user = userEvent.setup();
     render(<PackChooser />);
-    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+    await user.click(screen.getByRole("button", { name: /Get \d+ scans/ }));
 
     // While waiting, it says the payment landed rather than leaving a silent spinner.
     expect(await screen.findByText(/payment received/i)).toBeInTheDocument();
@@ -137,7 +169,7 @@ describe("when buying is possible", () => {
     const user = userEvent.setup();
     render(<PackChooser />);
 
-    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+    await user.click(screen.getByRole("button", { name: /Get \d+ scans/ }));
 
     // Backing out of a payment is not a failure and must not be reported like one.
     expect(await screen.findByText(/nothing was charged/i)).toBeInTheDocument();
@@ -149,10 +181,10 @@ describe("when buying is possible", () => {
     const user = userEvent.setup();
     render(<PackChooser />);
 
-    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+    await user.click(screen.getByRole("button", { name: /Get \d+ scans/ }));
 
     expect(await screen.findByText(/nothing has been charged/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Buy \d+ scans/ })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: /Get \d+ scans/ })).not.toBeDisabled();
   });
 
   it("offers restore, quietly", async () => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { awaitCredits } from "../lib/awaitCredits";
 import { fetchQuota, lastKnownQuota } from "../lib/scan";
-import { PACKS, bestValuePack, displayPerScan, displayPrice, featuredPack, type Pack } from "../lib/packs";
+import { PACKS, bestValuePack, bonusScans, displayPerScan, displayPrice, featuredPack, type Pack } from "../lib/packs";
 import { buyPack, canBuy, restorePurchases, whyCannotBuy, type PurchaseOutcome } from "../lib/purchase";
 
 /**
@@ -26,8 +26,16 @@ import { buyPack, canBuy, restorePurchases, whyCannotBuy, type PurchaseOutcome }
 export function PackChooser({
   onBought,
   compact = false,
+  firstPack = false,
 }: {
   onBought?: (scansAdded: number) => void;
+  /**
+   * Whether the buyer has never bought a pack, and so earns a quarter more scans on this one.
+   *
+   * Passed in from the quota the server sent. Display only — the server grants the bonus from its
+   * own column and would ignore this if the phone lied about it.
+   */
+  firstPack?: boolean;
   /**
    * For the offer sheet, where vertical space is the constraint and attention is the point.
    *
@@ -87,6 +95,7 @@ export function PackChooser({
       <div role="radiogroup" aria-label="Scan packs">
         {PACKS.map((pack) => {
           const selected = pack.id === chosen.id;
+          const bonus = firstPack ? bonusScans(pack) : 0;
           return (
             <button
               key={pack.id}
@@ -95,35 +104,68 @@ export function PackChooser({
               aria-checked={selected}
               onClick={() => setChosen(pack)}
             >
+              {/* The tag sits on the border rather than in the row, so it reads as a label applied
+                  to the option instead of another line of text competing inside it. */}
+              {pack.featured && <span className="pack-flag">Most popular</span>}
+              {!pack.featured && pack.id === bestValue.id && (
+                <span className="pack-flag pack-flag-value">Best value</span>
+              )}
+
               <span className="row">
-                <span>
-                  <b>{pack.scans} scans</b>
-                  {pack.id === bestValue.id && <span className="pack-tag">Best value</span>}
+                <span className="pack-left">
+                  <span className="pack-scans">
+                    {/* The bonus is shown as arithmetic, not as a claim. Seeing 20 become 25 is
+                        the offer; being told it is generous is an advertisement. */}
+                    {bonus > 0 ? (
+                      <>
+                        <s className="pack-was">{pack.scans}</s> {pack.scans + bonus} scans
+                      </>
+                    ) : (
+                      <>{pack.scans} scans</>
+                    )}
+                  </span>
+                  {bonus > 0 && <span className="pack-bonus">+{bonus} free on your first pack</span>}
                   {/* .muted, not .micro: micro is uppercased, and a shouted price — "€0.15 EACH" —
                       reads like a warning rather than like value. */}
-                  <span className="muted" style={{ display: "block", marginTop: 2 }}>
-                    {displayPerScan(pack)} each
+                  <span className="muted pack-each">{displayPerScan(pack, bonus > 0)} a receipt</span>
+                </span>
+
+                <span className="pack-right">
+                  <span className="money-1">{displayPrice(pack)}</span>
+                  {/* A drawn radio. The selected state has to be legible at a glance on a screen
+                      where the whole point is knowing which one you are about to pay for. */}
+                  <span className="pack-dot" aria-hidden="true">
+                    {selected && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 12.5l5.2 5.2L20 6.8" />
+                      </svg>
+                    )}
                   </span>
                 </span>
-                <span className="money-1">{displayPrice(pack)}</span>
               </span>
             </button>
           );
         })}
       </div>
 
-      <p className="muted" style={{ margin: "var(--s3) 0" }}>
-        Scans never expire — they wait for your next receipt.
+      {/* Directly above the button, deliberately.
+          The one fear that stops somebody buying a pack of anything is that it will go off before
+          they use it, and the answer was previously only shown to people who had already bought —
+          which is to say, to everyone who had already got past the fear. */}
+      <p className="pack-promise">
+        <span aria-hidden="true">♾️</span> Scans never expire. No subscription, nothing recurring.
       </p>
 
       {buyable ? (
         <button className="btn btn-primary" disabled={busy} onClick={() => run(() => buyPack(chosen))}>
-          {busy ? "One moment…" : `Buy ${chosen.scans} scans — ${displayPrice(chosen)}`}
+          {busy
+            ? "One moment…"
+            : `Get ${chosen.scans + (firstPack ? bonusScans(chosen) : 0)} scans — ${displayPrice(chosen)}`}
         </button>
       ) : (
         <>
           <button className="btn" disabled style={{ width: "100%" }}>
-            Buy {chosen.scans} scans — {displayPrice(chosen)}
+            Get {chosen.scans + (firstPack ? bonusScans(chosen) : 0)} scans — {displayPrice(chosen)}
           </button>
           <p className="muted" style={{ margin: "var(--s2) 0 0", textAlign: "center" }}>
             {whyCannotBuy()}

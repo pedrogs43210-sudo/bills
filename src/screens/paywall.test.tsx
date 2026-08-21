@@ -108,7 +108,7 @@ describe("the paywall", () => {
     expect(screen.getByRole("button", { name: /add items by hand/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
-    expect(screen.getByText(/out of free scans/i)).toBeInTheDocument();
+    expect(screen.getByText(/keep scanning/i)).toBeInTheDocument();
   });
 
   it("says what is paid for without explaining the bill, and promises no reset it cannot deliver", async () => {
@@ -116,7 +116,7 @@ describe("the paywall", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: /scan receipt/i })).toBeNull());
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
 
-    expect(screen.getByText(/scans are the only paid part/i)).toBeInTheDocument();
+    expect(screen.getByText(/becomes a finished split/i)).toBeInTheDocument();
     // Somebody standing at a till being asked to pay is not the audience for Billy's cost base.
     // Volunteering it reads as an apology for the price, so the numbers behind it stay out.
     expect(screen.queryByText(/few cents|costs us|AI service/i)).toBeNull();
@@ -126,7 +126,7 @@ describe("the paywall", () => {
     // The prices are shown — they are useful wherever you read them — but the button cannot be
     // tapped into a payment sheet that does not exist here, and it says so rather than failing.
     expect(screen.getByRole("radio", { name: /20 scans/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Buy \d+ scans/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Get \d+ scans/ })).toBeDisabled();
     expect(screen.getByText(/aren't ready to buy yet/i)).toBeInTheDocument();
   });
 
@@ -137,10 +137,10 @@ describe("the paywall", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: /scan receipt/i })).toBeNull());
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
 
-    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+    await user.click(screen.getByRole("button", { name: /Get \d+ scans/ }));
 
     expect(await screen.findByRole("heading", { name: /you're all set/i })).toBeInTheDocument();
-    expect(screen.queryByText(/out of free scans/i)).toBeNull();
+    expect(screen.queryByText(/keep scanning/i)).toBeNull();
     // And it sends them back to what they were trying to do in the first place.
     expect(screen.getByRole("button", { name: /back to scanning/i })).toBeInTheDocument();
   });
@@ -152,7 +152,7 @@ describe("the paywall", () => {
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
     const before = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length;
 
-    await user.click(screen.getByRole("button", { name: /Buy \d+ scans/ }));
+    await user.click(screen.getByRole("button", { name: /Get \d+ scans/ }));
 
     await waitFor(() =>
       expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(before)
@@ -164,18 +164,30 @@ describe("the paywall", () => {
     await waitFor(() => expect(screen.queryByRole("button", { name: /scan receipt/i })).toBeNull());
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
 
-    expect(screen.getByText(/free and always will be/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: /add a receipt by hand/i }));
+    expect(screen.getByText(/free, and always will be/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /add this receipt by hand/i }));
     // back on the trip, where adding by hand actually lives
     expect(screen.getByRole("button", { name: /add items by hand/i })).toBeInTheDocument();
   });
 
-  it("shows how much was used, so the number is never a mystery", async () => {
+  it("counts what is left, the same way every other screen does", async () => {
     const user = await renderApp({ used: 3, left: 0, limit: 3 });
     await waitFor(() => expect(screen.queryByRole("button", { name: /scan receipt/i })).toBeNull());
     await user.click(screen.getByRole("button", { name: /get more scans/i }));
-    expect(screen.getByText("3")).toBeInTheDocument();
-    expect(screen.getByText(/of 3 free scans used/i)).toBeInTheDocument();
+    // Never "3 of 3 used" — the Profile tab, the badge and the chip on the scan button all count
+    // downwards, and one screen counting upwards made people check whether the two agreed.
+    expect(screen.queryByText(/used/i)).toBeNull();
+    // And at zero the number is not shown at all: a hero 0 is the worst anchor on a screen whose
+    // job is to make buying feel easy, and the heading has already said it.
+    expect(screen.queryByText("0")).toBeNull();
+  });
+
+  it("does not price the button that opens the paywall", async () => {
+    await renderApp({ used: 3, left: 0, limit: 3 });
+    await waitFor(() => expect(screen.queryByRole("button", { name: /scan receipt/i })).toBeNull());
+    // The price belongs next to what it buys, which is one tap away. On the button it was a second
+    // thing to read on a control whose only job is to be pressed.
+    expect(screen.queryByText(/from €1.99/i)).toBeNull();
   });
 });
 

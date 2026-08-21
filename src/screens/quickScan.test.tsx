@@ -140,12 +140,12 @@ describe("a quick scan that does not work", () => {
     scanReceipt.mockRejectedValue(new ScanError("out-of-scans", "none left"));
     await scan(user);
 
-    expect(await screen.findByRole("heading", { name: /out of free scans/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /keep scanning/i })).toBeInTheDocument();
     expect(storedTrips()).toHaveLength(0);
     // There is no split to go back to, so no button may claim there is.
     expect(screen.queryByRole("button", { name: /back to split|back to trip|back to scanning/i })).toBeNull();
     // The way out still works, and lands on the list rather than on a split that never existed.
-    await user.click(screen.getByRole("button", { name: /add a receipt by hand/i }));
+    await user.click(screen.getByRole("button", { name: /add this receipt by hand/i }));
     expect(await screen.findByRole("tablist")).toBeInTheDocument();
     expect(storedTrips()).toHaveLength(0);
   });
