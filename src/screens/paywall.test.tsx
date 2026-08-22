@@ -227,7 +227,7 @@ describe("scanning with a proxy and no API key of your own", () => {
           : { result: scanned, used: 1, left: 4, limit: 5 }
       ), { status: 200 }))
     ));
-    vi.doMock("../lib/image", () => ({ downscaleToBase64Jpeg: vi.fn().mockResolvedValue("b64") }));
+    vi.doMock("../lib/image", () => ({ downscaleToBase64Jpeg: vi.fn().mockResolvedValue({ base64: "b64", quality: null }) }));
 
     const { saveData } = await import("../lib/storage");
     localStorage.clear();

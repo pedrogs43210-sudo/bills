@@ -26,6 +26,16 @@ function adviceFor(reason: ScanFailure | null, fallback: string): Advice {
         body: "Usually the signal. The photo is still here, so trying again costs nothing — and everything except scanning works offline anyway.",
         primary: "retry",
       };
+    case "bad-photo":
+      /* Judged on the phone, before anything was uploaded. The wording is careful: it says what the
+         picture looked like, never that the receipt was unreadable, because that is a claim about
+         the paper the app has not earned. The measurement can be wrong, and the way out is one tap
+         below. */
+      return {
+        head: "That one might not read well.",
+        body: fallback,
+        primary: "retry",
+      };
     case "illegible":
       /* The model looked at it and said it could not read the prices — so the fix really is
          another photograph, and this is the one failure where retrying is the right first button
@@ -83,7 +93,9 @@ export function ScanFailedScreen({
   reason,
   message,
   canRetry,
+  quality,
   onRetry,
+  onUseAnyway,
   onAddByHand,
   onSettings,
   onBack,
@@ -91,7 +103,11 @@ export function ScanFailedScreen({
   reason: ScanFailure | null;
   message: string;
   canRetry: boolean;
+  /** The measurements behind a "bad-photo" verdict, shown so a bad call can be reported. */
+  quality?: { sharpness: number; paper: number; contrast: number };
   onRetry: () => void;
+  /** Scan the photo anyway, overruling the quality check. Only offered for "bad-photo". */
+  onUseAnyway?: () => void;
   onAddByHand: () => void;
   onSettings: () => void;
   onBack: () => void;
@@ -103,7 +119,9 @@ export function ScanFailedScreen({
     <div>
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={onBack}>←</button>
-        <h1 className="screen-title">That didn't work</h1>
+        {/* A photo we stopped is not a failure — nothing was tried and nothing was spent. Calling
+            it one made the app sound broken at the moment it was being careful. */}
+        <h1 className="screen-title">{reason === "bad-photo" ? "Before we scan that" : "That didn't work"}</h1>
       </div>
 
       <div className="note" role="status">
@@ -113,6 +131,30 @@ export function ScanFailedScreen({
           {advice.body}
         </div>
       </div>
+
+      {/* Overruling the check, in the same breath as the check itself.
+          These thresholds are starting values rather than measurements, so some readable receipts
+          will be stopped — and an app that will not scan a receipt you can plainly read is worse
+          than one that wastes a scan. The numbers are printed because they are how a wrong call
+          gets reported as figures rather than as "it keeps refusing my photos". */}
+      {reason === "bad-photo" && onUseAnyway && (
+        <div className="card">
+          <h3>Looks fine to you?</h3>
+          <p className="label" style={{ marginTop: 0 }}>
+            This is a guess from the pixels, not a verdict on the receipt. If you can read the
+            prices on it, Billy probably can too — nothing has been used up either way.
+          </p>
+          <button className="btn" style={{ width: "100%" }} onClick={onUseAnyway}>
+            Scan it anyway
+          </button>
+          {quality && (
+            <p className="micro" style={{ margin: "var(--s2) 0 0", textAlign: "center" }}>
+              sharpness {Math.round(quality.sharpness)} · light {Math.round(quality.paper)} ·
+              contrast {Math.round(quality.contrast)}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* The way that always works, stated as an offer rather than a consolation. */}
       <div className="card">

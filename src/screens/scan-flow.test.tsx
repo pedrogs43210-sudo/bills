@@ -7,7 +7,7 @@ import { ScanError } from "../lib/scan";
 import type { Trip } from "../types";
 
 vi.mock("../lib/image", () => ({
-  downscaleToBase64Jpeg: vi.fn().mockResolvedValue("fakebase64"),
+  downscaleToBase64Jpeg: vi.fn().mockResolvedValue({ base64: "fakebase64", quality: null }),
 }));
 vi.mock("../lib/scan", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/scan")>();
@@ -163,5 +163,80 @@ describe("scan flow", () => {
     await user.click(screen.getByText(/algarve/i));
     await scanPhoto(user, photo);
     expect(await screen.findByLabelText(/anthropic api key/i)).toBeInTheDocument();
+  });
+});
+
+describe("a photo the phone can tell is bad", () => {
+  const blurry = { sharpness: 12, paper: 200, contrast: 90, problems: ["blurry" as const] };
+
+  async function scanWith(quality: unknown) {
+    const { downscaleToBase64Jpeg } = await import("../lib/image");
+    vi.mocked(downscaleToBase64Jpeg).mockResolvedValue({ base64: "fakebase64", quality } as never);
+    saveApiKey("sk-ant-test");
+    saveData({ schemaVersion: 2, trips: [seedTrip()] });
+    render(<App />);
+    leaveScanScreen();
+    const user = userEvent.setup();
+    await user.click(screen.getByText(/algarve/i));
+    await scanPhoto(user, new File(["x"], "r.jpg", { type: "image/jpeg" }));
+    return user;
+  }
+
+  it("is stopped before the API is called at all", async () => {
+    await scanWith(blurry);
+    // The point of the whole exercise. Nothing was uploaded, so nothing was spent, and the model
+    // never got the chance to read a photo it cannot see and invent numbers from it.
+    expect(scanReceipt).not.toHaveBeenCalled();
+    expect(await screen.findByText(/before we scan that/i)).toBeInTheDocument();
+  });
+
+  it("says what the picture looked like, never that the receipt is unreadable", async () => {
+    await scanWith(blurry);
+    expect(screen.getByText(/came out blurred/i)).toBeInTheDocument();
+    expect(screen.queryByText(/unreadable|illegible/i)).toBeNull();
+  });
+
+  it("shows its working, so a wrong call can be reported as numbers", async () => {
+    await scanWith(blurry);
+    expect(screen.getByText(/sharpness 12/i)).toBeInTheDocument();
+  });
+
+  it("can be overruled, and then really does scan", async () => {
+    // These thresholds are guesses until real photos calibrate them, so refusing outright would
+    // make Billy unusable for whoever they misjudge.
+    vi.mocked(scanReceipt).mockResolvedValue({
+      readQuality: "good", readProblem: null,
+      storeName: "Conad", date: "2026-08-20", currency: "EUR",
+      preDiscountTotal: null, paidTotal: 249,
+      items: [{ name: "Pane", quantity: 1, lineTotal: 249, kind: "item" as const }],
+    });
+    const user = await scanWith(blurry);
+    await user.click(screen.getByRole("button", { name: /scan it anyway/i }));
+    expect(await screen.findByDisplayValue("Pane")).toBeInTheDocument();
+    expect(scanReceipt).toHaveBeenCalled();
+  });
+
+  it("scans normally when the pixels could not be measured", async () => {
+    // A check that fails is never a reason to refuse. An old browser, a tainted canvas, anything —
+    // the photo goes through, exactly as it did before this existed.
+    vi.mocked(scanReceipt).mockResolvedValue({
+      readQuality: "good", readProblem: null,
+      storeName: "Conad", date: "2026-08-20", currency: "EUR",
+      preDiscountTotal: null, paidTotal: 249,
+      items: [{ name: "Pane", quantity: 1, lineTotal: 249, kind: "item" as const }],
+    });
+    await scanWith(null);
+    expect(await screen.findByDisplayValue("Pane")).toBeInTheDocument();
+  });
+
+  it("scans a clean photo without comment", async () => {
+    vi.mocked(scanReceipt).mockResolvedValue({
+      readQuality: "good", readProblem: null,
+      storeName: "Conad", date: "2026-08-20", currency: "EUR",
+      preDiscountTotal: null, paidTotal: 249,
+      items: [{ name: "Pane", quantity: 1, lineTotal: 249, kind: "item" as const }],
+    });
+    await scanWith({ sharpness: 400, paper: 230, contrast: 180, problems: [] });
+    expect(await screen.findByDisplayValue("Pane")).toBeInTheDocument();
   });
 });

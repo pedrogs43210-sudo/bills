@@ -12,6 +12,7 @@ import { PhotoPicker } from "../components/PhotoPicker";
 import { ScanProgressScreen, SCAN_DONE_MS } from "./ScanProgressScreen";
 import { loadApiKey } from "../lib/storage";
 import { downscaleToBase64Jpeg } from "../lib/image";
+import { describeProblems } from "../lib/photoQuality";
 import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanFailure, type ScanQuota } from "../lib/scan";
 import { ScanFailedScreen } from "./ScanFailedScreen";
 import { countsDiscountLines, discountConvention } from "../lib/discounts";
@@ -29,6 +30,9 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
   const [editName, setEditName] = useState("");
   const [scanState, setScanState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
+  const [scanQuality, setScanQuality] = useState<
+    { sharpness: number; paper: number; contrast: number } | undefined
+  >(undefined);
   const [scanFailure, setScanFailure] = useState<ScanFailure | null>(null);
   const [groupForm, setGroupForm] = useState<{ id: string | null; name: string; personIds: string[] } | null>(null);
   const [quota, setQuota] = useState<ScanQuota | null>(lastKnownQuota());
@@ -79,11 +83,21 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         reason={scanFailure}
         message={scanMessage}
         canRetry={lastPhoto.current !== null}
+        quality={scanQuality}
         onRetry={() => {
           const photo = lastPhoto.current;
           setScanState("idle");
           if (photo) void handlePhoto(photo);
         }}
+        onUseAnyway={
+          lastPhoto.current
+            ? () => {
+                const photo = lastPhoto.current;
+                setScanState("idle");
+                if (photo) void handlePhoto(photo, true);
+              }
+            : undefined
+        }
         onAddByHand={() => {
           setScanState("idle");
           addManualReceipt();
@@ -111,7 +125,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     );
   }
 
-  async function handlePhoto(file: File) {
+  async function handlePhoto(file: File, force = false) {
     lastPhoto.current = file;
     const apiKey = loadApiKey();
     // Only the user's-own-key path needs a key. With a proxy configured, sending someone to
@@ -123,13 +137,21 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     abandoned.current = false;
     setScanState("busy");
     try {
-      const base64 = await downscaleToBase64Jpeg(file).catch(() => {
+      const photo = await downscaleToBase64Jpeg(file).catch(() => {
         throw new ScanError(
           "unparseable",
           "Couldn't read that photo format — try a JPEG (on iPhone: Settings → Camera → Formats → 'Most Compatible'), or pick a different photo."
         );
       });
-      const result = await scanReceipt(apiKey, base64);
+      /* Stop here, before the upload, when the pixels say this cannot be read.
+         This is the only defence that costs nothing and the only one that has worked: the schema
+         cannot see blur, and the model will confidently read a photo it cannot actually see. The
+         person can still overrule it — see `force` — because a wrong "too blurry" on a readable
+         receipt is worse than a scan spent on a marginal one. */
+      if (!force && photo.quality && photo.quality.problems.length > 0) {
+        throw new ScanError("bad-photo", describeProblems(photo.quality.problems), photo.quality);
+      }
+      const result = await scanReceipt(apiKey, photo.base64);
       // Work out from the receipt's own arithmetic whether its discounts are separate lines
       // or already inside the item prices. Only in the latter case must they be left out of
       // the maths, or the same discount is subtracted twice.
@@ -196,6 +218,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
       }
       setScanState("error");
       setScanFailure(err instanceof ScanError ? err.reason : null);
+      setScanQuality(err instanceof ScanError ? err.quality : undefined);
       setScanMessage(
         err instanceof ScanError ? err.message : "Something went wrong reading the photo."
       );

@@ -24,7 +24,7 @@ const scanReceipt = vi.fn();
  */
 async function renderApp() {
   vi.resetModules();
-  vi.doMock("../lib/image", () => ({ downscaleToBase64Jpeg: async () => "base64" }));
+  vi.doMock("../lib/image", () => ({ downscaleToBase64Jpeg: async () => ({ base64: "base64", quality: null }) }));
   vi.doMock("../lib/scan", async () => {
     const actual = await vi.importActual<typeof import("../lib/scan")>("../lib/scan");
     return { ...actual, scanReceipt, usingProxy: () => true, fetchQuota: async () => null };

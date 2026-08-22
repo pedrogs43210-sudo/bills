@@ -33,6 +33,7 @@ import {
 import { countsDiscountLines, discountConvention } from "./lib/discounts";
 import { scanNotes } from "./lib/receipt";
 import { downscaleToBase64Jpeg } from "./lib/image";
+import { describeProblems } from "./lib/photoQuality";
 import { recentPeopleNames, splitNameFor } from "./lib/quickScan";
 import { loadApiKey } from "./lib/storage";
 import { defaultCurrency } from "./lib/currencies";
@@ -118,6 +119,10 @@ function Router() {
   );
   const [scanFailure, setScanFailure] = useState<ScanFailure | null>(null);
   const [scanMessage, setScanMessage] = useState("");
+  /** The measurements behind a stopped photo, so the screen can show its working. */
+  const [scanQuality, setScanQuality] = useState<
+    { sharpness: number; paper: number; contrast: number } | undefined
+  >(undefined);
 
   /**
    * How many scans are left, asked for once on launch.
@@ -246,7 +251,7 @@ function Router() {
     setView({ screen: "whosin", tripId });
   }
 
-  async function quickScan(file: File) {
+  async function quickScan(file: File, force = false) {
     lastPhoto.current = file;
     const apiKey = loadApiKey();
     // Only the user's-own-key path needs a key. With a proxy configured, sending someone to
@@ -259,13 +264,21 @@ function Router() {
     abandoned.current = false;
     setScanState("busy");
     try {
-      const base64 = await downscaleToBase64Jpeg(file).catch(() => {
+      const photo = await downscaleToBase64Jpeg(file).catch(() => {
         throw new ScanError(
           "unparseable",
           "Couldn't read that photo format — try a JPEG (on iPhone: Settings → Camera → Formats → 'Most Compatible'), or pick a different photo."
         );
       });
-      const result = await scanReceipt(apiKey, base64);
+      /* Stop here, before the upload, when the pixels say this cannot be read.
+         This is the only defence that costs nothing and the only one that has worked: the schema
+         cannot see blur, and the model will confidently read a photo it cannot actually see. The
+         person can still overrule it — see `force` — because a wrong "too blurry" on a readable
+         receipt is worse than a scan spent on a marginal one. */
+      if (!force && photo.quality && photo.quality.problems.length > 0) {
+        throw new ScanError("bad-photo", describeProblems(photo.quality.problems), photo.quality);
+      }
+      const result = await scanReceipt(apiKey, photo.base64);
 
       // ——— Everything above can fail, and until all of it has succeeded nothing exists. ———
 
@@ -338,6 +351,7 @@ function Router() {
       }
       setScanState("error");
       setScanFailure(err instanceof ScanError ? err.reason : null);
+      setScanQuality(err instanceof ScanError ? err.quality : undefined);
       setScanMessage(
         err instanceof ScanError ? err.message : "Something went wrong reading the photo."
       );
@@ -449,11 +463,22 @@ function Router() {
           reason={scanFailure}
           message={scanMessage}
           canRetry={lastPhoto.current !== null}
+          quality={scanQuality}
           onRetry={() => {
             const photo = lastPhoto.current;
             setScanState("idle");
             if (photo) void quickScan(photo);
           }}
+          onUseAnyway={
+            lastPhoto.current
+              ? () => {
+                  const photo = lastPhoto.current;
+                  setScanState("idle");
+                  // force: the same photo, past the check that stopped it.
+                  if (photo) void quickScan(photo, true);
+                }
+              : undefined
+          }
           onAddByHand={startByHandSplit}
           onSettings={() => {
             setScanState("idle");

@@ -7,7 +7,7 @@ import { setOnboarded } from "../lib/onboarding";
 import type { Trip } from "../types";
 
 vi.mock("../lib/image", () => ({
-  downscaleToBase64Jpeg: vi.fn().mockResolvedValue("b64"),
+  downscaleToBase64Jpeg: vi.fn().mockResolvedValue({ base64: "b64", quality: null }),
 }));
 vi.mock("../lib/scan", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../lib/scan")>();

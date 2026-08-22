@@ -17,6 +17,9 @@ export type ScanFailure =
    *  Distinct from "unparseable", which is the model's output being wrong rather than the photo —
    *  they need different advice, and only one of them is fixed by taking another picture. */
   | "illegible"
+  /** Stopped on the phone before anything was uploaded: the pixels say it cannot be read.
+   *  Nothing was spent, and the person can overrule it — see ScanFailedScreen. */
+  | "bad-photo"
   | "network"
   | "out-of-scans"
   /** The proxy hit its own ceiling for the day. Nothing the person did, and nothing they can buy
@@ -60,7 +63,12 @@ let lastQuota: ScanQuota | null = null;
 export const lastKnownQuota = (): ScanQuota | null => lastQuota;
 
 export class ScanError extends Error {
-  constructor(public reason: ScanFailure, message: string) {
+  constructor(
+    public reason: ScanFailure,
+    message: string,
+    /** The measurements behind a "bad-photo", so the screen can show its working. */
+    public quality?: { sharpness: number; paper: number; contrast: number }
+  ) {
     super(message);
     this.name = "ScanError";
   }
