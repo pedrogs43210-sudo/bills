@@ -70,6 +70,27 @@ export type Receipt = {
    * hand-typed receipt and on everything scanned before this existed.
    */
   discountConvention?: DiscountConvention;
+  /**
+   * The model's own verdict on how much of the photo it could read.
+   *
+   * Only ever "partial" here: "unreadable" never becomes a receipt — it is refunded and sent back
+   * for another photograph — and "good" is the silent default. Kept so the review screen can say
+   * "some of this was guessed" on exactly the receipts where that is true, rather than nagging
+   * about accuracy on every scan until nobody reads the warning at all.
+   */
+  readQuality?: "partial";
+  /** What the model said was hard to read, in its own words. Shown with the warning above. */
+  readProblem?: string;
+  /**
+   * The currency printed on the paper, when it disagrees with the split's own.
+   *
+   * Recorded rather than applied. The app deliberately does not switch a split's currency on the
+   * strength of a photograph — see the note in TripScreen, written after a misread "USD" turned a
+   * Portuguese holiday into dollars — but throwing the observation away entirely meant somebody
+   * genuinely abroad had no hint that their euros were pounds. So it is offered, and a person
+   * decides.
+   */
+  scannedCurrency?: string;
 };
 
 export type Trip = {

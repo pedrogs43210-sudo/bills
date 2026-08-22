@@ -38,7 +38,7 @@ const photo = new File(["x"], "receipt.jpg", { type: "image/jpeg" });
 
 describe("discount conventions from a scan", () => {
   const scanned = (items: { name: string; lineTotal: number; kind: "item" | "discount" }[], paidTotal: number) => ({
-    storeName: "Loja", date: "2026-08-08", currency: "EUR", preDiscountTotal: null, paidTotal,
+    readQuality: "good" as const, readProblem: null, storeName: "Loja", date: "2026-08-08", currency: "EUR", preDiscountTotal: null, paidTotal,
     items: items.map((i) => ({ quantity: 1, ...i })),
   });
   const storedItems = () => JSON.parse(localStorage.getItem("bills.data.v1")!).trips[0].receipts[0].items;
@@ -101,7 +101,7 @@ describe("discount conventions from a scan", () => {
 describe("scan flow", () => {
   it("scans a photo into a review-ready receipt", async () => {
     vi.mocked(scanReceipt).mockResolvedValue({
-      storeName: "Lidl", date: "2026-07-08", currency: "EUR",
+      readQuality: "good" as const, readProblem: null, storeName: "Lidl", date: "2026-07-08", currency: "EUR",
       items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450, kind: "item" }],
       paidTotal: 450, preDiscountTotal: null,
     });
@@ -125,7 +125,7 @@ describe("scan flow", () => {
     expect(await screen.findByText(/had a problem/i)).toBeInTheDocument();
     // retry uses the kept photo
     vi.mocked(scanReceipt).mockResolvedValue({
-      storeName: "Lidl", date: null, currency: "EUR",
+      readQuality: "good" as const, readProblem: null, storeName: "Lidl", date: null, currency: "EUR",
       items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }],
       paidTotal: 119, preDiscountTotal: null,
     });
@@ -146,7 +146,7 @@ describe("scan flow", () => {
     await user.click(screen.getByRole("button", { name: /cancel and add by hand/i }));
     await user.click(screen.getByRole("button", { name: /back/i }));
     resolveScan({
-      storeName: "Lidl", date: null, currency: "EUR",
+      readQuality: "good" as const, readProblem: null, storeName: "Lidl", date: null, currency: "EUR",
       items: [{ name: "Pão", quantity: 1, lineTotal: 119, kind: "item" }], paidTotal: 119, preDiscountTotal: null,
     });
     expect(await screen.findByRole("heading", { name: "Billy" })).toBeInTheDocument(); // still on the trip list

@@ -26,6 +26,18 @@ function adviceFor(reason: ScanFailure | null, fallback: string): Advice {
         body: "Usually the signal. The photo is still here, so trying again costs nothing — and everything except scanning works offline anyway.",
         primary: "retry",
       };
+    case "illegible":
+      /* The model looked at it and said it could not read the prices — so the fix really is
+         another photograph, and this is the one failure where retrying is the right first button
+         rather than the polite one. The specific problem it named is carried in `message` and
+         printed below, because "the bottom of the receipt is cut off" is worth more than any
+         sentence written here in advance. No scan was used, and saying so is what stops somebody
+         being afraid to try again. */
+      return {
+        head: "Let's try that photo again.",
+        body: "No scan was used. Lay the receipt flat, get the whole of it in frame, and give it as much light as you can — that fixes almost every one of these.",
+        primary: "retry",
+      };
     case "refused":
     case "unparseable":
       return {

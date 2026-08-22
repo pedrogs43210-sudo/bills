@@ -13,6 +13,10 @@ export type ScanFailure =
   | "bad-key"
   | "refused"
   | "unparseable"
+  /** The model looked and could not read it: blurred, too dark, cut off, or not a receipt.
+   *  Distinct from "unparseable", which is the model's output being wrong rather than the photo —
+   *  they need different advice, and only one of them is fixed by taking another picture. */
+  | "illegible"
   | "network"
   | "out-of-scans"
   /** The proxy hit its own ceiling for the day. Nothing the person did, and nothing they can buy
@@ -101,6 +105,12 @@ export async function scanReceipt(apiKey: string, imageBase64: string): Promise<
   }
   if (response.stop_reason === "refusal") throw new ScanError("refused", "The scan was refused — try a clearer photo");
   if (!response.parsed_output) throw new ScanError("unparseable", "Could not read the receipt — try again or enter items by hand");
+  // Same judgement as the proxy makes, for somebody scanning with their own key. There is nothing
+  // to refund on this path — they are billed by Anthropic directly — but handing back invented
+  // numbers would be exactly as wrong.
+  if (response.parsed_output.readQuality === "unreadable") {
+    throw new ScanError("illegible", response.parsed_output.readProblem ?? "That photo couldn't be read.");
+  }
   return normaliseDiscountSigns(response.parsed_output);
 }
 
@@ -111,6 +121,10 @@ const PROXY_ERRORS: Record<string, { reason: ScanFailure; message: string }> = {
   "closed-today": { reason: "busy", message: "Billy is having a busy day — scanning is back tomorrow." },
   refused: { reason: "refused", message: "The scan was refused — try a clearer photo" },
   unparseable: { reason: "unparseable", message: "Could not read the receipt — try again or enter items by hand" },
+  /* The one failure where the fix is genuinely in the person's hands, so it says what to do rather
+     than what went wrong. The specific problem the model named is added to this by the caller —
+     "the bottom of the receipt is cut off" beats any sentence written in advance. */
+  illegible: { reason: "illegible", message: "That photo couldn't be read — no scan was used." },
   "image-too-large": { reason: "unparseable", message: "That photo was too big to read — try again." },
   forbidden: { reason: "bad-key", message: "This copy of the app couldn't be verified." },
   "too-fast": { reason: "too-fast", message: "That was quick — give it a couple of seconds." },
@@ -135,10 +149,13 @@ async function scanViaProxy(imageBase64: string): Promise<ScanResult> {
   let body: {
     result?: unknown;
     error?: string;
+    /** What the model said was wrong with the photo, when it could not read it. */
+    problem?: string | null;
     used?: number;
     left?: number | null;
     limit?: number | null;
     credits?: number;
+    firstPack?: boolean;
   };
   try {
     body = await response.json();
@@ -154,12 +171,18 @@ async function scanViaProxy(imageBase64: string): Promise<ScanResult> {
       left: body.left ?? null,
       limit: body.limit ?? null,
       credits: body.credits ?? 0,
+      firstPack: body.firstPack,
     };
   }
 
   if (!response.ok) {
     const known = body.error ? PROXY_ERRORS[body.error] : undefined;
-    if (known) throw new ScanError(known.reason, known.message);
+    if (known) {
+      // The model's own words when it has them: "the bottom of the receipt is cut off" tells
+      // somebody what to do differently, and no sentence written here in advance can.
+      const detail = body.error === "illegible" && body.problem ? ` ${body.problem}.` : "";
+      throw new ScanError(known.reason, `${known.message}${detail}`);
+    }
     throw new ScanError("network", "The scanning service had a problem — try again");
   }
 

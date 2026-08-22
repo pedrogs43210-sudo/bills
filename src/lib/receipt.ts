@@ -35,6 +35,21 @@ export const SCAN_MODEL = "claude-sonnet-5";
 export const SCAN_IMAGE_MAX_EDGE = 2576;
 
 export const ScanResultSchema = z.object({
+  /**
+   * How much of the receipt could actually be read.
+   *
+   * Asked for because nothing else can tell us. A blurry or half-cropped photo does not make the
+   * model refuse and does not produce output that fails the schema — it produces confident, valid,
+   * wrong numbers, which is the single most damaging thing this app can return. Both automatic
+   * refund paths miss it, so the person paid a scan for a receipt they now have to check line by
+   * line, and may not.
+   *
+   * "unreadable" is a refund and a retake. "partial" is charged — there is a usable result — but
+   * the review screen says so loudly rather than presenting a guess as a reading.
+   */
+  readQuality: z.enum(["good", "partial", "unreadable"]),
+  /** One short phrase for the person, present only when readQuality is not "good". */
+  readProblem: z.string().nullable(),
   storeName: z.string(),
   date: z.string().nullable(),
   /** ISO 4217 as printed, or null when the receipt shows no currency at all. */
@@ -97,6 +112,22 @@ BAR / RUCKGELD / MWST (German), 合計 / 小計 / お預り / お釣り (Japanes
 whether a line is an item or a total, leave it out — a missing item is easy for the person to add,
 a duplicated total silently multiplies what everybody owes.
 
+Before anything else, judge whether the photograph can actually be read, and report it in
+"readQuality":
+- "good": the lines and prices are legible. Report this when the receipt is readable even if it is
+  creased, faded, at an angle or photographed in poor light — those are normal and you can cope.
+- "partial": you can read most of it, but some lines or figures are genuinely illegible, or part of
+  the receipt is cut off by the edge of the frame. Return everything you CAN read.
+- "unreadable": you cannot reliably read the prices — too blurred, too dark, too small in frame,
+  badly out of focus, or the photograph is not a receipt at all.
+Set "readProblem" to one short phrase naming what is wrong, in English, addressed to the person
+holding the phone: "the photo is blurred", "the bottom of the receipt is cut off", "it is too dark
+to read the prices", "that does not look like a receipt". Null when "readQuality" is "good".
+
+Judge this honestly and independently of how much you managed to extract. Guessing at a price you
+cannot see is far worse than saying you cannot see it: a wrong number here is split between friends
+and argued about later, and nobody checks a total that looks plausible.
+
 For each shopping line, in the order they appear:
 - "name": the printed name, kept in its ORIGINAL language and script. Do not translate it: the
   person reading it knows what they bought and needs to recognise it on the paper. Lightly clean
@@ -155,4 +186,29 @@ export function scanTotals(result: ScanResult): ReceiptTotals {
     else itemsTotal += line.lineTotal;
   }
   return { itemsTotal, discountsTotal, paidTotal: result.paidTotal };
+}
+
+/**
+ * What a scan noticed that the receipt should remember: how well it read, and a currency that
+ * disagrees with the split's.
+ *
+ * A function rather than two inline spreads at each call site. There are two of those — the quick
+ * scan in the router and the scan on a split's own screen — and a field added to one and forgotten
+ * in the other is a warning that appears on some receipts and not others for no reason anybody
+ * could work out.
+ */
+export function scanNotes(
+  result: ScanResult,
+  tripCurrency: string
+): { readQuality?: "partial"; readProblem?: string; scannedCurrency?: string } {
+  const printed = (result.currency ?? "").trim().toUpperCase();
+  return {
+    ...(result.readQuality === "partial" ? { readQuality: "partial" as const } : {}),
+    ...(result.readQuality === "partial" && result.readProblem
+      ? { readProblem: result.readProblem }
+      : {}),
+    // Only when it actually disagrees. Recording a match would put a "currency?" question on every
+    // receipt scanned at home, which is how a useful prompt becomes wallpaper.
+    ...(printed && printed !== tripCurrency.toUpperCase() ? { scannedCurrency: printed } : {}),
+  };
 }

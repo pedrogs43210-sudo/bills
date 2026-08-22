@@ -41,7 +41,7 @@ async function renderApp() {
 const photo = () => new File(["x"], "receipt.jpg", { type: "image/jpeg" });
 
 const goodScan = {
-  storeName: "Tasca do Bairro",
+  readQuality: "good" as const, readProblem: null, storeName: "Tasca do Bairro",
   date: "2026-08-14",
   currency: "EUR",
   preDiscountTotal: null,

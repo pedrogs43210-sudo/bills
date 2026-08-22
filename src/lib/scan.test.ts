@@ -28,7 +28,7 @@ import { scanReceipt, scanTotals, verifyApiKey, ScanError } from "./scan";
 import { discountConvention } from "./discounts";
 
 const goodOutput = {
-  storeName: "Lidl",
+  readQuality: "good" as const, readProblem: null, storeName: "Lidl",
   date: "2026-07-08",
   currency: "EUR",
   items: [{ name: "Sumo laranja", quantity: 3, lineTotal: 450, kind: "item" }],

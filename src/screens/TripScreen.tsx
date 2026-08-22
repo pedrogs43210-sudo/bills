@@ -5,7 +5,7 @@ import { newId } from "../lib/ids";
 import { formatCents } from "../lib/money";
 import { countedItems, isFullyAssigned, isItemAssigned } from "../lib/split";
 import { isReservedGroupName } from "../lib/groups";
-import { currencyOptions, currencySymbol } from "../lib/currencies";
+import { currencyOptions, currencySymbol, defaultCurrency } from "../lib/currencies";
 import { Disc, personVars } from "../components/chips";
 import { Footerbar } from "../components/Footerbar";
 import { PhotoPicker } from "../components/PhotoPicker";
@@ -15,6 +15,7 @@ import { downscaleToBase64Jpeg } from "../lib/image";
 import { fetchQuota, lastKnownQuota, scanReceipt, scanTotals, ScanError, usingProxy, type ScanFailure, type ScanQuota } from "../lib/scan";
 import { ScanFailedScreen } from "./ScanFailedScreen";
 import { countsDiscountLines, discountConvention } from "../lib/discounts";
+import { scanNotes } from "../lib/receipt";
 import { offerAfter, shouldOffer } from "../lib/promo";
 import type { View } from "../App";
 import type { Person, Receipt } from "../types";
@@ -151,11 +152,16 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
         printedTotal: Math.round(result.paidTotal),
         status: "review",
         discountConvention: convention,
+        ...scanNotes(result, trip?.currency ?? defaultCurrency()),
       };
-      // The scanner's currency guess is deliberately ignored. Trips are created in EUR, a
-      // misread "USD" turned a Portuguese holiday's money into dollars, and a wrong currency is
-      // both alarming and invisible — the digits still look right. If the trip is ever not in
-      // euros that is the user's call to make, not a guess from a photograph.
+      // The scanner's currency guess is still never APPLIED. A misread "USD" turned a Portuguese
+      // holiday's money into dollars, and a wrong currency is both alarming and invisible — the
+      // digits still look right. Switching a split's money on the strength of a photograph stays
+      // out of the question.
+      //
+      // It is no longer thrown away either. scanNotes above records it when it disagrees with the
+      // split, and the review screen offers the change to the person, who knows where they are.
+      // The default the split starts in is a setting now — see Profile.
       dispatch({ type: "addReceipt", tripId, receipt });
       if (!alive.current) return; // user left this screen — keep the data, skip the navigation
       const after = lastKnownQuota();

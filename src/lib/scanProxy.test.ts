@@ -14,7 +14,7 @@ async function loadScanner() {
 }
 
 const goodResult = {
-  storeName: "Conad",
+  readQuality: "good" as const, readProblem: null, storeName: "Conad",
   date: "2026-08-11",
   currency: "EUR",
   items: [{ name: "Pane", quantity: 1, lineTotal: 249, kind: "item" }],

@@ -31,6 +31,7 @@ import {
   type ScanQuota,
 } from "./lib/scan";
 import { countsDiscountLines, discountConvention } from "./lib/discounts";
+import { scanNotes } from "./lib/receipt";
 import { downscaleToBase64Jpeg } from "./lib/image";
 import { recentPeopleNames, splitNameFor } from "./lib/quickScan";
 import { loadApiKey } from "./lib/storage";
@@ -293,6 +294,7 @@ function Router() {
         printedTotal: Math.round(result.paidTotal),
         status: "review",
         discountConvention: convention,
+        ...scanNotes(result, defaultCurrency()),
       };
 
       dispatch({
@@ -511,7 +513,7 @@ function Router() {
             <p className="label" style={{ textAlign: "center", maxWidth: 216, margin: 0 }}>
               {empty
                 ? "Buy a pack and the camera comes back. Adding a split by hand is always free."
-                : "Fit the whole receipt in frame. Billy reads it in a few seconds."}
+                : "Lay it flat, fit the whole receipt in frame, and give it plenty of light."}
             </p>
           </div>
 

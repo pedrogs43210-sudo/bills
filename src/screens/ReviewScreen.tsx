@@ -294,6 +294,45 @@ export function ReviewScreen({ tripId, receiptId, go }: { tripId: string; receip
         </p>
       )}
 
+      {/* The model said it could not read all of this.
+          Shown only when it said so — "partial", never on a clean scan. A warning about accuracy on
+          every single receipt is one nobody reads by the third time, and this one has to still be
+          working the day it matters. Its own words, because "the bottom is cut off" tells somebody
+          which line to check and "some text was unclear" does not. */}
+      {receipt.readQuality === "partial" && (
+        <div className="banner-warn" role="status">
+          <b>Some of this was hard to read.</b>{" "}
+          {receipt.readProblem ? `${receipt.readProblem}. ` : ""}
+          Worth checking the lines and the total against the paper before you split it.
+        </div>
+      )}
+
+      {/* The receipt says one currency and the split says another.
+          Offered, never applied. Switching on the strength of a photograph is what turned a
+          Portuguese holiday into dollars; leaving it unsaid is what left somebody genuinely abroad
+          adding up euros that were pounds. So the observation is put in front of the one person who
+          knows which is right, with a button, once. */}
+      {receipt.scannedCurrency && receipt.scannedCurrency !== trip.currency && (
+        <div className="banner-warn" role="status">
+          This receipt looks like it is in <b>{receipt.scannedCurrency}</b>, but the split is in{" "}
+          <b>{trip.currency}</b>. The amounts are unchanged either way — only the symbol.{" "}
+          <button
+            className="linklike"
+            onClick={() => {
+              dispatch({ type: "setCurrency", tripId: trip.id, currency: receipt.scannedCurrency! });
+              // Answered, so it stops asking — including if they come back to this receipt later.
+              update({ ...receipt, scannedCurrency: undefined });
+            }}
+          >
+            Switch this split to {receipt.scannedCurrency}
+          </button>
+          {" · "}
+          <button className="linklike" onClick={() => update({ ...receipt, scannedCurrency: undefined })}>
+            Keep {trip.currency}
+          </button>
+        </div>
+      )}
+
       {diff === 0 ? (
         <div className="banner-good">✓ Matches the receipt total ({formatCents(itemSum, trip.currency)})</div>
       ) : (

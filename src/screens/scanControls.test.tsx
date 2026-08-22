@@ -96,7 +96,7 @@ describe("opening the camera", () => {
 
   it("scans from either control", async () => {
     const scanned = {
-      storeName: "Conad", date: "2026-08-11", currency: "EUR", preDiscountTotal: null, paidTotal: 249,
+      readQuality: "good" as const, readProblem: null, storeName: "Conad", date: "2026-08-11", currency: "EUR", preDiscountTotal: null, paidTotal: 249,
       items: [{ name: "Pane", quantity: 1, lineTotal: 249, kind: "item" as const }],
     };
     vi.mocked(scanReceipt).mockResolvedValue(scanned);

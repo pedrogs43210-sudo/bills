@@ -323,6 +323,24 @@ async function handleScan(
       return json({ error: "unparseable" }, 422, cors);
     }
 
+    /* The model could not read it. Give the scan back and say so.
+       This is the case neither refund path above catches: a blurred or half-cropped photo does not
+       make the model refuse and does not break the schema — it produces valid, confident, wrong
+       numbers. Charging for that is charging for a result the person then has to check line by
+       line and probably will not.
+
+       We still pay Anthropic for the tokens, deliberately. Eating a fraction of a cent is much
+       cheaper than a friend group arguing over a total Billy invented, and the daily ceiling still
+       bounds the bill against anyone feeding it rubbish on purpose. */
+    if (response.parsed_output.readQuality === "unreadable") {
+      await refund(env, installId, source, spend.day);
+      return json(
+        { error: "illegible", problem: response.parsed_output.readProblem ?? null },
+        422,
+        cors
+      );
+    }
+
     const result = normaliseDiscountSigns(response.parsed_output);
     // The photo is never written anywhere — not to D1, not to logs.
     return json(
