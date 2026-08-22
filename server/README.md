@@ -55,6 +55,28 @@ npx wrangler secret put ANTHROPIC_API_KEY
 npx wrangler secret put APP_TOKEN
 ```
 
+## Migrations on a database that already exists
+
+`schema.sql` uses `CREATE TABLE IF NOT EXISTS`, so re-running it is safe but adds nothing to a
+table that is already there — SQLite has no `ADD COLUMN IF NOT EXISTS`. A column added after the
+first deploy has to be applied by hand, once, **before** the Worker that reads it goes live.
+
+Run these from the repository root:
+
+```bash
+npx wrangler d1 execute bills --remote --config server/wrangler.toml --command "ALTER TABLE installs ADD COLUMN has_purchased INTEGER NOT NULL DEFAULT 0;"
+```
+
+Applied ones, newest last:
+
+| Column | Why | Safe to re-run? |
+| --- | --- | --- |
+| `installs.credits` | bought scans | no — errors if present, harmlessly |
+| `installs.has_purchased` | gates the first-pack bonus | no — errors if present, harmlessly |
+
+An error reading *duplicate column name* means it is already applied. That is the expected result
+of running one of these twice and costs nothing.
+
 Deploy *before* the secrets, deliberately. Setting a secret on a Worker that does not exist yet
 makes wrangler create one on the fly, and that path is noticeably more fragile on a flaky
 connection — it fails halfway and leaves neither the Worker nor the secret. Deploying first is one
