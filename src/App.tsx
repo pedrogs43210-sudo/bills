@@ -34,6 +34,7 @@ import { countsDiscountLines, discountConvention } from "./lib/discounts";
 import { downscaleToBase64Jpeg } from "./lib/image";
 import { recentPeopleNames, splitNameFor } from "./lib/quickScan";
 import { loadApiKey } from "./lib/storage";
+import { defaultCurrency } from "./lib/currencies";
 import { newId } from "./lib/ids";
 import { back, initialNav, navigate } from "./lib/history";
 import { exitApp, onHardwareBack } from "./lib/nativeBack";
@@ -224,7 +225,7 @@ function Router() {
     const tripId = newId();
     const personId = newId();
     const today = new Date().toISOString().slice(0, 10);
-    dispatch({ type: "createTrip", id: tripId, name: splitNameFor("", today), emoji: "🧾" });
+    dispatch({ type: "createTrip", id: tripId, name: splitNameFor("", today), emoji: "🧾", currency: defaultCurrency() });
     dispatch({ type: "addPerson", tripId, personId, name: "You" });
     dispatch({
       type: "addReceipt",
@@ -296,6 +297,7 @@ function Router() {
 
       dispatch({
         type: "createTrip",
+        currency: defaultCurrency(),
         id: tripId,
         name: splitNameFor(result.storeName, date),
         emoji: "🧾",
@@ -361,7 +363,7 @@ function Router() {
       status: "review",
       totalIsAuto: true, // nothing was printed, so the items are the total
     };
-    dispatch({ type: "createTrip", id: tripId, name: splitNameFor("", today), emoji: "🧾" });
+    dispatch({ type: "createTrip", id: tripId, name: splitNameFor("", today), emoji: "🧾", currency: defaultCurrency() });
     dispatch({ type: "addPerson", tripId, personId, name: "You" });
     dispatch({ type: "addReceipt", tripId, receipt });
     setScanState("idle");

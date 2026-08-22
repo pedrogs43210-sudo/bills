@@ -79,3 +79,42 @@ export function currencySymbol(code: string): string {
     return code;
   }
 }
+
+/**
+ * The currency new splits start in.
+ *
+ * Stored here rather than guessed, and that distinction is the whole point. The scanner reads a
+ * currency off the photo and the app deliberately ignores it — see the note in TripScreen, written
+ * after a misread "USD" turned a Portuguese holiday into dollars. A wrong currency is the worst
+ * kind of bug this app can have, because the digits still look right; nobody notices until they
+ * are arguing about money.
+ *
+ * So the answer comes from the person instead. Someone who lives in euros never touches it, and
+ * someone who moves to Britain sets it once rather than on every split they create.
+ *
+ * The `bills.` prefix matches every other key on the phone. A tidier one would orphan what people
+ * are already carrying.
+ */
+const DEFAULT_CURRENCY_KEY = "bills.currency";
+
+/** The fallback fallback: what a phone that has never been asked starts in. */
+export const FALLBACK_CURRENCY = "EUR";
+
+export function defaultCurrency(): string {
+  try {
+    const saved = localStorage.getItem(DEFAULT_CURRENCY_KEY);
+    // Validated against the list rather than trusted. Storage is editable, and a junk code reaches
+    // Intl.NumberFormat, which throws on it — turning a bad setting into a blank screen.
+    return saved && CURRENCIES.some((c) => c.code === saved) ? saved : FALLBACK_CURRENCY;
+  } catch {
+    return FALLBACK_CURRENCY;
+  }
+}
+
+export function setDefaultCurrency(code: string): void {
+  try {
+    localStorage.setItem(DEFAULT_CURRENCY_KEY, code);
+  } catch {
+    // Private mode, or a full disk. The setting is lost, the app is not.
+  }
+}

@@ -5,6 +5,7 @@ import type { View } from "../App";
 import type { Trip } from "../types";
 import { Disc } from "../components/chips";
 import { Mark } from "../components/Mark";
+import { defaultCurrency } from "../lib/currencies";
 import { keptSplits } from "../lib/keptSplits";
 
 const EMOJIS = ["🧾", "🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
@@ -33,7 +34,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
     const trimmed = name.trim();
     if (!trimmed) return;
     const id = newId();
-    dispatch({ type: "createTrip", id, name: trimmed, emoji });
+    dispatch({ type: "createTrip", id, name: trimmed, emoji, currency: defaultCurrency() });
     setName("");
     setAdding(false);
     go({ screen: "trip", tripId: id });

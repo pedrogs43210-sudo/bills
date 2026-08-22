@@ -3,6 +3,7 @@ import { useStore } from "../state/StoreProvider";
 import { exportTrip, importTrip, loadApiKey, saveApiKey } from "../lib/storage";
 import { fetchQuota, lastKnownQuota, usingProxy, verifyApiKey, type ScanQuota } from "../lib/scan";
 import { PackChooser } from "../components/PackChooser";
+import { currencyOptions, defaultCurrency, setDefaultCurrency } from "../lib/currencies";
 import { setThemeChoice, themeChoice, type ThemeChoice } from "../lib/theme";
 import type { View } from "../App";
 
@@ -23,6 +24,9 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle");
   const [importError, setImportError] = useState("");
   const [theme, setTheme] = useState<ThemeChoice>(themeChoice);
+  /* Mirrored in state so the picker moves the moment it is tapped. The stored value is the
+     authority — this is only what the control shows between now and the next launch. */
+  const [currency, setCurrency] = useState(defaultCurrency);
   const [scanQuota, setScanQuota] = useState<ScanQuota | null>(lastKnownQuota());
 
   /** Asked of the server, never believed from the phone — before and after anything is bought. */
@@ -78,6 +82,37 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
           it only at the wall would mean somebody who topped up early — the most willing customer
           there is — quietly got less for the same money than somebody who waited to run out. */}
       <PackChooser onBought={refreshScanQuota} firstPack={scanQuota?.firstPack ?? false} />
+
+      {/* The currency every new split starts in.
+          A setting rather than a guess, deliberately. The scanner reads a currency off the photo
+          and the app ignores it — see the note in TripScreen, written after a misread "USD" turned
+          a Portuguese holiday into dollars. A wrong currency is the worst bug this app can have,
+          because the digits still look right and nobody notices until they are arguing about money.
+          Set once by the person who knows, instead of guessed on every receipt. */}
+      <div className="card">
+        <div className="row">
+          <div>
+            <h3 style={{ margin: 0 }}>Currency</h3>
+            <p className="muted" style={{ margin: "2px 0 0" }}>
+              What new splits start in. Each split can still be changed on its own.
+            </p>
+          </div>
+          <select
+            aria-label="Default currency for new splits"
+            value={currency}
+            onChange={(e) => {
+              setDefaultCurrency(e.target.value);
+              setCurrency(e.target.value);
+            }}
+          >
+            {currencyOptions(currency).map((o) => (
+              <option key={o.code} value={o.code}>
+                {o.code} — {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* Light and dark both exist; this is the choice between them. "Auto" follows the phone,
           which is right most of the time and wrong at a sunny kitchen table. */}

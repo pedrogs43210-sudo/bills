@@ -3,7 +3,7 @@ import type { Assignment, Receipt, ReceiptStatus, Trip } from "../types";
 import type { AppData } from "../lib/storage";
 
 export type Action =
-  | { type: "createTrip"; id: string; name: string; emoji: string }
+  | { type: "createTrip"; id: string; name: string; emoji: string; currency?: string }
   | { type: "deleteTrip"; tripId: string }
   | { type: "addPerson"; tripId: string; personId: string; name: string }
   | { type: "renamePerson"; tripId: string; personId: string; name: string }
@@ -54,7 +54,10 @@ export function reducer(data: AppData, action: Action): AppData {
         trips: [
           ...data.trips,
           {
-            id: action.id, name: action.name, emoji: action.emoji, currency: "EUR",
+            id: action.id, name: action.name, emoji: action.emoji,
+            // EUR only when nobody said otherwise. The caller passes the person's chosen default;
+            // this branch is for old callers and tests that do not care.
+            currency: action.currency ?? "EUR",
             people: [], groups: [], receipts: [], createdAt: new Date().toISOString(),
             schemaVersion: SCHEMA_VERSION,
           },

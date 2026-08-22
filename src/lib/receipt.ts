@@ -66,7 +66,7 @@ export type ScanResult = z.infer<typeof ScanResultSchema>;
 export type ScanItem = ScanResult["items"][number];
 
 
-export const PROMPT = `Read this grocery receipt photo.
+export const PROMPT = `Read this receipt or restaurant bill photo.
 
 The receipt may be in ANY language, script or currency — Portuguese, Spanish, Italian, French,
 German, English, Greek, Turkish, Japanese, Arabic, anything. Every word list below is a set of
@@ -76,6 +76,15 @@ listed, apply the same rule you would to its English equivalent.
 
 The "items" array is ONLY the shopping: the lines for things bought, and the discount lines that
 apply to them. It is NOT a transcript of the receipt.
+
+A restaurant bill charges for things beyond the food, and those ARE part of what the table owes:
+service charge, cover charge, corkage, a printed tip or gratuity, a delivery fee. Put each of them
+in "items" as its own line with "kind":"item", keeping the printed name. They are not payment
+lines — the diners consumed them and will divide them. Examples, non-exhaustive: SERVICE CHARGE /
+SERVICE / GRATUITY / TIP / COVER / CORKAGE / DELIVERY (English), SERVIÇO / TAXA DE SERVIÇO /
+GORJETA / COUVERT (Portuguese), SERVICIO / CUBIERTO (Spanish), SERVIZIO / COPERTO (Italian),
+SERVICE COMPRIS / COUVERT (French), BEDIENUNG / TRINKGELD (German), サービス料 (Japanese).
+A tip written on by hand after printing usually cannot be read — do not guess at one.
 
 NEVER put a total, subtotal, tax line, payment line or change line in "items". Those are the
 figures printed after the shopping, usually with a rule above them, and they belong in
@@ -117,8 +126,9 @@ For each shopping line, in the order they appear:
   (DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD) — use the shop's own convention where the digits make it
   unambiguous, and prefer DD/MM when they do not.
 Do not invent lines. Read the printed digits — never round, estimate, or carry a figure across
-from another line. Before you answer, check that no entry in "items" is a total, and that the
-items plausibly add up to either "paidTotal" or "preDiscountTotal".`;
+from another line. Before you answer, check that no entry in "items" is a total, that any service
+charge, cover or printed tip IS in "items", and that the items plausibly add up to either
+"paidTotal" or "preDiscountTotal".`;
 
 /**
  * Force every discount line negative. Continente prints discounts unsigned, so the model is
