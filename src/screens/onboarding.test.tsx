@@ -6,6 +6,7 @@ import { saveData } from "../lib/storage";
 import { setOnboarded } from "../lib/onboarding";
 import type { Trip } from "../types";
 import { leaveScanScreen } from "../test/leaveScanScreen";
+import { skipSplash } from "../test/skipSplash";
 
 function seedTrip(): Trip {
   return {
@@ -14,7 +15,10 @@ function seedTrip(): Trip {
   };
 }
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  skipSplash();
+});
 
 describe("the first-run introduction", () => {
   it("greets someone with nothing yet", () => {

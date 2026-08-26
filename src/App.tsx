@@ -8,6 +8,7 @@ import { SettleScreen } from "./screens/SettleScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { PaywallScreen } from "./screens/PaywallScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { SplashAnimation, claimFirstLaunch } from "./components/SplashAnimation";
 import { HelpScreen } from "./screens/HelpScreen";
 import { WhosInScreen } from "./screens/WhosInScreen";
 import { InviteScreen } from "./screens/InviteScreen";
@@ -103,6 +104,13 @@ function Router() {
   // still been introduced, and a returning user must never be taught the app twice.
   const { data, dispatch } = useStore();
   const [showIntro, setShowIntro] = useState(() => !hasOnboarded() && data.trips.length === 0);
+  /* The mark assembling itself, once per install, before anything else.
+     Claimed in the initialiser so a re-render cannot play it twice, and gated on the same "is this
+     a stranger" test as the introduction — somebody upgrading from an older build has been using
+     Billy all summer and should not be shown a title sequence. */
+  const [showSplash, setShowSplash] = useState(
+    () => !hasOnboarded() && data.trips.length === 0 && claimFirstLaunch()
+  );
 
   // The quick scan: the Scan tab opens the camera with no split behind it, and one is made only
   // once a receipt has actually been read. Orchestrated here rather than in a screen because at
@@ -206,6 +214,7 @@ function Router() {
     []
   );
 
+  if (showSplash) return <SplashAnimation onDone={() => setShowSplash(false)} />;
   if (showIntro) return <OnboardingScreen onDone={() => setShowIntro(false)} />;
 
   /**

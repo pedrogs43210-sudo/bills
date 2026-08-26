@@ -1508,3 +1508,75 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   justify-content: center;
   height: 22px;
 }
+
+/* ---------- The first-launch splash ---------- */
+
+/* Covers everything, in the same colour the native splash was painted in, so the OS tile does not
+   cut to a bare page. Fades in over 180ms: the native splash shows the settled mark and this
+   animation starts from a single bar, so without the fade the eye catches a two-bars-to-one-bar
+   rewind. With it, the tile dissolves and the mark assembles — which reads as one move. */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: var(--bg);
+  animation: splash-in 180ms ease-out both;
+}
+@keyframes splash-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Both bars are ink on the app's own flat background — the two-colour split would put the accent
+   on a bar that is mid-move, and a colour change during a shape change reads as two events. */
+.splash rect { fill: var(--ink); }
+
+/* transform-box: view-box is what makes translateY(7.5) mean 7.5 VIEWBOX units rather than 7.5
+   CSS pixels. Without it the bars fly several times too far and never meet. */
+.splash rect {
+  transform-box: view-box;
+}
+.splash-long {
+  transform-origin: 10px 24.5px;
+  animation: billy-a 1.4s cubic-bezier(.2, .8, .25, 1) both;
+}
+.splash-short {
+  /* Origin at the short bar's own left edge: it must shrink inwards, never slide. */
+  transform-origin: 10px 39.5px;
+  animation: billy-b 1.4s cubic-bezier(.2, .8, .25, 1) both;
+}
+.splash-word {
+  margin: 0;
+  font: 600 30px/1 var(--brand);
+  color: var(--ink);
+  animation: billy-word 1.4s cubic-bezier(.2, .8, .25, 1) both;
+}
+
+/* Held to 16% so the single bar registers as one thing before it divides. 1.6923 is 44/26 — the
+   short bar starts at the long one's full length and pulls in to its own. */
+@keyframes billy-a {
+  0%, 16%   { transform: translateY(7.5px); }
+  64%, 100% { transform: translateY(0); }
+}
+@keyframes billy-b {
+  0%, 16%   { transform: translateY(-7.5px) scaleX(1.6923); }
+  64%, 100% { transform: translateY(0) scaleX(1); }
+}
+@keyframes billy-word {
+  0%, 56% { opacity: 0; transform: translateY(5px); }
+  100%    { opacity: 1; transform: none; }
+}
+
+/* Honoured properly: the final state renders immediately rather than being swapped for a fade,
+   which is just the same motion wearing a different coat. */
+@media (prefers-reduced-motion: reduce) {
+  .splash, .splash-long, .splash-short, .splash-word { animation: none; }
+}
+.splash[data-still] .splash-long,
+.splash[data-still] .splash-short,
+.splash[data-still] .splash-word { animation: none; }
