@@ -52,7 +52,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
             icon.svg: a gradient badge of the app, inside the app, at the top of its own home
             screen. The asset sheet is explicit that the tile belongs to the launcher, the store and
             the splash, and nowhere in the product. */}
-        <Mark size={24} color="var(--accent)" className="app-mark" />
+        <Mark size={24} color="var(--ink)" accent="var(--accent)" className="app-mark" />
         <h1 className="screen-title">Billy</h1>
       </div>
 

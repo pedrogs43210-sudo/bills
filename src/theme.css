@@ -1498,3 +1498,13 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   font-size: 13px;
   color: var(--ink-2);
 }
+
+/* The mark is 11:6, the other two tab icons are 22×22 squares.
+   Without a fixed box the Splits icon would be 13px tall against their 22 and its label would sit
+   higher than the other two — so the slot is the square, and the mark is centred inside it. */
+.tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+}

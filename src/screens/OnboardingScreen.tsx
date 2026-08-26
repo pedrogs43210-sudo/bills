@@ -50,7 +50,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
             resolves against a different scheme inside the Capacitor WebView — so the mark simply
             did not appear in the phone build, on the first screen anybody ever sees. Drawn in the
             bundle, it cannot fail to load. */}
-        <Mark size={30} color="var(--accent)" className="app-mark" />
+        <Mark size={34} color="var(--ink)" accent="var(--accent)" className="app-mark" />
         <h1 className="screen-title">Billy</h1>
         {/* Available from the very first panel: someone who already knows what this is should
             never have to tap through three screens to get started. */}

@@ -60,9 +60,10 @@ export function TabBar({
         onClick={onSplits}
       >
         <span className="tab-icon" aria-hidden="true">
-          {/* The mark itself at 20px, which is drawing B — see components/Mark.tsx. It inherits the
-              tab's colour, so the selected state costs no extra rule. The sheet is explicit that no
-              gradient tile appears inside the product: the app already is the app. */}
+          {/* The mark at 20px wide — the compact drawing, see components/Mark.tsx. Single-colour
+              and inherited, so the selected state costs no extra rule: a short bar pinned to accent
+              would leave half the mark ignoring the state it is there to show. The sheet is
+              explicit that no gradient tile appears inside the product — the app already is it. */}
           <Mark size={20} />
         </span>
         Splits

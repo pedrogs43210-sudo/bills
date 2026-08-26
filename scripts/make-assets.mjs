@@ -5,15 +5,15 @@
  * regenerates every size for both platforms and nobody has to remember which of forty files was
  * hand-tweaked. Run it with `npm run assets`.
  *
- * The mark here is the same 64-unit master as `public/icon.svg` and `src/components/Mark.tsx`. Three
- * copies of one path is three chances to drift, and the alternative — importing a .ts module from a
- * build script — costs more than it saves. If one changes, change all three.
+ * The geometry here is the same two rectangles as `public/icon.svg` and `src/components/Mark.tsx`.
+ * Three copies of one drawing is three chances to drift, and the alternative — importing a .ts
+ * module from a build script — costs more than it saves. If one changes, change all three.
  *
  * iOS rejects any icon with an alpha channel, which is why the square is drawn opaque rather than
  * relying on the mask to cover the corners.
  */
 import sharp from "sharp";
-import { mkdirSync, statSync } from "node:fs";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
 
 const OUT = "assets";
 mkdirSync(OUT, { recursive: true });
@@ -25,27 +25,19 @@ const NIGHT = "#241A17";
 const INK = "#3D2B24";
 
 /**
- * Drawing A — the mark, as one path with fill-rule evenodd.
+ * The mark: two rounded bars, one short. An equals sign that isn't equal.
  *
- * Body x20→50, y8→52, top corners r6, five teeth landing exactly on both bottom corners, and three
- * lines knocked OUT rather than painted on.
- *
- * Knocked out is the load-bearing part: the lines are holes, so they take whatever sits behind them.
- * That is what lets one drawing serve the gradient launcher tile, the flat monochrome themed icon
- * and the white-on-transparent notification icon without three separate files.
+ * Drawn in the same 64-unit space as everything else, centred on (32, 32) so one transform serves
+ * every context. Lengths are 44 and 26 — 63/37, never 50/50, because an even split is the one thing
+ * the mark exists to not say. The radius is always half the bar height: a true pill, so the ends
+ * never look clipped.
  */
-const MARK =
-  "M20 8H44a6 6 0 0 1 6 6v34l-3 4-3-4-3 4-3-4-3 4-3-4-3 4-3-4-3 4-3-4V14a6 6 0 0 1 6-6Z " +
-  "M28 19h14a2.5 2.5 0 0 1 0 5H28a2.5 2.5 0 0 1 0-5z " +
-  "M28 27h9a2.5 2.5 0 0 1 0 5h-9a2.5 2.5 0 0 1 0-5z " +
-  "M28 35h14a2.5 2.5 0 0 1 0 5H28a2.5 2.5 0 0 1 0-5z";
-
-/** Drawing B — three fatter teeth and fatter lines, for anything that lands small. */
-const MARK_COMPACT =
-  "M20 8H44a6 6 0 0 1 6 6v34l-5 4-5-4-5 4-5-4-5 4-5-4V14a6 6 0 0 1 6-6Z " +
-  "M28 18h14a3 3 0 0 1 0 6H28a3 3 0 0 1 0-6z " +
-  "M28 27h8a3 3 0 0 1 0 6h-8a3 3 0 0 1 0-6z " +
-  "M28 36h14a3 3 0 0 1 0 6H28a3 3 0 0 1 0-6z";
+const bars = (fill, compact = false) =>
+  compact
+    ? `<rect x="10" y="18" width="44" height="11" rx="5.5" fill="${fill}"/>` +
+      `<rect x="10" y="35" width="24" height="11" rx="5.5" fill="${fill}"/>`
+    : `<rect x="10" y="20" width="44" height="9" rx="4.5" fill="${fill}"/>` +
+      `<rect x="10" y="35" width="26" height="9" rx="4.5" fill="${fill}"/>`;
 
 const gradient = `
   <linearGradient id="sunset" x1="0" y1="0" x2="1" y2="1">
@@ -53,28 +45,35 @@ const gradient = `
   </linearGradient>`;
 
 /**
- * The mark inset to 66% of its box.
+ * The mark at a given fraction of the tile's width.
  *
- * That number is Android's, not a preference: a 108dp adaptive icon reserves a 72dp safe circle, and
- * 66% keeps the whole mark inside it under every launcher mask — circle, squircle, rounded square.
- * Reused for the store tile and the maskable web icon so all three are the same picture.
+ * The two fractions are geometry, not taste. An 11:6 rectangle 44 units wide has a half-diagonal of
+ * √(22² + 12²) = 25.06 units. Android's adaptive icon reserves a safe circle of radius one third of
+ * the tile — 21.33 units here — so the mark fits only up to 21.33 / 25.06 = 85.1% of its natural
+ * size, which is 58.5% of the tile width. Anything that gets masked is drawn at 58%; anything that
+ * is never masked is drawn at 72%.
+ *
+ * This is the number the old square mark got wrong when it inherited 66%: a square's half-diagonal
+ * is shorter, so 66% was safe for it and would clip the corners off this one under a circle mask.
  */
-const inset = (path = MARK, fill = INK) => `
-  <g transform="translate(32 32) scale(0.66) translate(-32 -32)">
-    <path fill="${fill}" fill-rule="evenodd" d="${path}"/>
-  </g>`;
+const MASKED = 0.585;
+const UNMASKED = 0.72;
+const at = (frac, fill = INK, compact = false) => {
+  const s = (64 * frac) / 44; // 44 is the mark's natural width in the 64-unit box
+  return `<g transform="translate(32 32) scale(${s.toFixed(4)}) translate(-32 -32)">${bars(fill, compact)}</g>`;
+};
 
 /** Full-bleed square, no rounding and no alpha: the platforms do their own masking. */
 const iconSquare = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>${gradient}</defs>
   <rect width="64" height="64" fill="url(#sunset)"/>
-  ${inset()}
+  ${at(UNMASKED)}
 </svg>`;
 
-/** Android's adaptive foreground: the mark alone, transparent behind, at the same 66%. */
+/** Android's adaptive foreground: the mark alone, transparent behind, at the masked 58%. */
 const iconForeground = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${inset()}</svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${at(MASKED)}</svg>`;
 
 const iconBackground = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
@@ -82,22 +81,28 @@ const iconBackground = `
 </svg>`;
 
 /**
- * The splash: a gradient disc with the mark knocked out of it, on the app's own background.
+ * Android 13 themed icons: one colour, no tile, and the system recolours it.
  *
- * A disc rather than a rounded tile, because the splash is the one place the icon is not being
- * masked by anything — so it can be the shape it actually wants to be. Drawing B, because at this
- * scale the five fine teeth would alias.
+ * Possible at all only because the mark is two solid shapes rather than a knock-out — there is no
+ * hole here that needs a background to show through.
+ */
+const iconMonochrome = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${at(MASKED, "#000000")}</svg>`;
+
+/**
+ * The splash: the mark on the app's own background, both bars ink on the gradient disc.
  *
- * The mark is filled with the page colour rather than left transparent: a hole would show the page
- * anyway in light mode and betray the disc's edge in dark, and this way one SVG serves both.
+ * Both bars ink is a rule rather than a choice. Cream on this gradient measures 2.58:1 at the coral
+ * end and 1.69:1 at the amber; ink holds 4.92:1 and 7.51:1 across the whole sweep. The two-colour
+ * split lives on flat cream and flat dark only.
  */
 const splash = (bg) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>${gradient}</defs>
   <rect width="100" height="100" fill="${bg}"/>
-  <circle cx="50" cy="50" r="11" fill="url(#sunset)"/>
-  <g transform="translate(50 50) scale(0.229) translate(-32 -32)">
-    <path fill="${bg}" fill-rule="evenodd" d="${MARK_COMPACT}"/>
+  <g transform="translate(50 50) scale(0.28) translate(-32 -32)">
+    <rect x="6" y="6" width="52" height="52" rx="13" fill="url(#sunset)"/>
+    ${at(0.62)}
   </g>
 </svg>`;
 
@@ -110,11 +115,22 @@ const render = async (name, svg, size, flatten) => {
   return `${name}.png ${(statSync(`${OUT}/${name}.png`).size / 1024).toFixed(0)}kB`;
 };
 
+/**
+ * The favicon, written as SVG rather than rendered.
+ *
+ * Flat #b83e1a on transparent, compact drawing, no tile — a gradient chip at 16px is a smudge, and
+ * the accent proper is 3.67:1 where this needs to survive as a shape against an unknown browser
+ * chrome. #b83e1a is the same hue at 5.33:1.
+ */
+const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 18 44 28">${bars("#b83e1a", true)}</svg>\n`;
+writeFileSync("public/favicon.svg", favicon);
+
 const done = await Promise.all([
   render("icon-only", iconSquare, 1024, SUNSET_1),
   render("icon-foreground", iconForeground, 1024),
   render("icon-background", iconBackground, 1024, SUNSET_1),
+  render("icon-monochrome", iconMonochrome, 1024),
   render("splash", splash(CREAM), 2732, CREAM),
   render("splash-dark", splash(NIGHT), 2732, NIGHT),
 ]);
-console.log(done.join("\n"));
+console.log(done.join("\n"), "\npublic/favicon.svg");
