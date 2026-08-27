@@ -46,6 +46,12 @@ jobs:
           VITE_SCAN_PROXY_URL: ${{ secrets.VITE_SCAN_PROXY_URL }}
           VITE_APP_LINK: https://splitwithbilly.com
           VITE_APP_TOKEN: ${{ secrets.VITE_APP_TOKEN }}
+          # RevenueCat's PUBLIC SDK keys, one per store. Public is accurate — they identify the app
+          # to RevenueCat and are meant to ship inside the binary, unlike VITE_APP_TOKEN. They are
+          # secrets here so a fork does not inherit them and either can be rotated without a commit.
+          # Leave them unset and the build simply says packs are not ready to buy.
+          VITE_RC_KEY_IOS: ${{ secrets.VITE_RC_KEY_IOS }}
+          VITE_RC_KEY_ANDROID: ${{ secrets.VITE_RC_KEY_ANDROID }}
       - run: npx cap sync android
       - name: Assemble debug APK
         run: |
@@ -91,6 +97,12 @@ jobs:
           VITE_SCAN_PROXY_URL: ${{ secrets.VITE_SCAN_PROXY_URL }}
           VITE_APP_LINK: https://splitwithbilly.com
           VITE_APP_TOKEN: ${{ secrets.VITE_APP_TOKEN }}
+          # RevenueCat's PUBLIC SDK keys, one per store. Public is accurate — they identify the app
+          # to RevenueCat and are meant to ship inside the binary, unlike VITE_APP_TOKEN. They are
+          # secrets here so a fork does not inherit them and either can be rotated without a commit.
+          # Leave them unset and the build simply says packs are not ready to buy.
+          VITE_RC_KEY_IOS: ${{ secrets.VITE_RC_KEY_IOS }}
+          VITE_RC_KEY_ANDROID: ${{ secrets.VITE_RC_KEY_ANDROID }}
       - run: npx cap sync ios
       - name: Build for simulator, unsigned
         run: |

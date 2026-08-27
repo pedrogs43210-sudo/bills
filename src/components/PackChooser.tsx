@@ -68,7 +68,10 @@ export function PackChooser({
     try {
       const result = await action();
       setOutcome(result);
-      if (result.kind === "bought") {
+      /* A restore that found something is waited on exactly like a purchase: RevenueCat re-sends
+         the transaction, the Worker's webhook grants from PACKS, and the balance rises. A restore
+         that found nothing has nothing to wait for. */
+      if (result.kind === "bought" || (result.kind === "restored" && result.found)) {
         /* Google has the money; the scans do not exist yet. They arrive when RevenueCat's webhook
            reaches the Worker — a second usually, longer if a delivery is retried. Until this
            existed the screen showed the old count, which is the worst state in the app: somebody's
@@ -77,7 +80,9 @@ export function PackChooser({
         const landed = await awaitCredits(before, fetchQuota);
         setWaiting(false);
         setSlow(landed.kind === "slow");
-        onBought?.(result.scansAdded);
+        // A restore adds whatever the store had waiting, which only the server knows — so the
+        // callback carries 0 and the caller's job is simply to re-read the balance.
+        onBought?.(result.kind === "bought" ? result.scansAdded : 0);
       }
     } catch {
       // A thrown error from a payment sheet is still just "it did not work" to the person holding
@@ -186,13 +191,22 @@ export function PackChooser({
         </button>
       )}
 
-      {outcome && outcome.kind !== "bought" && (
-        <div className={outcome.kind === "cancelled" ? "banner-warn" : "banner-warn"} role="status">
+      {outcome && outcome.kind !== "bought" && outcome.kind !== "restored" && (
+        <div className="banner-warn" role="status">
           {outcome.kind === "cancelled"
             ? "No problem — nothing was charged."
             : "why" in outcome
               ? outcome.why
               : "That didn't work."}
+        </div>
+      )}
+
+      {/* Nothing to restore is the ordinary answer, not a failure — a pack that was bought and
+          spent is gone, and saying so calmly beats a warning colour for something nobody did
+          wrong. */}
+      {outcome?.kind === "restored" && !outcome.found && !waiting && (
+        <div className="banner-good" role="status">
+          Nothing left to restore — you're all up to date.
         </div>
       )}
       {waiting && (
@@ -216,6 +230,12 @@ export function PackChooser({
       {outcome?.kind === "bought" && !waiting && !slow && (
         <div className="banner-good" role="status">
           Added {outcome.scansAdded} scans. Thank you — that keeps Billy running.
+        </div>
+      )}
+
+      {outcome?.kind === "restored" && outcome.found && !waiting && !slow && (
+        <div className="banner-good" role="status">
+          Restored. Anything the store had waiting for you has been added.
         </div>
       )}
     </div>
