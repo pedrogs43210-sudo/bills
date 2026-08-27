@@ -24,6 +24,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Billy uses the camera to photograph a receipt and read the items and prices off it. The photo is not saved to your phone and is not kept after it has been read.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>So you can pick a receipt you have already photographed. Billy reads only the photo you choose and never browses your library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
