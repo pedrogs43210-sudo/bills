@@ -9,14 +9,15 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "assets": "node scripts/make-assets.mjs && capacitor-assets generate --android --ios --iconBackgroundColor \"#FF7059\" --iconBackgroundColorDark \"#FF7059\" --splashBackgroundColor \"#FFF8F0\" --splashBackgroundColorDark \"#241A17\"",
+    "assets": "node scripts/make-assets.mjs && capacitor-assets generate --android --ios --iconBackgroundColor \"#FF7059\" --iconBackgroundColorDark \"#FF7059\" --splashBackgroundColor \"#FFF8F0\" --splashBackgroundColorDark \"#241A17\" && node scripts/patch-adaptive-icon.mjs && node scripts/check-assets.mjs",
     "typecheck": "tsc --noEmit && tsc -p server/tsconfig.json",
     "worker:dev": "wrangler dev --config server/wrangler.toml",
     "worker:deploy": "wrangler deploy --config server/wrangler.toml",
     "build:native": "cross-env BILLS_NATIVE=1 tsc -b && cross-env BILLS_NATIVE=1 vite build",
     "sync": "npm run build:native && cap sync",
     "android": "npm run sync && cap open android",
-    "ios": "npm run sync && cap open ios"
+    "ios": "npm run sync && cap open ios",
+    "assets:check": "node scripts/check-assets.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

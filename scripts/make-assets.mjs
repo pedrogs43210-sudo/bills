@@ -55,9 +55,30 @@ const gradient = `
  *
  * This is the number the old square mark got wrong when it inherited 66%: a square's half-diagonal
  * is shorter, so 66% was safe for it and would clip the corners off this one under a circle mask.
+ *
+ * MASKED is 57 rather than the 58.5 the arithmetic allows. 58.5 is a maximum, and sitting exactly
+ * on a maximum means antialiasing, PNG rounding, or a launcher that insets a hair differently all
+ * put you over it — with clipped corners as the failure. The 1.5 points are invisible side by side
+ * and are the difference between "correct" and "correct with room".
  */
-const MASKED = 0.585;
+const MASKED = 0.57;
 const UNMASKED = 0.72;
+
+/**
+ * The adaptive foreground is drawn BIGGER than the mark should end up, because Android shrinks it.
+ *
+ * @capacitor/assets writes an ic_launcher.xml that wraps both layers in
+ * `<inset android:inset="16.7%">`, so the PNG you hand it fills only the middle 66.6% of the
+ * 108dp tile. Draw the mark at 58.5% of the PNG and it arrives on the phone at 58.5 x 0.666 =
+ * 39.5% — measurably correct by the safe-circle rule and visibly lost on a home screen.
+ *
+ * So the foreground is pre-divided by that inset: 0.585 / 0.666 = 0.878 of the PNG, which is 58.5%
+ * of the tile once Android is done. This number is coupled to @capacitor/assets' inset — if the
+ * icon ever looks the wrong size after an upgrade, this is the line to check, and the measurement
+ * that catches it is in `npm run assets:check`.
+ */
+const ANDROID_INSET = 0.167;
+const FOREGROUND = MASKED / (1 - 2 * ANDROID_INSET);
 const at = (frac, fill = INK, compact = false) => {
   const s = (64 * frac) / 44; // 44 is the mark's natural width in the 64-unit box
   return `<g transform="translate(32 32) scale(${s.toFixed(4)}) translate(-32 -32)">${bars(fill, compact)}</g>`;
@@ -68,12 +89,26 @@ const iconSquare = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>${gradient}</defs>
   <rect width="64" height="64" fill="url(#sunset)"/>
+  ${at(MASKED)}
+</svg>`;
+
+/**
+ * The store listing, which nothing masks — so the mark takes the full 72%.
+ *
+ * Separate from iconSquare precisely because that one DOES get masked: @capacitor/assets turns it
+ * into ic_launcher_round.png as well, and an 11:6 mark at 72% reaches 26.24 against the circle's
+ * 21.33 and loses its corners.
+ */
+const playStore = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>${gradient}</defs>
+  <rect width="64" height="64" fill="url(#sunset)"/>
   ${at(UNMASKED)}
 </svg>`;
 
 /** Android's adaptive foreground: the mark alone, transparent behind, at the masked 58%. */
 const iconForeground = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${at(MASKED)}</svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${at(FOREGROUND)}</svg>`;
 
 const iconBackground = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
@@ -87,7 +122,7 @@ const iconBackground = `
  * hole here that needs a background to show through.
  */
 const iconMonochrome = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${at(MASKED, "#000000")}</svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${at(FOREGROUND, "#000000")}</svg>`;
 
 /**
  * The splash: the mark on the app's own background, both bars ink on the gradient disc.
@@ -130,6 +165,7 @@ const done = await Promise.all([
   render("icon-foreground", iconForeground, 1024),
   render("icon-background", iconBackground, 1024, SUNSET_1),
   render("icon-monochrome", iconMonochrome, 1024),
+  render("play-512", playStore, 512, SUNSET_1),
   render("splash", splash(CREAM), 2732, CREAM),
   render("splash-dark", splash(NIGHT), 2732, NIGHT),
 ]);
