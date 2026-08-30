@@ -349,6 +349,33 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             ))}
           </select>
         </span>
+
+        {/* Deleting used to be a full-width button in a card of its own at the foot of the screen —
+            a very large box around a very small action, and the last thing you saw after scrolling
+            past every receipt you own. It is an icon up here now, beside the currency, because both
+            belong to the split rather than to what is on it.
+
+            Still the only irreversible thing on the screen, so: --warn, a real confirm naming the
+            split, and NOT next to the thumb. The top-right corner is the hardest place to hit by
+            accident on a phone, which is exactly what this one wants. */}
+        <button
+          className="btn btn-ghost topbar-icon"
+          aria-label={`Delete split “${trip.name}”`}
+          style={{ color: "var(--warn)" }}
+          onClick={() => {
+            if (window.confirm(`Delete split "${trip.name}" and all its receipts? This can't be undone.`)) {
+              dispatch({ type: "deleteTrip", tripId });
+              go({ screen: "trips" });
+            }
+          }}
+        >
+          {/* Drawn, like the ＋ and the chevron: 🗑 is a different picture in every font that might
+              load, and half of them render it in colour, which a destructive control should not be. */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+          </svg>
+        </button>
       </div>
 
       <div className="card">
@@ -546,24 +573,6 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
             );
           })
         )}
-      </div>
-
-      {/* Deleting is the one irreversible thing on this screen, so it gets its own card rather than
-          sharing one with a setting. It used to sit inside "Split settings" underneath the currency
-          picker, where it read as part of choosing a currency — which is not what it does. */}
-      <div className="card">
-        <button
-          className="btn btn-ghost"
-          style={{ width: "100%", color: "var(--warn)" }}
-          onClick={() => {
-            if (window.confirm(`Delete split "${trip.name}" and all its receipts? This can't be undone.`)) {
-              dispatch({ type: "deleteTrip", tripId });
-              go({ screen: "trips" });
-            }
-          }}
-        >
-          🗑 Delete split
-        </button>
       </div>
 
       <Footerbar>

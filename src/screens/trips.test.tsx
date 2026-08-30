@@ -379,3 +379,69 @@ describe("groups on the trip screen", () => {
     expect(screen.getByRole("button", { name: /save group/i })).toBeEnabled();
   });
 });
+
+describe("creating a split without a name", () => {
+  /**
+   * `create()` used to `return` on an empty name. The tap landed, the button pressed, and nothing
+   * happened and nothing explained itself — which reads as a broken app, and whose next move is to
+   * tap it harder. These pin the three channels that replaced the silence.
+   */
+  function openForm() {
+    render(<App />);
+    leaveScanScreen();
+  }
+
+  it("says why the button did nothing", async () => {
+    const user = userEvent.setup();
+    openForm();
+    await user.click(screen.getByRole("button", { name: /create split/i }));
+
+    const error = await screen.findByRole("alert");
+    expect(error).toHaveTextContent(/name/i);
+    // Nothing was created on the way past.
+    expect(screen.queryByRole("heading", { name: /new split/i })).toBeInTheDocument();
+  });
+
+  it("does not create a split named only of spaces", async () => {
+    const user = userEvent.setup();
+    openForm();
+    await user.type(screen.getByPlaceholderText(/split name/i), "   ");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  it("points the field out to a screen reader, not only to the eye", async () => {
+    const user = userEvent.setup();
+    openForm();
+    await user.click(screen.getByRole("button", { name: /create split/i }));
+
+    const field = screen.getByPlaceholderText(/split name/i);
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription(/name/i);
+    // and the keyboard lands on the thing that needs filling in
+    expect(field).toHaveFocus();
+  });
+
+  it("clears the complaint as soon as they start fixing it", async () => {
+    const user = userEvent.setup();
+    openForm();
+    await user.click(screen.getByRole("button", { name: /create split/i }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText(/split name/i), "A");
+    // An error that outlives the problem is the second most annoying kind after one that never
+    // appears at all.
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByPlaceholderText(/split name/i)).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("still creates the split once it has a name", async () => {
+    const user = userEvent.setup();
+    openForm();
+    await user.click(screen.getByRole("button", { name: /create split/i }));
+    await user.type(screen.getByPlaceholderText(/split name/i), "Algarve");
+    await user.click(screen.getByRole("button", { name: /create split/i }));
+
+    expect(await screen.findByRole("heading", { name: /algarve/i })).toBeInTheDocument();
+  });
+});

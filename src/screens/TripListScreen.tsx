@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { newId } from "../lib/ids";
 import type { View } from "../App";
@@ -7,6 +7,7 @@ import { Disc } from "../components/chips";
 import { Mark } from "../components/Mark";
 import { defaultCurrency } from "../lib/currencies";
 import { keptSplits } from "../lib/keptSplits";
+import { nudge } from "../lib/nudge";
 
 const EMOJIS = ["🧾", "🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
 
@@ -24,6 +25,11 @@ export function newestFirst(trips: Trip[]): Trip[] {
 export function TripListScreen({ go }: { go: (v: View) => void }) {
   const { data, dispatch } = useStore();
   const [name, setName] = useState("");
+  /* Why "Create split" did nothing, said out loud.
+     It used to `return` on an empty name — the tap landed, the button moved, and nothing happened
+     and nothing explained itself, which reads as a broken app rather than as a missing field. */
+  const [nameError, setNameError] = useState("");
+  const nameInput = useRef<HTMLInputElement>(null);
   const [emoji, setEmoji] = useState(EMOJIS[0]);
   /* The form used to sit above the trips, so opening the app meant looking at an empty field
      before your own holidays. It lives behind the ＋ now — and opens by itself for someone with
@@ -32,7 +38,17 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
 
   function create() {
     const trimmed = name.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      // Three channels, because one of them fails for somebody: the sentence for anyone reading,
+      // the shake for anyone who tapped without reading, and the buzz for anyone whose eyes are on
+      // the table rather than the phone. The field is focused last so the keyboard comes up on the
+      // thing that needs filling in.
+      setNameError("Give it a name first — “Algarve”, “Tuesday dinner”, anything.");
+      nudge(nameInput.current);
+      nameInput.current?.focus();
+      return;
+    }
+    setNameError("");
     const id = newId();
     dispatch({ type: "createTrip", id, name: trimmed, emoji, currency: defaultCurrency() });
     setName("");
@@ -68,12 +84,27 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
             )}
           </div>
           <input
+            ref={nameInput}
             placeholder="Split name"
             autoFocus={data.trips.length > 0}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            aria-invalid={nameError ? true : undefined}
+            aria-describedby={nameError ? "split-name-error" : undefined}
+            onChange={(e) => {
+              setName(e.target.value);
+              // Clears as soon as they start fixing it. An error that outlives the problem is the
+              // second most annoying kind after one that never appears.
+              if (nameError) setNameError("");
+            }}
             onKeyDown={(e) => e.key === "Enter" && create()}
           />
+          {nameError && (
+            /* role="alert" so it is announced, not just drawn — somebody using a screen reader got
+               exactly as little from the old silent return as everybody else. */
+            <p className="field-error" id="split-name-error" role="alert">
+              {nameError}
+            </p>
+          )}
           <div className="emoji-row">
             {EMOJIS.map((e) => (
               <button
