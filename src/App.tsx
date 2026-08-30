@@ -10,6 +10,7 @@ import { PaywallScreen } from "./screens/PaywallScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { SplashAnimation, claimFirstLaunch } from "./components/SplashAnimation";
 import { HelpScreen } from "./screens/HelpScreen";
+import { BackupScreen } from "./screens/BackupScreen";
 import { WhosInScreen } from "./screens/WhosInScreen";
 import { InviteScreen } from "./screens/InviteScreen";
 import { JoinScreen } from "./screens/JoinScreen";
@@ -58,6 +59,9 @@ export type View =
      until it succeeds. */
   | { screen: "paywall"; tripId?: string }
   | { screen: "profile" }
+  /* Its own screen because the export list grows one row per split, which is what stopped the
+     Profile page from ever settling into a fixed shape. */
+  | { screen: "backup" }
   | { screen: "help" };
 
 /** Where the quick scan has got to. `picking` is the camera/gallery screen the Scan tab opens. */
@@ -399,6 +403,7 @@ function Router() {
   function screen() {
     if (view.screen === "trips") return <TripListScreen go={setView} />;
     if (view.screen === "profile") return <ProfileScreen go={setView} />;
+    if (view.screen === "backup") return <BackupScreen go={setView} />;
     if (view.screen === "help") return <HelpScreen go={setView} />;
     // Before the trip lookup below: a guest joining has no trip of their own to find, and looking
     // one up would send them to the splits list instead of the split they were invited to.

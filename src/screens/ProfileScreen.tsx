@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useStore } from "../state/StoreProvider";
-import { exportTrip, importTrip, loadApiKey, saveApiKey } from "../lib/storage";
+import { loadApiKey, saveApiKey } from "../lib/storage";
 import { fetchQuota, lastKnownQuota, usingProxy, verifyApiKey, type ScanQuota } from "../lib/scan";
 import { PackChooser } from "../components/PackChooser";
 import { currencyOptions, defaultCurrency, setDefaultCurrency } from "../lib/currencies";
@@ -18,11 +17,21 @@ const KEY_STATUS_TEXT: Record<KeyStatus, string> = {
   unknown: "Couldn't check — are you online?",
 };
 
+/** The mark of a row that goes somewhere. Drawn rather than typed — "›" lands differently in
+ * every font that might load, and decorative punctuation has to be hidden from a screen reader
+ * anyway, so there is nothing a glyph buys here. */
+function Chevron() {
+  return (
+    <svg className="settings-chevron" width="8" height="14" viewBox="0 0 8 14" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M1 1l6 6-6 6" />
+    </svg>
+  );
+}
+
 export function ProfileScreen({ go }: { go: (v: View) => void }) {
-  const { data, dispatch } = useStore();
   const [key, setKey] = useState(loadApiKey());
   const [keyStatus, setKeyStatus] = useState<KeyStatus>("idle");
-  const [importError, setImportError] = useState("");
   const [theme, setTheme] = useState<ThemeChoice>(themeChoice);
   /* Mirrored in state so the picker moves the moment it is tapped. The stored value is the
      authority — this is only what the control shows between now and the next launch. */
@@ -45,26 +54,6 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
     }
   }
 
-  function download(tripId: string) {
-    const trip = data.trips.find((t) => t.id === tripId);
-    if (!trip) return;
-    const blob = new Blob([exportTrip(trip)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${trip.name.replace(/\W+/g, "-") || "split"}.bills.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  async function handleImport(file: File) {
-    try {
-      dispatch({ type: "importTrip", trip: importTrip(await file.text()) });
-      setImportError("");
-    } catch {
-      setImportError("That file isn't a Billy split export.");
-    }
-  }
-
   return (
     <div>
       {/* No back button: this is a tab root, reached from the bottom bar rather than by
@@ -83,60 +72,87 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
           there is — quietly got less for the same money than somebody who waited to run out. */}
       <PackChooser onBought={refreshScanQuota} firstPack={scanQuota?.firstPack ?? false} />
 
-      {/* The currency every new split starts in.
-          A setting rather than a guess, deliberately. The scanner reads a currency off the photo
-          and the app ignores it — see the note in TripScreen, written after a misread "USD" turned
-          a Portuguese holiday into dollars. A wrong currency is the worst bug this app can have,
-          because the digits still look right and nobody notices until they are arguing about money.
-          Set once by the person who knows, instead of guessed on every receipt. */}
-      <div className="card">
-        <div className="row">
-          <div>
-            <h3 style={{ margin: 0 }}>Currency</h3>
-            <p className="muted" style={{ margin: "2px 0 0" }}>
-              What new splits start in. Each split can still be changed on its own.
-            </p>
-          </div>
-          <select
-            aria-label="Default currency for new splits"
-            value={currency}
-            onChange={(e) => {
-              setDefaultCurrency(e.target.value);
-              setCurrency(e.target.value);
-            }}
-          >
-            {currencyOptions(currency).map((o) => (
-              <option key={o.code} value={o.code}>
-                {o.code} — {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Light and dark both exist; this is the choice between them. "Auto" follows the phone,
-          which is right most of the time and wrong at a sunny kitchen table. */}
-      <div className="card">
-        <h3>Appearance</h3>
-        <div className="row" style={{ justifyContent: "flex-start", flexWrap: "wrap" }}>
-          {([
-            ["auto", "Follow phone"],
-            ["light", "☀️ Light"],
-            ["dark", "🌙 Dark"],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              className={`chip chip-group${theme === value ? " selected" : ""}`}
-              aria-pressed={theme === value}
-              onClick={() => {
-                setTheme(value);
-                setThemeChoice(value);
+      <h2 className="settings-label">Settings</h2>
+      <div className="settings-list">
+        {/* The currency every new split starts in.
+            A setting rather than a guess, deliberately. The scanner reads a currency off the photo
+            and the app ignores it — see the note in TripScreen, written after a misread "USD"
+            turned a Portuguese holiday into dollars. A wrong currency is the worst bug this app
+            can have, because the digits still look right and nobody notices until they are
+            arguing about money. Set once by the person who knows, instead of guessed every time. */}
+        <div className="settings-row">
+          <span>
+            Currency
+            <span className="settings-note">What new splits start in</span>
+          </span>
+          <span className="settings-value">
+            <select
+              aria-label="Default currency for new splits"
+              value={currency}
+              onChange={(e) => {
+                setDefaultCurrency(e.target.value);
+                setCurrency(e.target.value);
               }}
             >
-              {label}
-            </button>
-          ))}
+              {currencyOptions(currency).map((o) => (
+                <option key={o.code} value={o.code}>
+                  {o.code} — {o.label}
+                </option>
+              ))}
+            </select>
+          </span>
         </div>
+
+        {/* Stacked rather than side-by-side: three chips cannot share a 375px row with their own
+            label without one of them wrapping, and a segmented control that wraps stops reading as
+            one control. "Follow phone" is right most of the time and wrong at a sunny table. */}
+        <div className="settings-row settings-row-stacked">
+          <span className="settings-row-title">
+            Appearance
+            <span className="settings-note">Auto follows your phone</span>
+          </span>
+          {/* "Auto" on the face, "Follow phone" as the accessible name: the short word is what makes
+              three chips fit one line, and the long one is what makes the control make sense read
+              aloud. The note above says the same thing for anyone looking at it. */}
+          <div className="settings-segmented">
+            {([
+              ["auto", "Auto", "Follow phone"],
+              ["light", "☀️ Light", "Light"],
+              ["dark", "🌙 Dark", "Dark"],
+            ] as const).map(([value, label, name]) => (
+              <button
+                key={value}
+                className={`chip chip-group${theme === value ? " selected" : ""}`}
+                aria-label={name}
+                aria-pressed={theme === value}
+                onClick={() => {
+                  setTheme(value);
+                  setThemeChoice(value);
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Both of these open a screen rather than expanding here. Backup in particular grew one
+            row per split, which is what made this page unable to settle. */}
+        <button className="settings-row" onClick={() => go({ screen: "backup" })}>
+          <span>
+            Backup
+            <span className="settings-note">Export a split, or bring one back</span>
+          </span>
+          <Chevron />
+        </button>
+
+        <button className="settings-row" onClick={() => go({ screen: "help" })}>
+          <span>
+            Help &amp; about
+            <span className="settings-note">How splitting works, and what happens to a photo</span>
+          </span>
+          <Chevron />
+        </button>
       </div>
 
       {/* Hidden entirely once a scan proxy is configured: from then on the app scans on the
@@ -187,48 +203,6 @@ export function ProfileScreen({ go }: { go: (v: View) => void }) {
       </div>
       )}
 
-      <div className="card">
-        <h3>Backup</h3>
-        <p className="label" style={{ marginTop: 0 }}>
-          Everything lives on this phone, so a backup is the only way it survives a lost or reset
-          phone. Export each split you care about.
-        </p>
-        {data.trips.length === 0 && <p className="muted">No splits to export yet.</p>}
-        {data.trips.map((t) => (
-          <div key={t.id} className="row" style={{ padding: "var(--s1) 0" }}>
-            <span className="row" style={{ gap: "var(--s2)", minWidth: 0 }}>
-              <span aria-hidden="true">{t.emoji}</span>
-              <span>{t.name}</span>
-            </span>
-            <button className="btn" onClick={() => download(t.id)}>Export</button>
-          </div>
-        ))}
-        <label className="micro" htmlFor="import" style={{ display: "block", marginTop: "var(--s4)" }}>
-          Import split
-        </label>
-        <input
-          id="import"
-          type="file"
-          accept="application/json,.json"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void handleImport(f);
-            e.target.value = "";
-          }}
-        />
-        {importError && <div className="banner-warn">{importError}</div>}
-      </div>
-
-      <div className="card">
-        <h3>Help &amp; about</h3>
-        <p className="label" style={{ marginTop: 0 }}>
-          How the splitting works, why a share can be a cent different, and what happens to a
-          photo of a receipt.
-        </p>
-        <button className="btn" style={{ width: "100%" }} onClick={() => go({ screen: "help" })}>
-          Open help
-        </button>
-      </div>
     </div>
   );
 }

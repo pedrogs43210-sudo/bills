@@ -268,7 +268,10 @@ describe("Settings once the app scans on the user's behalf", () => {
     expect(screen.queryByRole("button", { name: /test key/i })).toBeNull();
     expect(screen.queryByText(/your own Anthropic API key/i)).toBeNull();
     // and the things that still matter are still there
-    expect(screen.getByRole("heading", { name: /appearance/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /backup/i })).toBeInTheDocument();
+    // Both moved out of their own cards when Profile became one settings list: Appearance is a row
+    // title now, and Backup is a row that opens a screen of its own.
+    expect(screen.getByRole("heading", { name: /^settings$/i })).toBeInTheDocument();
+    expect(screen.getByText(/appearance/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^backup/i })).toBeInTheDocument();
   });
 });

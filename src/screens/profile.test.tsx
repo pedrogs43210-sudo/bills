@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import App from "../App";
 import { ProfileScreen } from "./ProfileScreen";
 import { StoreProvider } from "../state/StoreProvider";
-import { loadApiKey, exportTrip } from "../lib/storage";
+import { loadApiKey, exportTrip, saveData } from "../lib/storage";
 import type { Trip } from "../types";
 import { setOnboarded } from "../lib/onboarding";
 import { leaveScanScreen } from "../test/leaveScanScreen";
@@ -47,9 +47,11 @@ describe("profile screen", () => {
     render(<App />);
   leaveScanScreen();
     await user.click(screen.getByRole("tab", { name: /profile/i }));
+    // Backup left Profile for a screen of its own: its export list grows one row per split, so on
+    // Profile it pushed the settings below it further down the page with every holiday taken.
+    await user.click(screen.getByRole("button", { name: /^backup/i }));
     await user.upload(screen.getByLabelText(/import split/i), file);
-    // No back button to leave through — the imported trip shows up right here, in the
-    // Backup card's own list, without navigating anywhere.
+    // The imported trip appears in the list on this screen, without navigating again.
     expect(await screen.findByText(/madeira/i)).toBeInTheDocument();
   });
 
@@ -59,6 +61,7 @@ describe("profile screen", () => {
     render(<App />);
   leaveScanScreen();
     await user.click(screen.getByRole("tab", { name: /profile/i }));
+    await user.click(screen.getByRole("button", { name: /^backup/i }));
     await user.upload(screen.getByLabelText(/import split/i), file);
     expect(await screen.findByText(/isn't a Billy split/i)).toBeInTheDocument();
   });
@@ -93,5 +96,52 @@ describe("appearance and the API key card", () => {
   leaveScanScreen();
     await user.click(screen.getByRole("tab", { name: /profile/i }));
     expect(screen.getByPlaceholderText(/sk-ant/i)).toBeInTheDocument();
+  });
+});
+
+describe("the settings list", () => {
+  /**
+   * Profile used to be six stacked cards — scans, packs, Currency, Appearance, Backup, Help — each
+   * with its own heading and body copy. Six equal boxes is the same as no hierarchy, and the Backup
+   * one grew a row per split, so the page had no settled shape at all.
+   */
+  it("keeps the export list off Profile, however many splits there are", async () => {
+    saveData({
+      schemaVersion: 2,
+      trips: ["Algarve", "Madeira", "Sintra"].map((name, i) => ({
+        id: `t${i}`, name, emoji: "🏖️", currency: "EUR",
+        people: [], groups: [], receipts: [], createdAt: "", schemaVersion: 2 as const,
+      })),
+    });
+    const user = userEvent.setup();
+    render(<App />);
+    leaveScanScreen();
+    await user.click(screen.getByRole("tab", { name: /profile/i }));
+
+    // The names would be here if the export list still were, and there would be three more rows
+    // between Appearance and Help than there were yesterday.
+    expect(screen.queryByText(/algarve/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^export$/i })).not.toBeInTheDocument();
+  });
+
+  it("opens backup and comes back to profile", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    leaveScanScreen();
+    await user.click(screen.getByRole("tab", { name: /profile/i }));
+    await user.click(screen.getByRole("button", { name: /^backup/i }));
+
+    expect(screen.getByRole("heading", { name: /^backup$/i })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /back/i }));
+    expect(screen.getByRole("heading", { name: /^profile$/i })).toBeInTheDocument();
+  });
+
+  it("still sets a default currency, now from a row rather than a card", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    leaveScanScreen();
+    await user.click(screen.getByRole("tab", { name: /profile/i }));
+    await user.selectOptions(screen.getByLabelText(/default currency/i), "GBP");
+    expect(localStorage.getItem("bills.currency")).toBe("GBP");
   });
 });

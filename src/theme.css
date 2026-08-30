@@ -1551,9 +1551,16 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   to   { opacity: 1; }
 }
 
-/* Both bars are ink on the app's own flat background — the two-colour split would put the accent
-   on a bar that is mid-move, and a colour change during a shape change reads as two events. */
+/* The long bar is ink. The short one ENDS on the accent, because the mark has two colours and the
+   native splash tile that plays immediately before this one shows both — resolving to a single
+   colour made the animation contradict the icon it had just dissolved from.
+ *
+ * The original note here said a colour change during a shape change reads as two events, and that
+ * is still true at frame one, where both bars are stacked and must read as ONE bar. So the colour
+ * is not set, it is travelled: billy-b starts on --ink and lands on --accent as the bar pulls in.
+ * The rule below is the resting state, which is what reduced motion and [data-still] get. */
 .splash rect { fill: var(--ink); }
+.splash-short { fill: var(--accent); }
 
 /* transform-box: view-box is what makes translateY(7.5) mean 7.5 VIEWBOX units rather than 7.5
    CSS pixels. Without it the bars fly several times too far and never meet. */
@@ -1582,9 +1589,13 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   0%, 16%   { transform: translateY(7.5px); }
   64%, 100% { transform: translateY(0); }
 }
+/* The fill travels with the shape. At 16% this bar is still stacked on the long one and must be
+   the same colour as it, or the "one bar" the whole animation depends on is two from the start. It
+   arrives on the accent at 64%, the moment the bar finishes pulling in — so the colour lands with
+   the shape rather than after it. */
 @keyframes billy-b {
-  0%, 16%   { transform: translateY(-7.5px) scaleX(1.6923); }
-  64%, 100% { transform: translateY(0) scaleX(1); }
+  0%, 16%   { transform: translateY(-7.5px) scaleX(1.6923); fill: var(--ink); }
+  64%, 100% { transform: translateY(0) scaleX(1); fill: var(--accent); }
 }
 @keyframes billy-word {
   0%, 56% { opacity: 0; transform: translateY(5px); }
@@ -1599,3 +1610,100 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
 .splash[data-still] .splash-long,
 .splash[data-still] .splash-short,
 .splash[data-still] .splash-word { animation: none; }
+
+/* ---------- The settings list ---------- */
+
+/*
+ * One quiet column instead of a stack of cards.
+ *
+ * The Profile screen had six .card blocks — scans, packs, Currency, Appearance, Backup, Help —
+ * each with its own heading and body copy, and nothing louder than anything else. Six equal boxes
+ * is the same as no hierarchy: the eye has nowhere to land, so the screen reads as a list of
+ * things the app can do rather than as a screen with a purpose.
+ *
+ * So the top of the page keeps its weight (the scans number and the packs, which are what somebody
+ * came here for) and everything else becomes rows in a single grouped list. The label sits OUTSIDE
+ * the group, small and quiet, which is what makes the group read as one object rather than as
+ * another card with a title in it.
+ */
+.settings-label {
+  margin: var(--s6) 0 var(--s2);
+  padding: 0 var(--s2);
+  font: 800 11px/1 var(--text);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.settings-list {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+/* Hairlines between rows, never above the first or below the last — the group's own border does
+   that job, and doubling them reads as a seam. */
+.settings-row + .settings-row { border-top: 1px solid var(--line); }
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--s3) var(--s4);
+  background: none;
+  border: 0;
+  font: 600 15px/1.3 var(--text);
+  color: var(--ink);
+  text-align: left;
+}
+
+/* A row that goes somewhere is a button and says so with a chevron. A row that holds a control is
+   not tappable itself — the control is — so it gets neither. */
+button.settings-row { cursor: pointer; }
+button.settings-row:active { background: var(--sunken); }
+
+.settings-chevron { color: var(--ink-3); flex: none; }
+
+/* The right-hand side of a row: the current value, or the control that changes it. */
+.settings-value {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.settings-value select { max-width: 62vw; }
+
+/* A row whose control cannot sit beside its label — three theme chips need the width — stacks
+   instead. Still one row of the list, so the hairlines stay honest. */
+.settings-row-stacked {
+  display: block;
+  padding: var(--s3) var(--s4) var(--s4);
+}
+.settings-row-stacked > .settings-row-title { display: block; margin-bottom: var(--s3); }
+
+/* The one line of explanation a setting is allowed. Anything longer belongs on the screen the row
+   opens, not underneath it. */
+.settings-note {
+  display: block;
+  margin-top: 2px;
+  font: 500 12.5px/1.4 var(--text);
+  color: var(--ink-3);
+  letter-spacing: 0;
+}
+
+/* Three equal columns, so the theme picker reads as ONE control rather than three loose chips.
+   Free-flowing they measured 291px against 309px of room — over once the gaps counted — so "Dark"
+   wrapped to a second line and the row grew to 173px, taller than the two rows below it combined.
+   A grid cannot wrap, and equal thirds is what makes a segmented control look deliberate. */
+.settings-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s2);
+}
+.settings-segmented .chip { width: 100%; justify-content: center; padding-inline: var(--s2); }

@@ -15,7 +15,7 @@ async function openHelp() {
   render(<App />);
   leaveScanScreen();
   await user.click(screen.getByRole("tab", { name: /profile/i }));
-  await user.click(screen.getByRole("button", { name: /open help/i }));
+  await user.click(screen.getByRole("button", { name: /help & about/i }));
   return user;
 }
 
