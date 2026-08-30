@@ -104,13 +104,47 @@ jobs:
           VITE_RC_KEY_IOS: ${{ secrets.VITE_RC_KEY_IOS }}
           VITE_RC_KEY_ANDROID: ${{ secrets.VITE_RC_KEY_ANDROID }}
       - run: npx cap sync ios
+      # What the runner actually is. macos-latest moves without notice, and when this job goes red
+      # the first question is always "did the toolchain change under us" — which is unanswerable
+      # after the fact unless the answer is printed on every run, green ones included.
+      - name: Say what we are building with
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcodebuild -showsdks | grep -i simulator || true
+        working-directory: ios/App
       - name: Build for simulator, unsigned
         run: |
+          set -o pipefail
           xcodebuild \
             -project App.xcodeproj \
             -scheme App \
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
         working-directory: ios/App
+      # The same trick the android job has used since it was written, and the reason this one was
+      # diagnosable and iOS was not: raw job logs need admin rights on the repository, annotations
+      # are readable through the public API. A failure nobody can read is a failure nobody can fix.
+      - name: Republish the failure where it can be read
+        if: failure()
+        run: |
+          log="$RUNNER_TEMP/xcodebuild.log"
+          [ -f "$log" ] || { echo "::error::xcodebuild produced no log"; exit 0; }
+          grep -nE "error:|BUILD FAILED|The following build commands failed|Undefined symbol|No such module|does not contain|Signing for|xcodebuild: error|is not available" "$log" \
+            | tail -n 25 > "$RUNNER_TEMP/interesting.txt" || true
+          if [ ! -s "$RUNNER_TEMP/interesting.txt" ]; then
+            tail -n 25 "$log" > "$RUNNER_TEMP/interesting.txt"
+          fi
+          while IFS= read -r line; do
+            printf '::error::%s\n' "${line//$'\r'/}"
+          done < "$RUNNER_TEMP/interesting.txt"
+      # Keeps the whole log for anyone who does have access, so the annotations above never have to
+      # be the only copy.
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: ios-xcodebuild-log
+          path: ${{ runner.temp }}/xcodebuild.log
+          if-no-files-found: warn
