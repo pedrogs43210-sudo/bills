@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<script>
+  /*
+   * Invite links sent before this page existed point at /?join=CODE, and the app now lives under
+   * /app/. Forward rather than break every link already sitting in a group chat.
+   *
+   * First script in the head, before any paint, so somebody opening an invite never sees a
+   * marketing page flash past on the way to their split.
+   */
+  (function () {
+    try {
+      if (/[?&]join=/.test(location.search)) {
+        location.replace("/app/" + location.search + location.hash);
+      }
+    } catch (e) {}
+  })();
+</script>
+
+<title>Billy — split the receipt by what people actually had</title>
+<meta name="description" content="Photograph the receipt, tap who had what, and Billy works out who owes whom. No subscription, no account.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+
+<meta property="og:title" content="Billy knows who had what">
+<meta property="og:description" content="Photograph the receipt, tap who had what, and Billy works out who owes whom. No subscription, no account.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://splitwithbilly.com/">
+
+<style>
+  /*
+   * The app's own tokens, copied rather than imported: this page is plain static HTML served from
+   * the site root, and the app's stylesheet is a hashed bundle under /app/. Two files, one
+   * palette — src/theme.css is the original, and these values are the light and dark blocks of it.
+   */
+  :root {
+    --bg: #fff8f0;
+    --surface: #ffffff;
+    --sunken: #fdf1e4;
+    --line: #efe0cf;
+    --line-strong: #e2cdb6;
+    --ink: #3d2b24;
+    --ink-2: #6e574a;
+    --ink-3: #7d6555;
+    --accent: #e8492f;
+    --accent-ink: #b83e1a;
+    --on-accent: #ffffff;
+    --good: #2e9e6b;
+    --brand: Fredoka, ui-rounded, system-ui, sans-serif;
+    --text: Nunito, system-ui, sans-serif;
+  }
+  /* Keyed off the visitor's OS, because a static page has no theme switch to remember. The app
+     resolves its own choice in JS; here the media query is the whole of it. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #241a17;
+      --surface: #2f221d;
+      --sunken: #3a2a23;
+      --line: #4a362d;
+      --line-strong: #5c4437;
+      --ink: #fbeee2;
+      --ink-2: #c4a895;
+      --ink-3: #a89383;
+      --accent: #ff8f73;
+      --accent-ink: #ff8f73;
+      --on-accent: #241a17;
+      --good: #4fcb92;
+    }
+  }
+
+  @font-face {
+    font-family: Fredoka; font-style: normal; font-weight: 600; font-display: swap;
+    src: url(/fonts/fredoka-600.woff2) format("woff2");
+  }
+  @font-face {
+    font-family: Nunito; font-style: normal; font-weight: 600; font-display: swap;
+    src: url(/fonts/nunito-600.woff2) format("woff2");
+  }
+  @font-face {
+    font-family: Nunito; font-style: normal; font-weight: 800; font-display: swap;
+    src: url(/fonts/nunito-800.woff2) format("woff2");
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 17px/1.6 var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 44rem; margin: 0 auto; padding: 0 1.25rem; }
+
+  h1, h2, .brand-name { font-family: var(--brand); font-weight: 600; letter-spacing: -0.02em; }
+  h1 { font-size: clamp(2rem, 7vw, 3.1rem); line-height: 1.08; margin: 0 0 1rem; }
+  h2 { font-size: clamp(1.35rem, 4.5vw, 1.9rem); line-height: 1.15; margin: 0 0 0.85rem; }
+  p { margin: 0 0 1.1rem; }
+  .lede { font-size: clamp(1.05rem, 3vw, 1.2rem); color: var(--ink-2); }
+  .muted { color: var(--ink-3); }
+
+  header { padding: 2rem 0 0; }
+  .brand { display: flex; align-items: center; gap: 0.6rem; }
+  .brand-name { font-size: 1.35rem; }
+
+  section { padding: 3.4rem 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; padding-top: 2.6rem; }
+
+  .cta {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-height: 52px; padding: 0 1.6rem;
+    border: 0; border-radius: 13px;
+    background: var(--accent-ink); color: var(--on-accent);
+    font: 600 16px/1 var(--brand); letter-spacing: -0.01em;
+    text-decoration: none;
+    box-shadow: 0 5px 16px -5px rgba(232, 73, 47, 0.55);
+  }
+  .cta-note { margin: 0.7rem 0 0; font-size: 0.9rem; color: var(--ink-3); }
+
+  /* The receipt. Two columns so the prices form a real column rather than trailing the names,
+     which is what makes it read as a till roll instead of a list. */
+  .receipt {
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    padding: 1.4rem 1.3rem 1.2rem;
+    font-family: var(--text);
+    font-size: 15px;
+    box-shadow: 0 2px 10px -4px rgba(61, 43, 36, 0.14);
+  }
+  .receipt-head { text-align: center; padding-bottom: 0.9rem; border-bottom: 1px dashed var(--line-strong); }
+  .receipt-head strong { display: block; font-family: var(--brand); letter-spacing: 0.04em; }
+  .line { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.6rem; padding: 0.5rem 0; }
+  .line + .line { border-top: 1px solid var(--line); }
+  .price { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .who { display: flex; gap: 3px; }
+  .who i {
+    width: 21px; height: 21px; border-radius: 999px;
+    display: grid; place-items: center;
+    font: 800 10px/1 var(--text); font-style: normal; color: #fff;
+  }
+  .total { display: flex; justify-content: space-between; margin-top: 0.9rem; padding-top: 0.8rem; border-top: 2px solid var(--line-strong); font-weight: 800; }
+  .settle { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px dashed var(--line-strong); }
+  .settle div { display: flex; justify-content: space-between; padding: 0.28rem 0; }
+  .settle b { font-variant-numeric: tabular-nums; }
+
+  ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; }
+  ol.steps li { counter-increment: s; position: relative; padding: 0 0 1.5rem 3.1rem; }
+  ol.steps li::before {
+    content: counter(s);
+    position: absolute; left: 0; top: -2px;
+    width: 34px; height: 34px; border-radius: 999px;
+    background: var(--sunken); border: 1px solid var(--line-strong);
+    color: var(--accent-ink); font: 600 16px/34px var(--brand); text-align: center;
+  }
+  ol.steps b { display: block; font-family: var(--brand); font-weight: 600; font-size: 1.08rem; }
+
+  footer { padding: 2.5rem 0 3.5rem; border-top: 1px solid var(--line); font-size: 0.92rem; color: var(--ink-3); }
+  footer a { color: var(--accent-ink); }
+  a { color: var(--accent-ink); }
+
+  /* The one place a long unbroken string could push the page sideways. */
+  .receipt, .line { overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <!-- The mark, at its own 11:6 ratio. Ink for the long bar, brand red for the short one —
+         the same two colours the app uses, and the reason the equals sign is not equal. -->
+    <svg width="44" height="24" viewBox="10 20 44 24" aria-hidden="true">
+      <rect x="10" y="20" width="44" height="9" rx="4.5" fill="var(--ink)"/>
+      <rect x="10" y="35" width="26" height="9" rx="4.5" fill="var(--accent)"/>
+    </svg>
+    <span class="brand-name">Billy</span>
+  </div>
+</header>
+
+<section>
+  <h1>Billy knows who had what.</h1>
+  <p class="lede">
+    Photograph the receipt. Tap who had what. Billy works out who owes whom, so nobody has to do
+    maths in the group chat.
+  </p>
+  <p>
+    <a class="cta" href="mailto:hello@splitwithbilly.com?subject=Tell%20me%20when%20Billy%20is%20out">Email me when it's out</a>
+  </p>
+  <p class="cta-note">Coming to the App Store and Google Play. One email, when it lands. Nothing else.</p>
+</section>
+
+<section>
+  <div class="receipt">
+    <div class="receipt-head">
+      <strong>BAR CENTRAL</strong>
+      <span class="muted">Lisboa &middot; 4 Aug</span>
+    </div>
+
+    <div class="line"><span>Bife à Portuguesa</span><span class="price">14.50</span><span class="who"><i style="background:#a8452f">P</i></span></div>
+    <div class="line"><span>Bacalhau à Brás</span><span class="price">13.00</span><span class="who"><i style="background:#3c6bb5">M</i></span></div>
+    <div class="line"><span>Salada mista</span><span class="price">6.50</span><span class="who"><i style="background:#3f7a44">A</i></span></div>
+    <div class="line"><span>Vinho da casa</span><span class="price">18.00</span><span class="who"><i style="background:#a8452f">P</i><i style="background:#3c6bb5">M</i></span></div>
+    <div class="line"><span>Água 1.5L</span><span class="price">2.50</span><span class="who"><i style="background:#a8452f">P</i><i style="background:#3c6bb5">M</i><i style="background:#3f7a44">A</i></span></div>
+    <div class="line"><span>Couvert</span><span class="price">4.50</span><span class="who"><i style="background:#a8452f">P</i><i style="background:#3c6bb5">M</i><i style="background:#3f7a44">A</i></span></div>
+
+    <div class="total"><span>Total</span><span>€59.00</span></div>
+
+    <div class="settle">
+      <div><span>Pedro pays Marta</span><b>€25.84</b></div>
+      <div><span>Ana pays Marta</span><b>€8.83</b></div>
+    </div>
+  </div>
+  <p class="cta-note">Marta paid. Two payments settle it, and the odd cent goes somewhere on purpose.</p>
+</section>
+
+<section>
+  <h2>&ldquo;Let's just split it evenly&rdquo;</h2>
+  <p>
+    Somebody had the steak and half the wine. Somebody had a salad and tap water. Splitting evenly
+    means one of them is quietly paying for the other, and everyone at the table knows it — which
+    is why the group chat fills up with arithmetic nobody volunteered for.
+  </p>
+  <p>Billy does the arithmetic. You just say who had what.</p>
+</section>
+
+<section>
+  <h2>Three taps, roughly</h2>
+  <ol class="steps">
+    <li>
+      <b>Photograph the receipt</b>
+      Billy reads every line — including the service charge, the couvert and the tip, which are the
+      lines people forget and then argue about.
+    </li>
+    <li>
+      <b>Tap who had what</b>
+      Hold to grab several lines at once. Two of you shared the wine? Split that one line between
+      the two of you and leave the rest alone.
+    </li>
+    <li>
+      <b>Send the answer</b>
+      Who pays whom, in the fewest payments that settle it. Copy it straight into the group chat.
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>No subscription. Nothing recurring.</h2>
+  <p>
+    Splitting by hand is free and stays free — as many receipts, as many people, as often as you
+    like.
+  </p>
+  <p>
+    Reading a receipt is the part that costs real money to run, so scans come in packs: ten for
+    €1.99. Buy them once and use them whenever. They don't expire, and there is nothing to cancel.
+  </p>
+</section>
+
+<section>
+  <h2>No account. No sign-up. No email address.</h2>
+  <p>
+    Your splits live on your phone and nowhere else. There is nothing to log in to, and no way for
+    anyone — including us — to read them.
+  </p>
+  <p>
+    The one thing that ever leaves is the receipt photo itself, at the moment you choose to scan
+    one. It goes to Anthropic's Claude to be read, and it is not kept afterwards.
+    <a href="/privacy.html">The privacy policy</a> says all of this in more detail, and in plainer
+    terms than most.
+  </p>
+</section>
+
+<section>
+  <h2>Billy remembers.</h2>
+  <p class="lede">Coming to the App Store and Google Play.</p>
+  <p>
+    <a class="cta" href="mailto:hello@splitwithbilly.com?subject=Tell%20me%20when%20Billy%20is%20out">Email me when it's out</a>
+  </p>
+</section>
+
+<footer>
+  <p>
+    <a href="/privacy.html">Privacy</a> &middot;
+    <a href="mailto:hello@splitwithbilly.com">hello@splitwithbilly.com</a>
+  </p>
+  <p class="muted">Made in Portugal for people who go on holiday with their friends.</p>
+</footer>
+
+</div>
+
+<script>
+  /*
+   * Retire the old root-scoped service worker.
+   *
+   * Until this page existed the app was served from / and registered a worker at /sw.js with scope
+   * "/", which precached the app shell and answered every navigation with it. Left in place it
+   * would keep serving the app here instead of this page. /sw.js is now a self-destructing stub
+   * that handles the usual case; this is for a registration that never gets round to updating.
+   *
+   * Scoped deliberately: getRegistrations() returns every worker on the origin, and the app still
+   * wants its own under /app/ for offline use. Only the root one goes.
+   */
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (r) {
+        var path = r.scope.replace(location.origin, "").replace(/\/+$/, "");
+        if (path === "") r.unregister();
+      });
+    }).catch(function () {});
+  }
+</script>
+
+</body>
+</html>

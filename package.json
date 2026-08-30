@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/build-site.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "assets": "node scripts/make-assets.mjs && capacitor-assets generate --android --ios --iconBackgroundColor \"#FF7059\" --iconBackgroundColorDark \"#FF7059\" --splashBackgroundColor \"#FFF8F0\" --splashBackgroundColorDark \"#241A17\" && node scripts/patch-adaptive-icon.mjs && node scripts/check-assets.mjs",
+    "assets": "node scripts/make-assets.mjs && capacitor-assets generate --android --ios --iconBackgroundColor \"#241A17\" --iconBackgroundColorDark \"#241A17\" --splashBackgroundColor \"#FFF8F0\" --splashBackgroundColorDark \"#241A17\" && node scripts/patch-adaptive-icon.mjs && node scripts/check-assets.mjs",
     "typecheck": "tsc --noEmit && tsc -p server/tsconfig.json",
     "worker:dev": "wrangler dev --config server/wrangler.toml",
     "worker:deploy": "wrangler deploy --config server/wrangler.toml",

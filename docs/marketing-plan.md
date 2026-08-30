@@ -17,11 +17,11 @@ three weeks are not simultaneously the first three weeks of learning the format.
 
 Two consequences worth holding on to:
 
-- **The waitlist page is no longer urgent.** It only mattered as somewhere to send people before the
-  store existed. Worth knowing that `splitwithbilly.com` currently serves the app itself, and since
-  the public origin was closed the web build can no longer scan — so a stranger who lands there and
-  taps Scan gets an error. Fix it before the first post goes out, whether as a waitlist or a proper
-  landing page.
+- **The landing page now exists.** ~~`splitwithbilly.com` serves the app itself, and a stranger who
+  lands there and taps Scan gets an error.~~ Fixed: the site root is a landing page, the app moved
+  to `/app/`, and invite links carrying `?join=` are forwarded so nothing already sent breaks. The
+  page has no waitlist form — the call to action is an email link, because storing addresses means
+  storing personal data and the privacy policy is not ready to say so.
 - **Posts can say "download".** The whole "hold the punchline" constraint disappears, so the app can
   be the payoff rather than a signature.
 
@@ -127,7 +127,9 @@ Ready to use. Deadpan, no exclamation marks.
 
 - **Handles.** `@splitwithbilly` matches the domain. Check availability on both platforms before
   anything is designed with a handle baked into it.
-- **The waitlist page.** Does not exist. It is a small build and it is the only thing standing
-  between the content and a measurable result.
+- **Email capture.** The landing page asks people to write to `hello@splitwithbilly.com`, which is
+  honest and costs nothing but converts far worse than a form. A real waitlist needs an endpoint on
+  the Worker, a D1 table, and a privacy policy that mentions both. Worth doing before the first
+  post, not before the page ships.
 - **Posting starts when?** My advice: build a bank of 15 posts before publishing anything, so the
   first three weeks are not also the first three weeks of learning the format.

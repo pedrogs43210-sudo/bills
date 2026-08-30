@@ -168,11 +168,22 @@ export async function revokeSplit(tripId: string, share: HostShare): Promise<voi
   forgetHostShare(tripId);
 }
 
-/** The link that goes in the message. Part C makes this open the app; today it opens the web build. */
+/**
+ * The link that goes in the message.
+ *
+ * `/app/`, not `/`, since the site root became the landing page — a guest following an invite
+ * wants their split, not a description of the product they are three seconds from using. Links
+ * sent before this change still work: the landing page forwards anything carrying `?join=` here
+ * before it paints.
+ *
+ * Note this is NOT the same address as APP_LINK in lib/appLink.ts, which goes in the settle
+ * summary and deliberately does land on the landing page — that reader has just watched Billy work
+ * and is being shown what it is, rather than being handed a split.
+ */
 export const inviteLink = (code: string): string => {
   const base = (import.meta.env?.VITE_APP_LINK || window.location.origin + window.location.pathname).replace(
     /[?#].*$/,
     ""
   );
-  return `${base.replace(/\/+$/, "")}/?join=${code}`;
+  return `${base.replace(/\/+$/, "")}/app/?join=${code}`;
 };
