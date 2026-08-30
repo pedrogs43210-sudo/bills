@@ -18,8 +18,7 @@ has to re-read a 190 KB canvas to know what a token is worth.
 | `--ink-2` | `#6E574A` | secondary text |
 | `--ink-3` | `#7D6555` | tertiary / muted |
 | `--accent` | `#E8492F` | brand red, links, active |
-| `--sunset-1` | `#FF7059` | gradient start |
-| `--sunset-2` | `#FFB347` | gradient end |
+| `--on-accent` | `#FFFFFF` | what sits **on** a filled accent surface |
 | `--good` | `#2E9E6B` | done |
 | `--good-bg` | `#E4F2EA` | done tint |
 | `--note` | `#B7791F` | warning ink (amber, **never red**) |
@@ -34,7 +33,7 @@ has to re-read a 190 KB canvas to know what a token is worth.
 
 `--bg` `#241A17` · `--surface` `#2F221D` · `--sunken` `#3A2A23` · `--line` `#4A362D` ·
 `--line-strong` `#5C4437` · `--ink` `#FBEEE2` · `--ink-2` `#C4A895` · `--ink-3` `#7D6555` ·
-`--accent` `#FF8F73` · `--sunset-1` `#FF7059` · `--sunset-2` `#FFB347` · `--good` `#4FCB92` ·
+`--accent` `#FF8F73` · `--on-accent` `#241A17` · `--good` `#4FCB92` ·
 `--good-bg` `#1E3B2C` · `--note` `#F0C070` · `--note-bg` `#3D2C16` · `--note-line` `#6B4E1E` ·
 `--warn` `#FF9B8D` · `--accent-ink`, `--note-strong`, `--good-strong` = the accents themselves
 
@@ -50,7 +49,10 @@ The palette above is unchanged: what changed is *which* token gets used for word
 
 | Where | Was | Measured | Now |
 |---|---|---|---|
-| `.btn-primary` label on the sunset gradient | `#FFF` | **2.72:1** red end, **1.78:1** amber end | `#4A1F10` → 5.2:1 / 7.9:1 |
+| `.btn-primary` label on the sunset gradient | `#FFF` | **2.72:1** red end, **1.78:1** amber end | *superseded — the gradient is gone, see below* |
+| `.btn-primary` on flat `--accent-ink` | `#4A1F10` cocoa | **3.63:1** | `--on-accent` → 5.61:1 / 7.63:1 |
+| `.track > span` fill against its `--line` track | `--accent` | **2.99:1** | `--accent-ink` → 4.34:1 |
+| `.scan-chip-last` against the button behind it | `#3D2B24` fixed | **2.38:1** on the flat fill | `--on-accent` → 5.61:1 / 7.63:1 |
 | `.note` and `.banner-*` body text | the accent (`--note` / `--good`) | **3.24:1** and **2.92:1** | `--ink` → 11.9:1 / 11.6:1 |
 | `.note-dot` glyph | `--note` / `--good` fill | **3.24:1** | `--note-strong` / `--good-strong` → 5.3:1 |
 | `.btn-ghost` label | `--accent` | **3.67:1**, and 4.25:1 inside a note | `--accent-ink` → 4.9:1 worst case |
@@ -67,8 +69,19 @@ Two rules come out of this:
    borders, dots, rings and bars, where 3:1 is the bar. As 13–15px words they all fail. Accent
    *words* use `--accent-ink`; a coloured field carries an `--ink` body, with the colour left to
    the dot and the border to do the signalling.
-2. **The gradient is the brand, so the ink moves.** Darkening the sunset until white passed would
-   have turned it into burnt orange. The label went dark instead, and the gradient is untouched.
+2. **The brand is the mark's two colours, not a sunset.** *(Revised — the gradient has been
+   removed.)* The mark is `--ink` for the long bar and `--accent` for the short one, and the app
+   now uses exactly that: filled accent surfaces are flat `--accent-ink`, labelled with
+   `--on-accent`.
+
+   `--on-accent` is the one token that moves **opposite** to its own fill. `--accent-ink` darkens
+   for daylight and lightens for night, so a label that failed to invert alongside it would be
+   white on pale coral at 1.9:1. Anything sitting on a filled accent surface takes the pair — see
+   `.scan-chip-last`, which is an inversion of the button rather than a colour of its own.
+
+   Rule 1 still holds, with one measured exception: `--accent` is a bar colour, but a bar sitting
+   in `--line` rather than on the page measured 2.99:1 against it. `.track > span` uses
+   `--accent-ink` for that reason. The rule assumes a bar on a card; measure when it is not.
 
 `--warn` is not a decoration: four places asked for it before it existed, CSS dropped those
 declarations silently, and "Delete trip" was the same colour as everything else. `src/tokens.test.ts`
@@ -146,9 +159,10 @@ sits next to the thing it is about, and collapses to a pill once that thing scro
 ### Rule 3 — Progress is one bar and one fraction
 
 The same 5px track and the same fraction appear on the receipt row, the assign header, and the
-trip summary. Amber gradient while there is work left, green when there isn't.
+trip summary. Accent while there is work left, green when there isn't.
 
-States: `0/26 Check it` (flat amber) · `14/26 Keep going` (amber gradient) · `26/26 Done` (green).
+States: `0/26 Check it` (flat amber) · `14/26 Keep going` (flat `--accent-ink`) · `26/26 Done`
+(green).
 
 ### Rule 4 — A person, a group and a verb look different
 
@@ -186,7 +200,7 @@ as hit area too.
   trip is duplicated as a full button beside Share, because settling up is rarely the end of the
   holiday and the topbar's far corner is not where a thumb is.
 - **One round button in the bottom-right corner** for the single thing a screen is for — adding a
-  trip, on the trip list. 56px, the sunset gradient, and a *drawn* plus: a typed ＋ at 30px puts
+  trip, on the trip list. 56px, a `--surface` disc with an `--accent-ink` *drawn* plus: a typed ＋ at 30px puts
   only 16px of ink inside the circle, and how much depends on which font managed to load. The
   slot is centred on the app's 480px column exactly as the bottom bar is, so on a wide screen the
   button sits beside the content instead of drifting to the window's edge, and it takes no pointer

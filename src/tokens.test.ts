@@ -62,7 +62,10 @@ describe("the design tokens", () => {
   it("gives dark mode its own value for every colour that needs one", () => {
     // Sizes, radii and fonts are shared; anything to do with colour has to be reconsidered, and
     // --ink-3 is here because it was left at the light value and measured 2.83:1 on dark surfaces.
-    for (const name of ["--bg", "--surface", "--sunken", "--line", "--line-strong", "--ink", "--ink-2", "--ink-3", "--accent", "--accent-ink", "--warn", "--good", "--note"]) {
+    // --on-accent is here because it is the one token that must move OPPOSITE to its own fill:
+    // --accent-ink darkens for daylight and lightens for night, so a label that failed to invert
+    // with it would be white on pale coral.
+    for (const name of ["--bg", "--surface", "--sunken", "--line", "--line-strong", "--ink", "--ink-2", "--ink-3", "--accent", "--accent-ink", "--on-accent", "--warn", "--good", "--note"]) {
       expect(light.has(name), `${name} missing from light`).toBe(true);
       expect(dark.has(name), `${name} missing from dark`).toBe(true);
     }
@@ -73,11 +76,31 @@ describe("the design tokens", () => {
     expect(css).toMatch(/\.btn-ghost\s*\{[^}]*color:\s*var\(--accent-ink\)/);
   });
 
-  it("does not put white back on the sunset gradient", () => {
-    // 2.72:1 at the red end and 1.78:1 at the amber end: the most important label in the app.
+  it("keeps the primary button a flat accent fill, labelled with the token that inverts", () => {
+    // Replaces "does not put white back on the sunset gradient". That gradient is gone, and with
+    // it the reason the label was a hardcoded cocoa: white measured 1.78:1 against its amber end.
+    // Flat --accent-ink holds white at 5.61:1 — but only while it stays flat, and only while the
+    // label comes from --on-accent, which flips to the page's dark at night. A hex here would be
+    // white on pale coral in dark mode, which is 1.9:1.
     const primary = css.slice(css.indexOf(".btn-primary {"));
     const block = primary.slice(0, primary.indexOf("}"));
-    expect(block).not.toMatch(/color:\s*(#fff|#ffffff|white)\b/i);
+    expect(block).toMatch(/background:\s*var\(--accent-ink\)/);
+    expect(block, "a gradient is back on the primary button").not.toMatch(/gradient/);
+    expect(block).toMatch(/color:\s*var\(--on-accent\)/);
+  });
+
+  it("leaves no gradient anywhere in the stylesheet except the masks and the scan sweep", () => {
+    // The brand is two flat colours from the mark, not a sunset. The torn-receipt edge is a mask
+    // rather than a colour, the page-bottom fade is transparent-to-background, and the scan sweep
+    // is one accent fading through itself — none of those are the two-colour brand gradient.
+    // Comments stripped and newlines collapsed first: .scanning-sweep spreads its stops over five
+    // lines, so a line-by-line match sees `background: linear-gradient(` carrying no colour at all
+    // and reports the one gradient that is meant to be there.
+    const flat = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
+    const offenders = [...flat.matchAll(/(?:repeating-)?linear-gradient\([^;]*/g)]
+      .map((m) => m[0])
+      .filter((g) => !/--bg|#000|var\(--accent\)/.test(g));
+    expect(offenders, "a two-colour brand gradient is back").toEqual([]);
   });
 
   it("centres the hero rather than right-aligning it with the rest of the money", () => {

@@ -20,8 +20,17 @@
      already asked for --warn; until now the token did not exist, so the declarations were dropped
      and "Delete trip" was the same colour as everything else. */
   --warn: #b3261e;
-  --sunset-1: #ff7059;
-  --sunset-2: #ffb347;
+  /* What sits ON a filled accent surface — the primary button's label, the scan disc's glyph.
+     Its own token because it inverts with the theme while the fill underneath does not: the fill
+     is --accent-ink in both, but that resolves to a deep red in daylight and a pale coral at
+     night, so the ink on top has to move the other way. Measured white-on-#B83E1A 5.61:1 and
+     #241A17-on-#FF8F73 7.63:1.
+
+     This replaced the sunset gradient. That gradient forced a deep cocoa label (#4a1f10) on every
+     primary button, because white measured 1.78:1 against its amber end — the most important
+     label in the app, on its brightest button, was the least legible thing on screen. A flat fill
+     removes the constraint rather than working around it. */
+  --on-accent: #ffffff;
   --good: #2e9e6b;
   --good-bg: #e4f2ea;
   --note: #b7791f;
@@ -85,6 +94,9 @@
   --accent: #ff8f73;
   /* Pale on dark: the accent reads 6.1:1 as text here, so words and rings share one colour. */
   --accent-ink: var(--accent);
+  /* The inverse of the light theme's white: --accent-ink is a pale coral here, so the label on a
+     filled accent surface has to be the page's own dark rather than white. 7.63:1. */
+  --on-accent: #241a17;
   --warn: #ff9b8d;
   --good: #4fcb92;
   --good-bg: #1e3b2c;
@@ -440,9 +452,8 @@ h3 { font-size: 15.5px; }
   border-radius: var(--r-pill);
   display: grid;
   place-items: center;
-  background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
-  /* Same cocoa as .btn-primary and .fab: white measured 2.72–1.78:1 on this gradient. */
-  color: #4a1f10;
+  background: var(--accent-ink);
+  color: var(--on-accent);
   box-shadow: var(--sh-2);
 }
 
@@ -481,12 +492,12 @@ h3 { font-size: 15.5px; }
 }
 .btn-primary {
   border: 0;
-  background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
-  /* Not white. White measured 2.72:1 on the red end of the sunset and 1.78:1 on the amber end —
-     the most important label in the app, on its brightest button, was the least legible thing on
-     the screen. This deep cocoa reads 5.2:1 at the red end and 7.9:1 at the amber one, so the
-     gradient survives untouched and the words can be read in daylight. */
-  color: #4a1f10;
+  /* Flat, and the same colour as the mark's short bar rather than a sunset of its own. --accent
+     is a 3:1 colour — right for rings, dots and bars, but as a button fill it carries a 15px
+     label at only 3.87:1 in white and 3.63:1 in cocoa, so neither reading passes. --accent-ink is
+     the same hue, dark enough to hold white at 5.61:1, and already what the favicon uses. */
+  background: var(--accent-ink);
+  color: var(--on-accent);
   width: 100%;
   box-shadow: var(--sh-2);
 }
@@ -747,7 +758,11 @@ h3 { font-size: 15.5px; }
   display: block;
   height: 100%;
   border-radius: var(--r-pill);
-  background: linear-gradient(90deg, var(--sunset-1), var(--sunset-2));
+  /* --accent-ink, though the design system says bars are what --accent is for. That rule assumes
+     a bar sits on the page or a card; this one sits in --line, itself a pale cream tint, and
+     measured 2.99:1 against it — its own 3:1 bar, missed by a rounding error. --accent-ink is the
+     same hue at 4.34:1. Measured, because the rule's assumption did not hold for this pairing. */
+  background: var(--accent-ink);
 }
 .track.none > span { background: var(--note-line); }
 .track.done > span { background: var(--good); }
@@ -860,7 +875,7 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
 .scanning-line { height: 7px; border-radius: 999px; background: var(--line); }
 .scanning-line.short { align-self: flex-end; background: var(--line-strong); }
 
-/* The sweep: a soft band of the app's own sunset, travelling top to bottom for ever. */
+/* The sweep: a soft band of the app's own accent, travelling top to bottom for ever. */
 .scanning-sweep {
   position: absolute;
   left: 0;
@@ -870,8 +885,8 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
   background: linear-gradient(
     to bottom,
     transparent,
-    color-mix(in srgb, var(--sunset-2) 55%, transparent),
-    color-mix(in srgb, var(--sunset-1) 40%, transparent),
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    color-mix(in srgb, var(--accent) 30%, transparent),
     transparent
   );
   animation: scan-sweep 1.9s ease-in-out infinite;
@@ -946,13 +961,17 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
 /* The last one. Inverted for weight rather than turned red — red says something has gone wrong,
    and nothing has: they have a scan, and then a decision.
 
-   Fixed colours, not tokens, for the same reason .btn-primary hardcodes its ink: the gradient
-   underneath is identical in both themes, so anything sitting on it must be too. Tokens here made
-   this a cream pill glowing on the sunset in dark mode — inverted against a surface that never
-   inverted. */
+   Tokens now, and the fixed cocoa/cream pair had to go with the gradient. "Inverted" means the
+   opposite of the button it sits on, and the button stopped being bright in daylight: against the
+   old sunset a dark pill separated at 4.91:1, against flat --accent-ink it measured 2.38:1 and
+   the badge went flat exactly where it matters most.
+
+   --on-accent is already the colour that opposes the fill in each theme, so borrowing the pair is
+   the inversion rather than an approximation of it: a white pill with red type in daylight, a
+   dark pill with coral type at night. 5.61:1 and 7.63:1, both ways round. */
 .scan-chip-last {
-  background: #3d2b24;
-  color: #ffe6d2;
+  background: var(--on-accent);
+  color: var(--accent-ink);
 }
 
 .scan-square { width: 56px; height: 56px; border-radius: var(--r-lg); font-size: 20px; }
@@ -1090,7 +1109,7 @@ input:focus-visible, select:focus-visible, .btn:focus-visible, .chip:focus-visib
   font-size: 20px;
 }
 
-/* A labelled pill for a header action. Quiet enough not to compete with the sunset button at the
+/* A labelled pill for a header action. Quiet enough not to compete with the primary button at the
    bottom of the screen, loud enough that the word is read rather than the glyph guessed at.
    44px tall because it is a real target, not a decoration. */
 .btn-pill {
@@ -1475,10 +1494,10 @@ button, .tap-card, .receipt-row, .chip, .tab, label.btn {
   left: var(--s3);
   padding: 2px var(--s2);
   border-radius: var(--r-pill);
-  background: linear-gradient(100deg, var(--sunset-1), var(--sunset-2));
-  /* The same cocoa as .btn-primary and .fab — white on the amber end of this gradient measures
-     1.78:1 and would be unreadable at 10px. */
-  color: #4a1f10;
+  background: var(--accent-ink);
+  /* 10.5px is the smallest type in the app, so this is the label with the least margin — the flat
+     fill's 5.61:1 matters more here than anywhere. */
+  color: var(--on-accent);
   font: 700 10.5px/1.5 var(--text);
   letter-spacing: 0.03em;
   white-space: nowrap;

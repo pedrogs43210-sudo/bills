@@ -121,19 +121,13 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
               window.scrollTo({ top: 0, behavior: "smooth" });
             }}
           >
-            {/* Drawn, with the gradient on the stroke. A typed ＋ was a guess about which font
-                loaded and how much ink it put inside a 56px circle, and no font can carry a
-                gradient across a glyph in the first place. */}
+            {/* Drawn rather than typed: a ＋ glyph is a guess about which font loaded and how much
+                ink it puts inside a 56px circle. --accent-ink rather than --accent because a
+                2.6px stroke on the pale --surface disc is closer to a word than to a bar. */}
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <defs>
-                <linearGradient id="fab-plus" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="var(--sunset-1)" />
-                  <stop offset="100%" stopColor="var(--sunset-2)" />
-                </linearGradient>
-              </defs>
               <path
                 d="M12 5v14M5 12h14"
-                stroke="url(#fab-plus)"
+                stroke="var(--accent-ink)"
                 strokeWidth="2.6"
                 strokeLinecap="round"
               />
