@@ -74,20 +74,26 @@ const MASKED = 0.57;
 const UNMASKED = 0.72;
 
 /**
- * The adaptive foreground is drawn BIGGER than the mark should end up, because Android shrinks it.
+ * The adaptive foreground is drawn at exactly MASKED, and the reason is worth spelling out because
+ * this line has now been wrong in both directions.
  *
- * @capacitor/assets writes an ic_launcher.xml that wraps both layers in
- * `<inset android:inset="16.7%">`, so the PNG you hand it fills only the middle 66.6% of the
- * 108dp tile. Draw the mark at 57% of the PNG and it arrives on the phone at 57 x 0.666 = 38% —
- * measurably correct by the safe-circle rule and visibly lost on a home screen.
+ * An adaptive icon's layers are 108dp, but only the central 72dp is ever visible — the outer ring
+ * exists for the launcher's parallax and is always cropped away. @capacitor/assets wraps both
+ * layers in `<inset android:inset="16.7%">`, which scales the artwork down to exactly that 72dp
+ * window. So the PNG you hand it maps 1:1 onto the visible icon, and a mark drawn at 57% of the
+ * PNG appears at 57% OF THE VISIBLE ICON. Which is the number we actually want.
  *
- * So the foreground is pre-divided by that inset: 0.57 / 0.666 = 0.855 of the PNG, which is 57% of
- * the tile once Android is done. This number is coupled to @capacitor/assets' inset — if the icon
- * ever looks the wrong size after an upgrade, this is the line to check, and the measurement that
- * catches it is in `npm run assets:check`.
+ * It used to be pre-divided by the inset — 0.57 / 0.666 = 0.855 — to "cancel out" the shrinking.
+ * That put the mark at 85.6% of the visible icon, which is inside the safe circle by arithmetic
+ * and touching the edges of the squircle to any human looking at a home screen. The mistake was a
+ * frame of reference, not a formula: the safe-circle rule is written as a fraction of the 108dp
+ * TILE, the artwork lives in the 72dp WINDOW, and the two were being compared directly.
+ *
+ * `npm run assets:check` now measures in the window's frame and reads the inset out of the
+ * generated XML rather than assuming it, so a @capacitor/assets upgrade that drops the inset
+ * changes the answer instead of silently invalidating it.
  */
-const ANDROID_INSET = 0.167;
-const FOREGROUND = MASKED / (1 - 2 * ANDROID_INSET);
+const FOREGROUND = MASKED;
 const at = (frac, fill = DARK_INK, accent = DARK_ACCENT, compact = false) => {
   const s = (64 * frac) / 44; // 44 is the mark's natural width in the 64-unit box
   return `<g transform="translate(32 32) scale(${s.toFixed(4)}) translate(-32 -32)">${bars(fill, accent, compact)}</g>`;

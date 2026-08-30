@@ -1,15 +1,23 @@
 /**
  * Measures the mark inside the generated launcher icons and fails if it is the wrong size.
  *
- * This exists because of a bug that no test could see and no eye would name precisely. The mark was
- * drawn at the correct 58.5% of its source PNG, and @capacitor/assets then wrapped that PNG in an
- * `<inset android:inset="16.7%">` — so it reached the home screen at 39.5% of the tile. Correct by
- * every rule anyone had written down, and visibly lost on a phone.
+ * This exists because of a bug that no test could see and no eye would name precisely, and it has
+ * now been wrong in both directions — which is the actual lesson.
  *
- * So the check measures the shipped artefact rather than the intent: it finds the ink extents in
- * the real PNG, applies Android's own inset, and compares against the safe-circle ceiling.
+ * First the mark was drawn at 58.5% of its source PNG and looked lost on a home screen. The fix
+ * was to pre-divide by @capacitor/assets' `<inset android:inset="16.7%">`, and this file was
+ * written to confirm it — by multiplying the inset back out and comparing against a safe circle of
+ * radius one third. Both numbers were right and the comparison was meaningless: the safe-circle
+ * rule is a fraction of the 108dp TILE, the artwork lives in the 72dp WINDOW that is all anyone
+ * ever sees, and the check reported 56.9% for a mark that was filling 85.6% of the visible icon
+ * and touching the edges of the squircle.
+ *
+ * So it measures in the window's frame now, and it reads the inset out of the generated XML rather
+ * than assuming it — because the assumption is the part that silently went stale. A measurement is
+ * only as good as the frame you state it in.
  */
 import sharp from "sharp";
+import { readFileSync } from "node:fs";
 
 const INSET = 0.167; // @capacitor/assets' adaptive-icon inset, both sides
 const RATIO = 11 / 6; // the mark's aspect
@@ -110,20 +118,57 @@ async function extents(file) {
 const fails = [];
 const say = (ok, msg) => { console.log(`${ok ? "  ok " : "FAIL "} ${msg}`); if (!ok) fails.push(msg); };
 
+/*
+ * Is the foreground inset, and by how much? Read, not assumed.
+ *
+ * This is the question the whole check turns on, and getting it wrong is what let an icon that
+ * touched the edges of the squircle report itself as 56.9%. @capacitor/assets wraps each layer in
+ * `<inset android:inset="16.7%">`, which scales the PNG down to the 72dp window that is actually
+ * visible — so with the inset, the PNG *is* the visible icon and a fraction of one is a fraction of
+ * the other. Without it, the PNG is the full 108dp layer and only its middle 66.6% is ever seen.
+ *
+ * Reading it from the generated XML means an upgrade that changes or drops the inset changes this
+ * measurement, instead of quietly invalidating the assumption it was built on.
+ */
+const xml = readFileSync("android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml", "utf8");
+const foregroundBlock = /<foreground>[\s\S]*?<\/foreground>/.exec(xml)?.[0] ?? "";
+const insetPct = /android:inset="([\d.]+)%"/.exec(foregroundBlock);
+const inset = insetPct ? Number(insetPct[1]) / 100 : 0;
+say(
+  Math.abs(inset - INSET) < 0.001,
+  `foreground is inset ${(inset * 100).toFixed(1)}% in ic_launcher.xml (expected ${(INSET * 100).toFixed(1)}%)`
+);
+
 const fg = await extents("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png");
-const onTile = fg.w * (1 - 2 * INSET);
-// Centred on MASKED in make-assets.mjs, not on the 58.5% ceiling: the ceiling is the most the
-// geometry allows, the constant is what we actually draw, and an assertion should track the latter.
-say(Math.abs(onTile - 0.57) < 0.02, `adaptive foreground lands at ${(onTile * 100).toFixed(1)}% of the tile (drawn at 57%)`);
+/*
+ * The mark as a fraction of the VISIBLE icon — the only frame a person ever sees.
+ *
+ * With the inset, the artwork was scaled onto the visible window, so the PNG fraction is already
+ * the answer. Without it, the artwork spans the full layer and the visible window is the middle
+ * 66.6% of it, so the mark occupies proportionally more of what is shown.
+ */
+const VISIBLE_OF_LAYER = 1 - 2 * INSET;
+const onIcon = inset > 0 ? fg.w : fg.w / VISIBLE_OF_LAYER;
+say(Math.abs(onIcon - 0.57) < 0.03, `mark fills ${(onIcon * 100).toFixed(1)}% of the visible icon (drawn at 57%)`);
 say(Math.abs(fg.w / fg.h - RATIO) < 0.05, `foreground aspect ${(fg.w / fg.h).toFixed(3)} (want ${RATIO.toFixed(3)})`);
 
-// The safe circle is the thing that actually clips. Half-diagonal of the mark vs radius tile/3.
-const halfDiag = (onTile / 2) * Math.hypot(1, 1 / RATIO);
-say(halfDiag <= 1 / 3, `mark reaches ${(halfDiag * 100).toFixed(2)}% of the tile from centre (safe circle is 33.33%)`);
+/*
+ * Two ceilings, and the looser one is not the one that matters.
+ *
+ * A circular mask inscribed in the visible window has radius 50% of it, so nothing may reach
+ * further than that or it is literally clipped. But an icon that merely avoids being clipped still
+ * looks wrong: at 85.6% the mark cleared the circle by arithmetic and read as touching the edges.
+ * So the second bar is comfort — real launcher icons leave the outer fifth alone.
+ */
+const halfDiag = (onIcon / 2) * Math.hypot(1, 1 / RATIO);
+say(halfDiag <= 0.5, `mark reaches ${(halfDiag * 100).toFixed(1)}% of the visible icon from centre (clipped past 50%)`);
+say(halfDiag <= 0.40, `mark leaves ${((0.5 - halfDiag) * 100).toFixed(1)} points of breathing room inside the mask (want 10+)`);
 
 const sq = await extents("android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png");
+// The legacy square is not inset by anything: the PNG is the whole icon on the launchers that use
+// it, so its own width is already the visible fraction.
 const sqHalfDiag = (sq.w / 2) * Math.hypot(1, 1 / RATIO);
-say(sqHalfDiag <= 1 / 3, `legacy square survives a round mask — reaches ${(sqHalfDiag * 100).toFixed(2)}% (safe 33.33%)`);
+say(sqHalfDiag <= 0.5, `legacy square survives a round mask — reaches ${(sqHalfDiag * 100).toFixed(1)}% (clipped past 50%)`);
 
 if (fails.length) {
   console.error(`\n${fails.length} check(s) failed. See scripts/make-assets.mjs.`);
