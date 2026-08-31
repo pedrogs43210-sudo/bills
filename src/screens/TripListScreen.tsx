@@ -8,8 +8,8 @@ import { Mark } from "../components/Mark";
 import { defaultCurrency } from "../lib/currencies";
 import { keptSplits } from "../lib/keptSplits";
 import { nudge } from "../lib/nudge";
-
-const EMOJIS = ["🧾", "🏖️", "⛰️", "🏙️", "🎿", "🏕️", "🎉"];
+import { SPLIT_ICONS } from "../lib/splitIcons";
+import { SplitIcon } from "../components/SplitIcon";
 
 /**
  * Newest trip first. Trips are stored in the order they were added, so a missing or equal
@@ -30,7 +30,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
      and nothing explained itself, which reads as a broken app rather than as a missing field. */
   const [nameError, setNameError] = useState("");
   const nameInput = useRef<HTMLInputElement>(null);
-  const [emoji, setEmoji] = useState(EMOJIS[0]);
+  const [emoji, setEmoji] = useState(SPLIT_ICONS[0].emoji);
   /* The form used to sit above the trips, so opening the app meant looking at an empty field
      before your own holidays. It lives behind the ＋ now — and opens by itself for someone with
      no trips, who has nothing else to look at and one obvious thing to do. */
@@ -105,19 +105,31 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
               {nameError}
             </p>
           )}
-          <div className="emoji-row">
-            {EMOJIS.map((e) => (
+          {/* Wraps to two rows rather than scrolling sideways. Eleven 52px chips with 8px gaps is
+              652px against roughly 360 of usable width on a small Android, so a single row would
+              hide five of them behind a swipe most people never make — and the two that matter
+              most, a restaurant bill and a supermarket shop, are only first if you can see them. */}
+          <div className="emoji-row" role="group" aria-label="What kind of split">
+            {SPLIT_ICONS.map((i) => (
               <button
-                key={e}
-                className={`chip chip-emoji${e === emoji ? " selected" : ""}`}
-                aria-label={`Use ${e}`}
-                aria-pressed={e === emoji}
-                onClick={() => setEmoji(e)}
+                key={i.name}
+                className={`chip chip-emoji${i.emoji === emoji ? " selected" : ""}`}
+                /* The icon is the only content, so the label has to carry the meaning — and it says
+                   what the split IS rather than naming a picture: "a bar tab", not "wine glass". */
+                aria-label={i.label}
+                aria-pressed={i.emoji === emoji}
+                onClick={() => setEmoji(i.emoji)}
               >
-                {e}
+                <SplitIcon emoji={i.emoji} size={20} />
               </button>
             ))}
           </div>
+          {/* The chosen one, named in full. Eleven unlabelled icons is a guessing game, and the
+              alternative — a caption under every chip — forces "Groceries" to become "Grocer." to
+              fit 52px. One line that changes as you tap says more, in less room. */}
+          <p className="emoji-chosen">
+            For {SPLIT_ICONS.find((i) => i.emoji === emoji)?.label ?? "a split"}
+          </p>
           <button className="btn btn-primary" onClick={create}>
             Create split
           </button>
@@ -175,7 +187,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
         >
           <span className="row" style={{ alignItems: "flex-start" }}>
             <span className="trip-name">
-              <span aria-hidden="true" style={{ marginRight: 6 }}>{t.emoji}</span>
+              <SplitIcon emoji={t.emoji} size={18} className="split-glyph" />
               {t.name}
             </span>
             <span className="micro">
@@ -220,7 +232,7 @@ export function TripListScreen({ go }: { go: (v: View) => void }) {
             >
               <span className="row" style={{ alignItems: "flex-start" }}>
                 <span className="trip-name">
-                  <span aria-hidden="true" style={{ marginRight: 6 }}>{k.view.split.emoji}</span>
+                  <SplitIcon emoji={k.view.split.emoji} size={18} className="split-glyph" />
                   {k.view.split.name}
                 </span>
                 <span className="micro">

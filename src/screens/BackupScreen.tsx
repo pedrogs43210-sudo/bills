@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useStore } from "../state/StoreProvider";
 import { exportTrip, importTrip } from "../lib/storage";
 import type { View } from "../App";
+import { SplitIcon } from "../components/SplitIcon";
 
 /**
  * Exporting and importing splits, on a screen of their own.
@@ -66,7 +67,7 @@ export function BackupScreen({ go }: { go: (v: View) => void }) {
           {data.trips.map((t) => (
             <div key={t.id} className="settings-row">
               <span className="row" style={{ gap: "var(--s2)", minWidth: 0 }}>
-                <span aria-hidden="true">{t.emoji}</span>
+                <SplitIcon emoji={t.emoji} size={18} />
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.name}</span>
               </span>
               <button className="btn" onClick={() => download(t.id)}>Export</button>

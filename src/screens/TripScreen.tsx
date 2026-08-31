@@ -19,6 +19,7 @@ import { countsDiscountLines, discountConvention } from "../lib/discounts";
 import { scanNotes } from "../lib/receipt";
 import { offerAfter, shouldOffer } from "../lib/promo";
 import type { View } from "../App";
+import { SplitIcon } from "../components/SplitIcon";
 import type { Person, Receipt } from "../types";
 import { excludedReceipts } from "../lib/settle";
 
@@ -326,7 +327,7 @@ export function TripScreen({ tripId, go }: { tripId: string; go: (v: View) => vo
     <div>
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trips" })}>←</button>
-        <h1 className="screen-title">{trip.emoji} {trip.name}</h1>
+        <h1 className="screen-title"><SplitIcon emoji={trip.emoji} size={20} className="split-glyph" />{trip.name}</h1>
         {/* Currency lives up here now, as the symbol it sets rather than a labelled row in a card of
             its own. It belongs to the split rather than the phone — the next holiday may be
             somewhere else — but it is chosen once and never touched again, and a full-width picker

@@ -153,3 +153,23 @@ describe("summary text with excluded receipts", () => {
     expect(text.indexOf("Not final")).toBeLessThan(text.indexOf("Pedro:"));
   });
 });
+
+describe("what travels into a group chat", () => {
+  /**
+   * The split's icon is drawn in the app now, but this text is pasted into WhatsApp and read on a
+   * phone that has never heard of Billy. An SVG cannot go in a message, so the summary keeps the
+   * emoji — and that is also why the stored value stayed an emoji rather than becoming an icon
+   * name. If someone ever "tidies" this to use the icon's name, the group chat starts saying
+   * "beach Algarve 2026".
+   */
+  it("still carries the emoji, not an icon name and not markup", () => {
+    const text = summaryText(trip);
+    expect(text).toContain("🏖️");
+    expect(text).not.toContain("<svg");
+    expect(text).not.toContain("beach");
+  });
+
+  it("puts it first, where a skimming reader starts", () => {
+    expect(summaryText(trip).startsWith("🏖️ ")).toBe(true);
+  });
+});

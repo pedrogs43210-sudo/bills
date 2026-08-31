@@ -13,6 +13,7 @@ import {
 import { keepSplit, keptSplit } from "../lib/keptSplits";
 import { Disc } from "../components/chips";
 import type { View } from "../App";
+import { SplitIcon } from "../components/SplitIcon";
 
 /**
  * The guest's side: open a link, say which one you are, tick what you had.
@@ -139,7 +140,7 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
       <div>
         <div className="topbar">
           <button className="btn btn-ghost" aria-label="Back" onClick={() => setView(null)}>←</button>
-          <h1 className="screen-title">{view.split.emoji} {view.split.name}</h1>
+          <h1 className="screen-title"><SplitIcon emoji={view.split.emoji} size={20} className="split-glyph" />{view.split.name}</h1>
         </div>
         <div className="card">
           <h3>Which one are you?</h3>
@@ -189,7 +190,7 @@ export function JoinScreen({ code: initialCode, go }: { code?: string; go: (v: V
     <div>
       <div className="topbar">
         <button className="btn btn-ghost" aria-label="Back" onClick={() => go({ screen: "trips" })}>←</button>
-        <h1 className="screen-title">{view.split.emoji} {view.split.name}</h1>
+        <h1 className="screen-title"><SplitIcon emoji={view.split.emoji} size={20} className="split-glyph" />{view.split.name}</h1>
       </div>
 
       {frozenAt && (

@@ -1770,3 +1770,58 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
   padding: 0;
   flex: none;
 }
+
+/* ---------- Split-type icons ---------- */
+
+/* The glyph beside a split's name, in a list row or a screen title. Aligned on the text's own
+   centre rather than its baseline: these are shapes, not letters, and a baseline-aligned icon sits
+   a couple of pixels low next to rounded type. */
+.split-glyph {
+  flex: none;
+  margin-right: 7px;
+  vertical-align: -0.18em;
+}
+.screen-title .split-glyph { vertical-align: -0.16em; }
+
+/* Eleven chips at 52px with 8px gaps is 652px, against roughly 360 of usable width on a small
+   Android. A single scrolling row would put five of them — including two of the three most likely
+   choices — behind a swipe most people never make. Wrapping costs about 116px of height and shows
+   all eleven at once, which is the trade the design file recommends and it is the right one. */
+.emoji-row {
+  margin: 0;
+  /* Six columns, not free-flowing chips. At a fixed 52px they wrapped 4+4+3, because the row has
+     309px inside the card rather than the ~360 the design file assumed, and six 52s need 352. Six
+     equal columns of 45px fit exactly and give the 6+5 the file recommends — still over the 44px
+     tap minimum, and two rows instead of three. */
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--s2);
+}
+
+/*
+ * The selected chip, and this is a measurement rather than a preference.
+ *
+ * The design file proposes cream on --accent and says plainly that #fff8f0 on #e8492f is 3.67:1 —
+ * "which is why the chip carries a label under it and never the glyph alone", with #c93d22 or
+ * #bf3a1f offered if a chip ever is icon-only. These chips ARE icon-only, so --accent is the wrong
+ * end of that note.
+ *
+ * --accent-ink is the same hue and already the app's answer to "a filled accent surface": 5.61:1
+ * against --on-accent in daylight, 7.63:1 at night, the same pair the primary button and the pack
+ * flag carry. Better than either shade the file offers, and no new hex enters the palette.
+ */
+/* The grid sets the width now; the chip only has to fill its column. */
+.chip-emoji { color: var(--ink); width: 100%; }
+.chip-emoji.selected {
+  background: var(--accent-ink);
+  border-color: var(--accent-ink);
+  color: var(--on-accent);
+}
+
+/* Names the choice in full, so eleven icons are not a guessing game and nothing has to be
+   abbreviated to "Grocer." to fit under a 52px chip. One line, changing as you tap. */
+.emoji-chosen {
+  margin: var(--s2) 0 0;
+  font: 600 12.5px/1.4 var(--text);
+  color: var(--ink-3);
+}
